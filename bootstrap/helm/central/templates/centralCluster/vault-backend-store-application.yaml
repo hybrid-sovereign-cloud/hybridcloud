@@ -1,0 +1,46 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.vaultSecretStore.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault-secret-store
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.vaultSecretStore.syncWave | quote }}
+spec:
+  project: central
+
+  source:
+    repoURL: {{ printf "oci://%s/%s/vault-secret-store" .Values.oci.registry .Values.oci.repositoryBase | quote }}
+    chart: vault-secret-store
+    targetRevision: {{ .Values.vaultSecretStore.chartVersion | quote }}
+    helm:
+      releaseName: vault-secret-store
+      values: |
+        {{- toYaml .Values.vaultSecretStore.values | nindent 8 }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.vaultSecretStore.values.auth.serviceAccountNamespace | default "external-secrets" }}
+
+  ignoreDifferences:
+    {{- include "sovereign-central.esoIgnoreDifferences" . | nindent 4 }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+{{- end }}
