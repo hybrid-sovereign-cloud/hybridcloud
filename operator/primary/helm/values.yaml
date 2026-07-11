@@ -1,5 +1,6 @@
 namespace: sovereign-cloud
 pluginsNamespace: sovereign-cloud-plugins
+installCRDs: true
 
 image:
   repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
