@@ -1,0 +1,26 @@
+---
+- name: Persona Create Automation
+  hosts: all
+  sources:
+    - ansible.eda.generic:
+        payload:
+          - persona_create
+
+  rules:
+    - name: Handle Persona Create
+      condition: event.payload.reason == "PersonaCreateRequested" and event.payload.regarding.kind == "Persona"
+      action:
+        run_playbook:
+          name: playbooks/persona-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"
+          set_facts: true
+
+    - name: Handle Persona Reconcile
+      condition: event.payload.reason == "PersonaReconcileRequested" and event.payload.regarding.kind == "Persona"
+      action:
+        run_playbook:
+          name: playbooks/persona-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"
+          set_facts: true

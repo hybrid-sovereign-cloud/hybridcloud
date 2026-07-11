@@ -1,0 +1,144 @@
+# ─── GitOps repository ────────────────────────────────────────────────────────
+gitops:
+  # Full HTTPS URL of the bootstrap repository
+  repoURL: "https://github.com/my-org/bootstrap"
+  # Branch ArgoCD will track for all app-of-apps charts
+  targetRevision: HEAD
+  # Personal / service-account token with read access to the repo
+  token: ""
+
+# bootstrap layers (cumulative — each make target enables its layer plus prior layers):
+#   make init-central-argo           → bootstrap.operator=true
+#   make init-central-secrets        → bootstrap.operator + bootstrap.secrets
+#   make init-central-applicationset → all three true
+# The openshift-gitops Argo CD instance is created by the GitopsService CR, not this chart.
+bootstrap:
+  operator: false
+  secrets: false
+  applicationset: false
+
+# Deprecated: use bootstrap.* flags above. Kept for backward-compatible helm --set only.
+bootstrapPhase: full
+
+# ─── Red Hat OpenShift GitOps operator + default Argo CD instance ─────────────
+gitopsOperator:
+  enabled: true
+  # installOperator: set false when the GitOps operator is pre-installed on the cluster
+  # (e.g. installed system-wide in openshift-operators during cluster provisioning).
+  # When false, the OLM Subscription, OperatorGroup and Namespace templates are skipped
+  # but the ArgoCD instance CR is still managed.
+  installOperator: true
+  operatorNamespace: openshift-gitops-operator
+  channel: latest
+  installPlanApproval: Automatic
+  argocdInstanceName: openshift-gitops
+  # Application-controller sync operation timeout (seconds). Syncs exceeding this are terminated.
+  cmdParams:
+    controller.sync.timeout.seconds: "600"
+  # Per-component CPU/memory overrides for Argo CD workloads. Leave empty for no reservations.
+  # Components: controller, server, repo, applicationSet, dex, redis
+  # Example:
+  #   resourceOverrides:
+  #     controller:
+  #       limits:
+  #         cpu: "2"
+  #         memory: 2Gi
+  #       requests:
+  #         cpu: 250m
+  #         memory: 1Gi
+  resourceOverrides: {}
+
+# Default retry for ApplicationSet-generated apps (per-app retry in helm/central may override).
+argocdSyncPolicy:
+  retry:
+    limit: 10
+    backoff:
+      duration: 30s
+      factor: 2
+      maxDuration: 10m
+
+# ─── ArgoCD namespace ─────────────────────────────────────────────────────────
+argocd:
+  namespace: openshift-gitops
+
+# ─── Services cluster registration ───────────────────────────────────────────
+clusters:
+  services:
+    # Human-readable name ArgoCD will use for this cluster entry
+    name: services
+    # Kubernetes API server URL for the services cluster
+    server: "https://api.services.example.com:6443"
+    # Bearer token for ArgoCD cluster registration (set by make init-central-argo)
+    bearerToken: ""
+    # Set to true only when the services cluster uses a self-signed cert
+    tlsSkipVerify: false
+
+# ─── ApplicationSet — central app-of-apps ─────────────────────────────────────
+applicationSet:
+  name: sovereign-central-appset
+  # Path inside the repo that holds the central app-of-apps Helm chart
+  chartPath: helm/central
+  # Namespace where the ApplicationSet controller renders child Applications
+  destinationNamespace: openshift-gitops
+  # Sync policy applied to every generated Application
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+# ─── OCI registry pull secret (injected into openshift-gitops) ───────────────
+oci:
+  registry: "quay.io"
+  namespace: "sovereign"
+  robotUsername: ""
+  robotPassword: ""
+
+# ─── Image pull secrets delivered to component namespaces ────────────────────
+# The init chart is the ONLY chart allowed to seed secrets from env vars.
+# All other secret delivery goes through Vault → ExternalSecret.
+pushSecrets:
+  enabled: true
+
+# ─── Gitea admin bootstrap credentials ──────────────────────────────────────
+# These must be provided via --set during 'make init-central-argo'.
+# NEVER hardcode values here. Pass via env: GITEA_ADMIN_PASSWORD
+gitea:
+  adminUser: "gitea_admin"
+  adminPassword: ""
+  adminEmail: "admin@sovereign.local"
+
+pullSecretNamespaces:
+  - argocd-schema-fix
+  - central-vault
+  - gitea
+  - aap
+  - central-rhbk
+  - sovereign-cloud
+  - sovereign-cloud-plugins
+  - sovereign-cloud-helpers
+  - sovereign-cloud-jobs
+  - external-secrets
+  - central-quay
+
+# ─── VMware bootstrap credentials ────────────────────────────────────────────
+# Provided via --set during 'make init-central-secrets'.
+# NEVER hardcode values here. Pass via env: VMWARE_HOST, VMWARE_USERNAME, VMWARE_PASSWORD.
+# The init chart creates vmware-bootstrap-credentials Secret in sovereign-cloud-jobs.
+# The vmwareInit sovereignJob (wave 24) reads this Secret and writes to Vault.
+vmware:
+  host: ""
+  username: ""
+  password: ""
+  thumbprint: ""
+  # Optional: PEM-encoded CA certificate for self-signed vCenter TLS.
+  # If empty, insecure connection is used (acceptable in lab; document deviation in prod).
+  cacert: ""
+
+# ─── ArgoCD OpenAPI schema compatibility shim ────────────────────────────────
+argocdSchemaFix:
+  # Deploys a minimal HTTPS server that injects the tilde-encoded UserPermissionStatus
+  # definition into the aggregated OpenAPI v2 spec, working around a kube-openapi ~1
+  # resolution bug in ArgoCD when MCE/RHACM is installed on the same cluster.
+  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"

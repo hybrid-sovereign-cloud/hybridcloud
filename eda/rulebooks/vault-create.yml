@@ -1,0 +1,16 @@
+- name: Vault Create Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Vault Create
+    condition: event.payload.reason in ["VaultCreateRequested", "VaultReconcileRequested"] and event.payload.regarding.kind
+      == "Vault"
+    action:
+      run_job_template:
+        name: vault-provision
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

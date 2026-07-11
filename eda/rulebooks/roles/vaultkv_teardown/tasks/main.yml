@@ -1,0 +1,104 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        vaultkv_cr_name: "{{ event_payload.regarding.name }}"
+        vaultkv_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        vaultkv_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Read parent Vault CR
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Vault
+        name: "{{ vaultkv_spec.vault }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: parent_vault_final
+
+    - name: Delete KV engine and policies when Vault is available
+      when:
+        - parent_vault_final.resources | length > 0
+        - parent_vault_final.resources[0].status.ready | default(false) | bool
+      block:
+        - name: Read init secret
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            api_version: v1
+            kind: Secret
+            name: "{{ parent_vault_final.resources[0].status.adminSecretName }}"
+            namespace: "{{ vaultkv_cr_namespace }}"
+          register: vault_init_final
+
+        - name: Disable KV engine
+          when: vault_init_final.resources | length > 0
+          ansible.builtin.uri:
+            url: "{{ parent_vault_final.resources[0].status.vaultUrl }}/v1/sys/mounts/{{ vaultkv_cr_name }}"
+            method: DELETE
+            headers:
+              X-Vault-Token: "{{ vault_init_final.resources[0].data.root_token | b64decode }}"
+            validate_certs: false
+            status_code: [200, 204, 404]
+          ignore_errors: true
+          no_log: true
+
+        - name: Delete policies
+          loop:
+            - "{{ vaultkv_cr_name }}-admin"
+            - "{{ vaultkv_cr_name }}-reader"
+            - "{{ vaultkv_cr_name }}-ops"
+            - "{{ vaultkv_cr_name }}-developer"
+          when: vault_init_final.resources | length > 0
+          ansible.builtin.uri:
+            url: "{{ parent_vault_final.resources[0].status.vaultUrl }}/v1/sys/policies/acl/{{ item }}"
+            method: DELETE
+            headers:
+              X-Vault-Token: "{{ vault_init_final.resources[0].data.root_token | b64decode }}"
+            validate_certs: false
+            status_code: [200, 204, 404]
+          ignore_errors: true
+          no_log: true
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        vaultkv_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark VaultKV deletion complete on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaultkvs
+        cr_name: "{{ vaultkv_cr_name }}"
+        cr_namespace: "{{ vaultkv_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ vaultkv_delete_transition_time }}"
+          message: VaultKV {{ vaultkv_cr_name }} finalized by EDA
+
+  rescue:
+    - name: Mark VaultKV delete as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaultkvs
+        cr_name: "{{ vaultkv_cr_name }}"
+        cr_namespace: "{{ vaultkv_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA deletion failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "VaultKV {{ vaultkv_cr_name | default('unknown') }} EDA teardown failed"

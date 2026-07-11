@@ -1,0 +1,123 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        vaultkv_cr_name: "{{ event_payload.regarding.name }}"
+        vaultkv_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        vaultkv_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Read VaultKV CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: VaultKV
+        name: "{{ vaultkv_cr_name }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: vaultkv_cr
+
+    - name: Read referenced Vault CR
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Vault
+        name: "{{ vaultkv_spec.vault }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: parent_vault
+      retries: 12
+      delay: 5
+      until: parent_vault.resources | length > 0
+
+    - name: Cache Vault status
+      ansible.builtin.set_fact:
+        vault_status: "{{ parent_vault.resources[0].status }}"
+        vault_internal_url: "{{ parent_vault.resources[0].status.vaultInternalUrl }}"
+        vault_external_url: "{{ parent_vault.resources[0].status.vaultUrl }}"
+        vault_url: "{{ parent_vault.resources[0].status.vaultUrl }}"
+        vaultkv_generation: "{{ vaultkv_cr.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Read Vault init secret for root token
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Secret
+        name: "{{ vault_status.adminSecretName }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: vault_init_secret
+      retries: 6
+      delay: 5
+      until: vault_init_secret.resources | length > 0
+
+    - name: Decode root token
+      ansible.builtin.set_fact:
+        vault_root_token: "{{ vault_init_secret.resources[0].data.root_token | b64decode }}"
+      no_log: true
+
+    - name: Set KV engine path
+      ansible.builtin.set_fact:
+        kv_path: "{{ vaultkv_cr_name }}"
+
+    - name: Configure KV engine, policies, and identity groups
+      ansible.builtin.include_tasks: kv_engine.yml
+
+    - name: Set reconciliation timestamp
+      ansible.builtin.set_fact:
+        vaultkv_status_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update VaultKV status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaultkvs
+        cr_name: "{{ vaultkv_cr_name }}"
+        cr_namespace: "{{ vaultkv_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          lastReconciledAt: "{{ vaultkv_status_time }}"
+          ready: true
+          observedGeneration: "{{ vaultkv_generation }}"
+          kvPath: "{{ kv_path }}"
+          adminPolicy: "{{ kv_path }}-admin"
+          readerPolicy: "{{ kv_path }}-reader"
+          adminRbacGroups: "{{ admin_group_paths }}"
+          readerRbacGroups: "{{ reader_group_paths }}"
+          opsRbacGroups: "{{ ops_group_paths }}"
+          developerRbacGroups: "{{ developer_group_paths }}"
+          loginUrl: "{{ vault_external_url }}/ui/vault/auth/oidc/oidc/callback"
+          vaultUrl: "{{ vault_external_url }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ vaultkv_status_time }}"
+              reason: EDASucceeded
+              message: >-
+                KV engine '{{ kv_path }}' configured by EDA.
+                Login at {{ vault_external_url }} using OIDC method.
+
+  rescue:
+    - name: Mark VaultKV as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaultkvs
+        cr_name: "{{ vaultkv_cr_name }}"
+        cr_namespace: "{{ vaultkv_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "VaultKV {{ vaultkv_cr_name | default('unknown') }} EDA provisioning failed"

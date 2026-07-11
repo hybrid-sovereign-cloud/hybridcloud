@@ -1,0 +1,50 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.rhacm.enabled }}
+---
+# ArgoCD Application that installs RHACM from the OCI Helm chart pushed by
+# `make upload-acm-chart`.  Source type is "helm" with repoURL pointing to the
+# OCI registry so ArgoCD pulls the chart without needing a Git clone.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rhacm
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rhacm
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.rhacm.syncWave | quote }}
+spec:
+  project: central
+
+  source:
+    repoURL: {{ include "sovereign-central.ociURL" . | quote }}
+    chart: rhacm
+    targetRevision: {{ .Values.rhacm.chartVersion | quote }}
+    helm:
+      releaseName: rhacm
+      values: |
+        {{- with .Values.rhacm.values }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        multiClusterHub:
+          enabled: {{ .Values.rhacm.enableMultiClusterHub }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.rhacm.destinationNamespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+{{- end }}

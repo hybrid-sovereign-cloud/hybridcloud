@@ -1,0 +1,349 @@
+---
+- name: Enable KV v2 secrets engine
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/sys/mounts/{{ kv_path }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      type: kv
+      options:
+        version: "2"
+    validate_certs: false
+    status_code: [200, 204, 400]
+
+- name: Resolve admin Rbac groups from Keycloak
+  when: vaultkv_spec.vaultAdminRbac is defined and vaultkv_spec.vaultAdminRbac | length > 0
+  block:
+    - name: Read admin Rbac CRs
+      kubernetes.core.k8s_info:
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: admin_rbac_crs
+      loop: "{{ vaultkv_spec.vaultAdminRbac }}"
+
+    - name: Build admin group paths
+      ansible.builtin.set_fact:
+        admin_group_paths: >-
+          {{
+            admin_rbac_crs.results
+            | selectattr('resources', 'defined')
+            | map(attribute='resources')
+            | flatten
+            | selectattr('status.group', 'defined')
+            | map(attribute='status.group')
+            | list
+          }}
+
+- name: Default admin groups to empty
+  when: vaultkv_spec.vaultAdminRbac is not defined or vaultkv_spec.vaultAdminRbac | length == 0
+  ansible.builtin.set_fact:
+    admin_group_paths: []
+
+- name: Resolve reader Rbac groups
+  when: vaultkv_spec.vaultReaderRbac is defined and vaultkv_spec.vaultReaderRbac | length > 0
+  block:
+    - name: Read reader Rbac CRs
+      kubernetes.core.k8s_info:
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: reader_rbac_crs
+      loop: "{{ vaultkv_spec.vaultReaderRbac }}"
+
+    - name: Build reader group paths
+      ansible.builtin.set_fact:
+        reader_group_paths: >-
+          {{
+            reader_rbac_crs.results
+            | selectattr('resources', 'defined')
+            | map(attribute='resources')
+            | flatten
+            | selectattr('status.group', 'defined')
+            | map(attribute='status.group')
+            | list
+          }}
+
+- name: Default reader groups to empty
+  when: vaultkv_spec.vaultReaderRbac is not defined or vaultkv_spec.vaultReaderRbac | length == 0
+  ansible.builtin.set_fact:
+    reader_group_paths: []
+
+- name: Resolve ops Rbac groups
+  when: vaultkv_spec.vaultOpsRbac is defined and vaultkv_spec.vaultOpsRbac | length > 0
+  block:
+    - name: Read ops Rbac CRs
+      kubernetes.core.k8s_info:
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: ops_rbac_crs
+      loop: "{{ vaultkv_spec.vaultOpsRbac }}"
+
+    - name: Build ops group paths
+      ansible.builtin.set_fact:
+        ops_group_paths: >-
+          {{
+            ops_rbac_crs.results
+            | selectattr('resources', 'defined')
+            | map(attribute='resources')
+            | flatten
+            | selectattr('status.group', 'defined')
+            | map(attribute='status.group')
+            | list
+          }}
+
+- name: Default ops groups to empty
+  when: vaultkv_spec.vaultOpsRbac is not defined or vaultkv_spec.vaultOpsRbac | length == 0
+  ansible.builtin.set_fact:
+    ops_group_paths: []
+
+- name: Resolve developer Rbac groups
+  when: vaultkv_spec.vaultDeveloperRbac is defined and vaultkv_spec.vaultDeveloperRbac | length > 0
+  block:
+    - name: Read developer Rbac CRs
+      kubernetes.core.k8s_info:
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ vaultkv_cr_namespace }}"
+      register: developer_rbac_crs
+      loop: "{{ vaultkv_spec.vaultDeveloperRbac }}"
+
+    - name: Build developer group paths
+      ansible.builtin.set_fact:
+        developer_group_paths: >-
+          {{
+            developer_rbac_crs.results
+            | selectattr('resources', 'defined')
+            | map(attribute='resources')
+            | flatten
+            | selectattr('status.group', 'defined')
+            | map(attribute='status.group')
+            | list
+          }}
+
+- name: Default developer groups to empty
+  when: vaultkv_spec.vaultDeveloperRbac is not defined or vaultkv_spec.vaultDeveloperRbac | length == 0
+  ansible.builtin.set_fact:
+    developer_group_paths: []
+
+- name: Create admin policy
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/sys/policies/acl/{{ kv_path }}-admin"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      policy: |
+        path "{{ kv_path }}/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+        }
+        path "{{ kv_path }}/metadata/*" {
+          capabilities = ["list", "read", "delete"]
+        }
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create reader policy
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/sys/policies/acl/{{ kv_path }}-reader"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      policy: |
+        path "{{ kv_path }}/data/*" {
+          capabilities = ["read", "list"]
+        }
+        path "{{ kv_path }}/metadata/*" {
+          capabilities = ["list", "read"]
+        }
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create ops policy
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/sys/policies/acl/{{ kv_path }}-ops"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      policy: |
+        path "{{ kv_path }}/data/*" {
+          capabilities = ["create", "read", "update", "delete", "list"]
+        }
+        path "{{ kv_path }}/metadata/*" {
+          capabilities = ["delete", "list", "read"]
+        }
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create developer policy
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/sys/policies/acl/{{ kv_path }}-developer"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      policy: |
+        path "{{ kv_path }}/data/*" {
+          capabilities = ["create", "read", "list"]
+        }
+        path "{{ kv_path }}/metadata/*" {
+          capabilities = ["read", "list"]
+        }
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create external group for admin RBAC groups
+  loop: "{{ admin_group_paths }}"
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "{{ item }}-admin"
+      type: external
+      policies: ["{{ kv_path }}-admin"]
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create external group for reader RBAC groups
+  loop: "{{ reader_group_paths }}"
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "{{ item }}-reader"
+      type: external
+      policies: ["{{ kv_path }}-reader"]
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create external group for ops RBAC groups
+  loop: "{{ ops_group_paths }}"
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "{{ item }}-ops"
+      type: external
+      policies: ["{{ kv_path }}-ops"]
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Create external group for developer RBAC groups
+  loop: "{{ developer_group_paths }}"
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "{{ item }}-developer"
+      type: external
+      policies: ["{{ kv_path }}-developer"]
+    validate_certs: false
+    status_code: [200, 204]
+
+- name: Get OIDC auth accessor
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/sys/auth"
+    method: GET
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: auth_methods
+
+- name: Record OIDC accessor
+  ansible.builtin.set_fact:
+    oidc_accessor: "{{ auth_methods.json['oidc/'].accessor }}"
+  when: "'oidc/' in auth_methods.json"
+
+- name: Create group alias for admin groups
+  loop: "{{ admin_group_paths }}"
+  when: oidc_accessor is defined
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group-alias"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "/{{ item }}"
+      mount_accessor: "{{ oidc_accessor }}"
+      canonical_id: ""
+    validate_certs: false
+    status_code: [200, 204, 400]
+  ignore_errors: true
+
+- name: Create group alias for reader groups
+  loop: "{{ reader_group_paths }}"
+  when: oidc_accessor is defined
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group-alias"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "/{{ item }}"
+      mount_accessor: "{{ oidc_accessor }}"
+      canonical_id: ""
+    validate_certs: false
+    status_code: [200, 204, 400]
+  ignore_errors: true
+
+- name: Create group alias for ops groups
+  loop: "{{ ops_group_paths }}"
+  when: oidc_accessor is defined
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group-alias"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "/{{ item }}"
+      mount_accessor: "{{ oidc_accessor }}"
+      canonical_id: ""
+    validate_certs: false
+    status_code: [200, 204, 400]
+  ignore_errors: true
+
+- name: Create group alias for developer groups
+  loop: "{{ developer_group_paths }}"
+  when: oidc_accessor is defined
+  ansible.builtin.uri:
+    url: "{{ vault_url }}/v1/identity/group-alias"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      name: "/{{ item }}"
+      mount_accessor: "{{ oidc_accessor }}"
+      canonical_id: ""
+    validate_certs: false
+    status_code: [200, 204, 400]
+  ignore_errors: true

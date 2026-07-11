@@ -1,0 +1,51 @@
+---
+# Rewrite an HTTPS URL to use the public DNS IP with Host header for ingress routing.
+# Required vars: pin_url (full URL). Optional: pin_url_fact (fact name to rewrite).
+# Lab apps FQDNs (*.apps.services|central.lab.example.com) are left as-is — EE pods
+# reach them directly; IP+Host pinning returns 503 for oauth/keycloak routes.
+
+- name: Extract hostname from HTTPS URL
+  ansible.builtin.set_fact:
+    pin_hostname: >-
+      {{
+        pin_url
+        | regex_replace('^https?://', '')
+        | regex_replace('/.*$', '')
+        | regex_replace(':.*$', '')
+      }}
+
+- name: Use HTTPS FQDN directly for lab apps ingress hostnames
+  ansible.builtin.set_fact:
+    "{{ pin_url_fact }}": "{{ pin_url }}"
+    "{{ pin_url_fact }}_http_headers": {}
+    "{{ pin_url_fact }}_external": "{{ pin_url }}"
+  when:
+    - pin_url_fact is defined
+    - pin_hostname is search('\\.apps\\.(services|central)\\.lab\\.signal9\\.gg$')
+
+- name: Resolve HTTPS hostname to reachable ingress IP
+  ansible.builtin.include_tasks: resolve_lab_ingress_ip.yml
+  vars:
+    resolve_hostname: "{{ pin_hostname }}"
+  when:
+    - pin_url_fact is defined
+    - pin_hostname is not search('\\.apps\\.(services|central)\\.lab\\.signal9\\.gg$')
+    - pin_hostname | length > 0
+
+- name: Preserve canonical URL before public DNS rewrite
+  ansible.builtin.set_fact:
+    "{{ pin_url_fact }}_external": "{{ pin_url }}"
+  when:
+    - pin_url_fact is defined
+    - resolve_public_ip is defined
+    - pin_hostname is not search('\\.apps\\.(services|central)\\.lab\\.signal9\\.gg$')
+
+- name: Rewrite {{ pin_url_fact | default('pin_url') }} to public DNS IP
+  ansible.builtin.set_fact:
+    "{{ pin_url_fact }}_host_header": "{{ pin_hostname }}"
+    "{{ pin_url_fact }}_http_headers": "{{ {'Host': pin_hostname} }}"
+    "{{ pin_url_fact }}": "https://{{ resolve_public_ip }}{{ pin_url | regex_replace('^https?://[^/]+', '') }}"
+  when:
+    - pin_url_fact is defined
+    - resolve_public_ip is defined
+    - pin_hostname is not search('\\.apps\\.(services|central)\\.lab\\.signal9\\.gg$')

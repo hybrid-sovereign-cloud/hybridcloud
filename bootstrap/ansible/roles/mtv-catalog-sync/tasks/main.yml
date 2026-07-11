@@ -1,0 +1,168 @@
+---
+- block:
+    - name: Read in-cluster service account token
+      ansible.builtin.slurp:
+        src: /var/run/secrets/kubernetes.io/serviceaccount/token
+      register: sa_token_raw
+      failed_when: false
+      no_log: true
+
+    - name: Read central API token from environment when not in-cluster
+      ansible.builtin.set_fact:
+        central_sa_token: "{{ lookup('env', 'OCP_CENTRAL_SA_TOKEN') }}"
+      when:
+        - sa_token_raw is failed or (sa_token_raw.content | default('')) == ''
+        - lookup('env', 'OCP_CENTRAL_SA_TOKEN') | length > 0
+      no_log: true
+
+    - name: Read central API token via OpenShift CLI when not in-cluster
+      ansible.builtin.command: oc whoami -t --context=central-admin
+      register: oc_token_cmd
+      changed_when: false
+      when:
+        - sa_token_raw is failed or (sa_token_raw.content | default('')) == ''
+        - central_sa_token is not defined
+      no_log: true
+
+    - name: Set MTV inventory API auth from service account
+      ansible.builtin.set_fact:
+        central_sa_token: "{{ sa_token_raw.content | b64decode }}"
+      when: sa_token_raw is succeeded and (sa_token_raw.content | default('')) != ''
+      no_log: true
+
+    - name: Set MTV inventory API auth from OpenShift CLI
+      ansible.builtin.set_fact:
+        central_sa_token: "{{ oc_token_cmd.stdout }}"
+      when: central_sa_token is not defined and oc_token_cmd is defined and (oc_token_cmd.stdout | default('')) != ''
+      no_log: true
+
+    - name: Fail when MTV inventory API token is unavailable
+      ansible.builtin.fail:
+        msg: >-
+          Cannot authenticate to forklift-inventory: no in-cluster service account token,
+          OCP_CENTRAL_SA_TOKEN, or oc whoami -t --context=central-admin
+      when: central_sa_token is not defined or (central_sa_token | length) == 0
+
+    - name: Read services cluster API secret from central
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: argocd-cluster-services
+        namespace: openshift-gitops
+      register: argocd_cluster_secret
+      no_log: true
+
+    - name: Fail if services cluster secret is missing
+      ansible.builtin.fail:
+        msg: Secret argocd-cluster-services not found in openshift-gitops on central
+      when: argocd_cluster_secret.resources | length == 0
+
+    - name: Extract services cluster connection details
+      ansible.builtin.set_fact:
+        services_bearer_token: >-
+          {{ (argocd_cluster_secret.resources[0].data.config | b64decode | from_json).bearerToken }}
+        services_api_host: >-
+          {{ argocd_cluster_secret.resources[0].data.server | b64decode }}
+      no_log: true
+
+    - name: List MTV Provider CRs on central
+      kubernetes.core.k8s_info:
+        api_version: forklift.konveyor.io/v1beta1
+        kind: Provider
+        namespace: openshift-mtv
+      register: mtv_providers
+
+    - name: Query VM inventory per provider from forklift-inventory API
+      ansible.builtin.uri:
+        url: "{{ mtv_inventory_base_url }}/providers/{{ item.spec.type }}/{{ item.metadata.uid }}/vms"
+        headers:
+          Authorization: "Bearer {{ central_sa_token }}"
+        validate_certs: false
+        return_content: true
+        status_code: [200]
+      loop: "{{ mtv_providers.resources | default([]) }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      register: provider_vm_responses
+
+    - name: Build provider catalog entries
+      ansible.builtin.set_fact:
+        catalog_provider_entries: >-
+          {%- set entries = [] -%}
+          {%- for p in (mtv_providers.resources | default([])) -%}
+            {%- set _ = entries.append({
+              'name': p.metadata.name,
+              'namespace': p.metadata.namespace,
+              'type': p.spec.type | default(''),
+              'inventoryId': p.metadata.uid
+            }) -%}
+          {%- endfor -%}
+          {{ entries }}
+
+    - name: Build VM catalog maps keyed by provider name
+      ansible.builtin.set_fact:
+        catalog_vm_data: >-
+          {%- set vm_map = {} -%}
+          {%- set details_map = {} -%}
+          {%- for idx in range((mtv_providers.resources | default([])) | length) -%}
+            {%- set p = mtv_providers.resources[idx] -%}
+            {%- set resp = provider_vm_responses.results[idx] -%}
+            {%- set names = [] -%}
+            {%- set details = [] -%}
+            {%- for vm in (resp.json | default([])) -%}
+              {%- if not (vm.isTemplate | default(false)) -%}
+                {%- set _ = names.append(vm.name) -%}
+                {%- set _ = details.append({
+                  'name': vm.name,
+                  'id': vm.id | default(''),
+                  'powerState': vm.powerState | default('')
+                }) -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- set _ = vm_map.update({p.metadata.name: names}) -%}
+            {%- set _ = details_map.update({p.metadata.name: details}) -%}
+          {%- endfor -%}
+          {{ {'vms': vm_map, 'details': details_map} }}
+
+    - name: Split VM catalog maps
+      ansible.builtin.set_fact:
+        catalog_vms: "{{ catalog_vm_data.vms }}"
+        catalog_vm_details: "{{ catalog_vm_data.details }}"
+
+    - name: Build catalog JSON document
+      ansible.builtin.set_fact:
+        catalog_json:
+          providers: "{{ catalog_provider_entries }}"
+          vms: "{{ catalog_vms }}"
+          vmDetails: "{{ catalog_vm_details }}"
+          syncedAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
+    - name: Upsert MTV migration catalog ConfigMap on services cluster
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: mtv-migration-catalog
+            namespace: sovereign-cloud
+            labels:
+              app.kubernetes.io/name: mtv-migration-catalog
+              app.kubernetes.io/part-of: hybrid-sovereign-cloud
+          data:
+            catalog.json: "{{ catalog_json | to_json }}"
+
+    - name: Show catalog summary
+      ansible.builtin.debug:
+        msg: >-
+          Synced {{ catalog_provider_entries | length }} provider(s),
+          {{ catalog_vms.values() | map('length') | sum }} VM name(s) from
+          forklift-inventory to sovereign-cloud/mtv-migration-catalog
+
+  rescue:
+    - name: Fail MTV catalog sync
+      ansible.builtin.fail:
+        msg: "MTV catalog sync failed: {{ ansible_failed_result.msg | default('unknown error') }}"

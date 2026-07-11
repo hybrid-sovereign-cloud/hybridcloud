@@ -1,0 +1,33 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.hybridsovereignPrimaryOperator.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hybridsovereign-primary-operator
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.hybridsovereignPrimaryOperator.syncWave | quote }}
+spec:
+  project: services
+  source:
+    repoURL: {{ printf "oci://%s/%s/hybridsovereign-primary-operator" .Values.oci.registry .Values.oci.repositoryBase | quote }}
+    chart: hybridsovereign-primary-operator
+    targetRevision: {{ .Values.hybridsovereignPrimaryOperator.chartVersion | quote }}
+    helm:
+      releaseName: hybridsovereign-primary-operator
+      values: |
+        {{- toYaml .Values.hybridsovereignPrimaryOperator.values | nindent 8 }}
+  destination:
+    server: {{ .Values.servicesCluster.server | quote }}
+    namespace: {{ .Values.hybridsovereignPrimaryOperator.destinationNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+{{- end }}

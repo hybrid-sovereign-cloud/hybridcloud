@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.job.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "sovereign-job.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  backoffLimit: {{ .Values.backoffLimit | default 4 }}
+  activeDeadlineSeconds: {{ .Values.job.activeDeadlineSeconds | default 600 }}
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "sovereign-job.labels" . | nindent 8 }}
+        app.kubernetes.io/name: {{ .Values.job.name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount }}
+      restartPolicy: OnFailure
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ansible-runner
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: Always
+          command:
+            - ansible-runner
+            - run
+            - /runner
+            - -p
+            - {{ .Values.job.playbook }}
+          {{- if .Values.job.env }}
+          env:
+            {{- toYaml .Values.job.env | nindent 12 }}
+          {{- end }}
+          {{- if .Values.job.volumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.job.volumeMounts | nindent 12 }}
+          {{- end }}
+      {{- if .Values.job.volumes }}
+      volumes:
+        {{- toYaml .Values.job.volumes | nindent 8 }}
+      {{- end }}

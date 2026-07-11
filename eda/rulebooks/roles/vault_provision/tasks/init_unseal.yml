@@ -1,0 +1,145 @@
+---
+- name: Wait for Vault container to start listening
+  kubernetes.core.k8s_exec:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    namespace: "{{ vault_cr_namespace }}"
+    pod: "{{ vault_instance_name }}-0"
+    container: vault
+    command: >-
+      sh -c 'export VAULT_ADDR=http://127.0.0.1:8200; vault status -format=json 2>/dev/null && exit 0 || exit 0'
+  register: vault_listen_check
+  retries: 30
+  delay: 5
+  until: >-
+    vault_listen_check.rc is defined and
+    vault_listen_check.stdout is defined and
+    vault_listen_check.stdout | length > 0
+
+- name: Parse Vault status
+  ansible.builtin.set_fact:
+    vault_status: "{{ vault_listen_check.stdout | from_json }}"
+
+- name: Set init and seal facts
+  ansible.builtin.set_fact:
+    vault_is_initialized: "{{ vault_status.initialized | default(false) | bool }}"
+    vault_is_sealed: "{{ vault_status.sealed | default(true) | bool }}"
+
+- name: Initialize Vault when not initialized
+  when: not vault_is_initialized
+  block:
+    - name: Run vault operator init
+      kubernetes.core.k8s_exec:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        namespace: "{{ vault_cr_namespace }}"
+        pod: "{{ vault_instance_name }}-0"
+        container: vault
+        command: >-
+          sh -c 'export VAULT_ADDR=http://127.0.0.1:8200;
+          vault operator init -format=json -key-shares=1 -key-threshold=1'
+      register: vault_init_exec
+      no_log: true
+
+    - name: Parse init result
+      ansible.builtin.set_fact:
+        vault_init_result_json: "{{ vault_init_exec.stdout | from_json }}"
+      no_log: true
+
+    - name: Save root token and unseal keys to Secret
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ vault_instance_name }}-init"
+            namespace: "{{ vault_cr_namespace }}"
+            labels:
+              app.kubernetes.io/name: "{{ vault_instance_name }}"
+              app.kubernetes.io/managed-by: plugin-vault
+          type: Opaque
+          stringData:
+            root_token: "{{ vault_init_result_json.root_token }}"
+            unseal_key_0: "{{ vault_init_result_json.unseal_keys_b64[0] }}"
+      no_log: true
+
+    - name: Unseal Vault
+      kubernetes.core.k8s_exec:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        namespace: "{{ vault_cr_namespace }}"
+        pod: "{{ vault_instance_name }}-0"
+        container: vault
+        command: >-
+          sh -c 'export VAULT_ADDR=http://127.0.0.1:8200;
+          vault operator unseal {{ vault_init_result_json.unseal_keys_b64[0] }}'
+      no_log: true
+
+- name: Read existing init secret
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: v1
+    kind: Secret
+    name: "{{ vault_instance_name }}-init"
+    namespace: "{{ vault_cr_namespace }}"
+  register: existing_init_secret
+
+- name: Unseal if sealed (existing init)
+  when:
+    - vault_is_sealed or (vault_is_initialized and not (vault_init_result_json is defined))
+    - existing_init_secret.resources | length > 0
+  block:
+    - name: Re-check seal status
+      kubernetes.core.k8s_exec:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        namespace: "{{ vault_cr_namespace }}"
+        pod: "{{ vault_instance_name }}-0"
+        container: vault
+        command: >-
+          sh -c 'export VAULT_ADDR=http://127.0.0.1:8200; vault status -format=json 2>/dev/null || true'
+      register: recheck_status
+
+    - name: Unseal with stored key
+      when: (recheck_status.stdout | from_json).sealed | default(false) | bool
+      kubernetes.core.k8s_exec:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        namespace: "{{ vault_cr_namespace }}"
+        pod: "{{ vault_instance_name }}-0"
+        container: vault
+        command: >-
+          sh -c 'export VAULT_ADDR=http://127.0.0.1:8200;
+          vault operator unseal {{ existing_init_secret.resources[0].data.unseal_key_0 | b64decode }}'
+      no_log: true
+
+- name: Fail if Vault initialized but init secret missing
+  ansible.builtin.fail:
+    msg: >-
+      Vault is initialized but no init secret found at {{ vault_instance_name }}-init.
+      Delete the StatefulSet and PVC to re-initialize, or restore the secret.
+  when:
+    - vault_is_initialized
+    - vault_init_result_json is not defined
+    - existing_init_secret.resources | length == 0
+
+- name: Determine root token
+  ansible.builtin.set_fact:
+    vault_root_token: >-
+      {{
+        vault_init_result_json.root_token
+        if (vault_init_result_json is defined)
+        else (existing_init_secret.resources[0].data.root_token | b64decode)
+      }}
+  no_log: true

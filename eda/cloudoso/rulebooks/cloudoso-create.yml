@@ -1,0 +1,14 @@
+---
+- name: CloudOSO Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle CloudOSO Create
+      condition: event.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.payload.regarding.kind == "CloudOSO"
+      action:
+        run_playbook:
+          name: cloudoso-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

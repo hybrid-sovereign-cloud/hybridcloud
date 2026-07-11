@@ -1,0 +1,39 @@
+apiVersion: v1
+metadata:
+  name: {{ cb_cluster_name }}
+baseDomain: {{ cb_install_base_domain }}
+publish: External
+controlPlane:
+  hyperthreading: Enabled
+  name: master
+  replicas: {{ cb_control_plane_count }}
+  platform:
+    aws:
+      type: {{ cb_controller_flavor }}
+      rootVolume:
+        size: 120
+        type: gp3
+compute:
+- hyperthreading: Enabled
+  name: worker
+  replicas: {{ cb_worker_count }}
+  platform:
+    aws:
+      type: {{ cb_worker_flavor }}
+      rootVolume:
+        size: 120
+        type: gp3
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: {{ cb_region }}
+pullSecret: '{{ cb_pull_secret_json | to_json }}'
+sshKey: '{{ cb_ssh_public_key | trim }}'

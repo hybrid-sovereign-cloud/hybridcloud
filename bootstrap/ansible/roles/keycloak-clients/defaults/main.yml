@@ -1,0 +1,10 @@
+---
+keycloak_url: ""
+keycloak_token: ""
+keycloak_clients: []
+# Example:
+#   - realm: sovereign-central
+#     client_id: quay-central
+#     name: "Quay Central"
+#     redirect_uris:
+#       - "https://quay.example.com/*"

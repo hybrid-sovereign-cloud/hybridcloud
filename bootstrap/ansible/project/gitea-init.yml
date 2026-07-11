@@ -1,0 +1,43 @@
+---
+- name: Initialize Gitea admin and token
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    gitea_url: "{{ lookup('env', 'GITEA_URL') }}"
+    gitea_admin_user: "{{ lookup('env', 'GITEA_ADMIN_USER') | default('gitea_admin', true) }}"
+    gitea_admin_password: "{{ lookup('env', 'GITEA_ADMIN_PASSWORD') | default('', true) }}"
+    gitea_admin_email: "{{ lookup('env', 'GITEA_ADMIN_EMAIL') | default('admin@sovereign.local', true) }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://vault.central-vault.svc:8200', true) }}"
+    vault_namespace: "{{ lookup('env', 'VAULT_NAMESPACE') | default('central-vault', true) }}"
+    vault_secret_name: "vault-init-secrets"
+
+  pre_tasks:
+    - name: Wait for Gitea to be reachable
+      ansible.builtin.uri:
+        url: "{{ gitea_url }}/api/v1/version"
+        method: GET
+        validate_certs: false
+        status_code: [200]
+      retries: 30
+      delay: 10
+      register: gitea_health
+      until: gitea_health.status == 200
+
+    - name: Retrieve Vault root token from secret
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: "{{ vault_secret_name }}"
+        namespace: "{{ vault_namespace }}"
+      register: vault_secret
+      retries: 10
+      delay: 10
+      until: vault_secret.resources | length > 0
+
+    - name: Set root token fact
+      ansible.builtin.set_fact:
+        vault_root_token: "{{ (vault_secret.resources[0].data.root_token | b64decode) }}"
+
+  roles:
+    - gitea-init

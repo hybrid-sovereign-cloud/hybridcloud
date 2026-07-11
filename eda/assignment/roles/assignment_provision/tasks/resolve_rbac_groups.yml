@@ -1,0 +1,77 @@
+---
+# Resolves each toolRbac Rbac CR reference → status.group string.
+# Sets resolved_admin_group, resolved_developer_group, resolved_viewer_group, resolved_ops_group.
+
+- name: Extract toolRbac field names from Assignment spec
+  ansible.builtin.set_fact:
+    toolrbac_admin_name: "{{ assignment_spec.toolRbac.assignmentAdmin | default('') }}"
+    toolrbac_developer_name: "{{ assignment_spec.toolRbac.assignmentDeveloper | default('') }}"
+    toolrbac_viewer_name: "{{ assignment_spec.toolRbac.assignmentViewer | default('') }}"
+    toolrbac_ops_name: "{{ assignment_spec.toolRbac.assignmentOps | default('') }}"
+
+- name: Look up assignmentAdmin Rbac CR
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: hybridsovereign.redhat/v1alpha1
+    kind: Rbac
+    name: "{{ toolrbac_admin_name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+  register: rbac_admin_lookup
+  when: toolrbac_admin_name | length > 0
+
+- name: Look up assignmentDeveloper Rbac CR
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: hybridsovereign.redhat/v1alpha1
+    kind: Rbac
+    name: "{{ toolrbac_developer_name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+  register: rbac_developer_lookup
+  when: toolrbac_developer_name | length > 0
+
+- name: Look up assignmentViewer Rbac CR
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: hybridsovereign.redhat/v1alpha1
+    kind: Rbac
+    name: "{{ toolrbac_viewer_name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+  register: rbac_viewer_lookup
+  when: toolrbac_viewer_name | length > 0
+
+- name: Look up assignmentOps Rbac CR
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: hybridsovereign.redhat/v1alpha1
+    kind: Rbac
+    name: "{{ toolrbac_ops_name }}"
+    namespace: "{{ ansible_operator_meta.namespace }}"
+  register: rbac_ops_lookup
+  when: toolrbac_ops_name | length > 0
+
+- name: Set resolved RBAC group facts
+  ansible.builtin.set_fact:
+    resolved_admin_group: >-
+      {%- if toolrbac_admin_name | length > 0 and rbac_admin_lookup.resources | default([]) | length > 0 -%}
+      {{ rbac_admin_lookup.resources[0].status.group | default('') }}
+      {%- else -%}{%- endif -%}
+    resolved_developer_group: >-
+      {%- if toolrbac_developer_name | length > 0 and rbac_developer_lookup.resources | default([]) | length > 0 -%}
+      {{ rbac_developer_lookup.resources[0].status.group | default('') }}
+      {%- else -%}{%- endif -%}
+    resolved_viewer_group: >-
+      {%- if toolrbac_viewer_name | length > 0 and rbac_viewer_lookup.resources | default([]) | length > 0 -%}
+      {{ rbac_viewer_lookup.resources[0].status.group | default('') }}
+      {%- else -%}{%- endif -%}
+    resolved_ops_group: >-
+      {%- if toolrbac_ops_name | length > 0 and rbac_ops_lookup.resources | default([]) | length > 0 -%}
+      {{ rbac_ops_lookup.resources[0].status.group | default('') }}
+      {%- else -%}{%- endif -%}

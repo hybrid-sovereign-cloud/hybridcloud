@@ -1,0 +1,57 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.entityOperator.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: entity-operator
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: operator
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.entityOperator.syncWave | quote }}
+spec:
+  project: services
+
+  source:
+    repoURL: {{ printf "oci://%s/%s/entity-operator" .Values.oci.registry .Values.oci.repositoryBase | quote }}
+    chart: entity-operator
+    targetRevision: {{ .Values.entityOperator.chartVersion | quote }}
+    helm:
+      releaseName: entity-operator
+      values: |
+        {{- toYaml .Values.entityOperator.values | nindent 8 }}
+
+  destination:
+    server: {{ .Values.servicesCluster.server | quote }}
+    namespace: {{ .Values.entityOperator.destinationNamespace }}
+
+  ignoreDifferences:
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /imagePullSecrets
+        - /secrets
+    - group: ""
+      kind: Namespace
+      jsonPointers:
+        - /metadata/labels
+        - /metadata/annotations
+    {{- include "sovereign-central.esoIgnoreDifferences" . | nindent 4 }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+{{- end }}

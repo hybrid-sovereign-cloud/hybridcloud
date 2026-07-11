@@ -1,0 +1,174 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        aaporg_cr_name: "{{ event_payload.regarding.name }}"
+        aaporg_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        aaporg_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Read services bearer token
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: argocd-cluster-services
+        namespace: openshift-gitops
+      register: argocd_cluster_secret
+      no_log: true
+
+    - name: Fail if services cluster secret is missing
+      ansible.builtin.fail:
+        msg: Secret argocd-cluster-services not found in openshift-gitops
+      when: argocd_cluster_secret.resources | length == 0
+
+    - name: Pin services API host to reachable IP (skip stale DNS A records)
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_services_api.yml"
+
+    - name: Read entity Namespace for teardown
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ aaporg_cr_namespace }}"
+      register: _fin_target_ns
+      ignore_errors: true
+
+    - name: Derive entity-prefixed org name
+      ansible.builtin.set_fact:
+        fin_entity_name: "{{ _fin_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | default('') }}"
+      when: _fin_target_ns.resources | default([]) | length > 0
+
+    - name: Build org name for AAP cleanup
+      ansible.builtin.set_fact:
+        fin_org_name: "{{ (fin_entity_name ~ '-' ~ aaporg_cr_name) if (fin_entity_name | default('') | length > 0) else aaporg_cr_name }}"
+
+    - name: Read AAPConfig CR
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: AAPConfig
+        name: "{{ aaporg_spec.aapConfig }}"
+        namespace: "{{ plugin_aap_config_namespace }}"
+      register: _aap_config
+      ignore_errors: true
+
+    - name: Delete AAP org and teams
+      when: _aap_config.resources | default([]) | length > 0
+      block:
+        - name: Read AAP admin secret
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            kind: Secret
+            name: "{{ _aap_config.resources[0].spec.secret }}"
+            namespace: "{{ plugin_aap_config_namespace }}"
+          register: _aap_secret
+          no_log: true
+
+        - name: Decode AAP credentials
+          ansible.builtin.set_fact:
+            aap_username: "{{ _aap_secret.resources[0].data.username | b64decode }}"
+            aap_password: "{{ _aap_secret.resources[0].data.password | b64decode }}"
+          no_log: true
+
+        - name: Discover AAP gateway Route from services cluster
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            api_version: route.openshift.io/v1
+            kind: Route
+            name: sovereign-aap
+            namespace: aap
+          register: aap_gw_route
+
+        - name: Override aap_gateway_internal_url with discovered Route
+          ansible.builtin.set_fact:
+            aap_gateway_internal_url: "https://{{ aap_gw_route.resources[0].spec.host }}"
+          when: aap_gw_route.resources | length > 0
+
+        - name: Find org in gateway
+          ansible.builtin.uri:
+            url: "{{ aap_gateway_internal_url }}/api/gateway/v1/organizations/?name={{ fin_org_name | urlencode }}"
+            method: GET
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            status_code: [200]
+          register: _gw_org_lookup
+
+        - name: Delete org from gateway
+          ansible.builtin.uri:
+            url: "{{ aap_gateway_internal_url }}/api/gateway/v1/organizations/{{ _gw_org_lookup.json.results[0].id }}/"
+            method: DELETE
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            status_code: [200, 204, 404]
+          when: _gw_org_lookup.json.results | length > 0
+
+        - name: Delete authenticator maps
+          ansible.builtin.uri:
+            url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticator_maps/?name__startswith={{ fin_org_name }}-"
+            method: GET
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            status_code: [200]
+          register: _auth_maps
+
+        - name: Delete each authenticator map
+          ansible.builtin.uri:
+            url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticator_maps/{{ item.id }}/"
+            method: DELETE
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            status_code: [200, 204, 404]
+          loop: "{{ _auth_maps.json.results | default([]) }}"
+      ignore_errors: true
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        aaporg_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark AAPOrg deletion complete on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aaporgs
+        cr_name: "{{ aaporg_cr_name }}"
+        cr_namespace: "{{ aaporg_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ aaporg_delete_transition_time }}"
+          message: AAPOrg {{ aaporg_cr_name }} deleted by EDA
+
+  rescue:
+    - name: Mark AAPOrg delete as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aaporgs
+        cr_name: "{{ aaporg_cr_name }}"
+        cr_namespace: "{{ aaporg_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA deletion failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "AAPOrg {{ aaporg_cr_name | default('unknown') }} EDA teardown failed"

@@ -1,0 +1,14 @@
+---
+- name: Assignment Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle Assignment Create
+      condition: event.payload.reason in ["AssignmentCreateRequested", "AssignmentReconcileRequested"] and event.payload.regarding.kind == "Assignment"
+      action:
+        run_playbook:
+          name: assignment-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

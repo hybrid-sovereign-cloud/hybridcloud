@@ -1,0 +1,12 @@
+{{- if and .Values.gitopsOperator.enabled (include "sovereign-init.bootstrapOperator" .) (.Values.gitopsOperator.installOperator | default true) }}
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: {{ .Values.gitopsOperator.operatorNamespace }}
+  namespace: {{ .Values.gitopsOperator.operatorNamespace }}
+  labels:
+    {{- include "sovereign-init.labels" . | nindent 4 }}
+spec:
+  upgradeStrategy: Default
+{{- end }}

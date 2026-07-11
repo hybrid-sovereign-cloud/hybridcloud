@@ -1,0 +1,144 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        cloudoso_cr_name: "{{ event_payload.regarding.name }}"
+        cloudoso_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        oso_spec: "{{ event_payload.note | from_json }}"
+        ansible_operator_meta:
+          name: "{{ event_payload.regarding.name }}"
+          namespace: "{{ event_payload.regarding.namespace }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Resolve central cluster API connection from Vault kubeadmin
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_central_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: cloudosos
+        cr_name: "{{ cloudoso_cr_name }}"
+        cr_namespace: "{{ cloudoso_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read CloudOSO CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: CloudOSO
+        name: "{{ cloudoso_cr_name }}"
+        namespace: "{{ cloudoso_cr_namespace }}"
+      register: cloudoso_cr_lookup
+
+    - name: Fail if CloudOSO CR is missing
+      ansible.builtin.fail:
+        msg: CloudOSO CR {{ cloudoso_cr_name }} not found
+      when: cloudoso_cr_lookup.resources | length == 0
+
+    - name: Read Namespace labels
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ cloudoso_cr_namespace }}"
+      register: cloudoso_ns_lookup
+
+    - name: Extract entity from namespace label
+      ansible.builtin.set_fact:
+        entity_name: "{{ cloudoso_ns_lookup.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | default('') }}"
+        cloudoso_generation: "{{ cloudoso_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+        oso_spec: "{{ cloudoso_cr_lookup.resources[0].spec | default({}) }}"
+      when: cloudoso_ns_lookup.resources | length > 0
+
+    - name: Fail if entity label is missing
+      ansible.builtin.assert:
+        that:
+          - entity_name is defined
+          - entity_name | length > 0
+        fail_msg: >-
+          Namespace {{ cloudoso_cr_namespace }} is missing label
+          hybridsovereign.redhat/entity. Cannot provision CloudOSO.
+
+    - name: Run OpenStack environment preparation
+      ansible.builtin.include_tasks: environmentprep.yml
+
+    - name: Log VRF spec passthrough for future use
+      ansible.builtin.include_tasks: vrf_passthrough.yml
+
+    - name: Get reconciliation timestamp
+      ansible.builtin.set_fact:
+        cloudoso_status_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update CloudOSO status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: cloudosos
+        cr_name: "{{ cloudoso_cr_name }}"
+        cr_namespace: "{{ cloudoso_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ cloudoso_generation }}"
+          lastReconciledAt: "{{ cloudoso_status_time }}"
+          message: >-
+            OpenStack project {{ oso_project_name }} ({{ oso_project_id }})
+            provisioned by EDA in Keystone domain {{ oso_domain_name }}.
+          name: "{{ cloudoso_cr_name }}"
+          namespace: "{{ cloudoso_cr_namespace }}"
+          entity: "{{ entity_name }}"
+          projectName: "{{ oso_project_name }}"
+          projectId: "{{ oso_project_id }}"
+          domainId: "{{ oso_domain_id }}"
+          domainName: "{{ oso_domain_name }}"
+          slug: "{{ oso_slug }}"
+          domain: "{{ oso_dns_domain }}"
+          route53ZoneId: "{{ oso_route53_zone_id }}"
+          apiVIP: "{{ oso_api_vip }}"
+          ingressVIP: "{{ oso_ingress_vip }}"
+          externalNetwork: "{{ oso_external_network }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ cloudoso_status_time }}"
+              reason: EDASucceeded
+              message: >-
+                OpenStack project {{ oso_project_name }} ({{ oso_project_id }})
+                provisioned by EDA in Keystone domain {{ oso_domain_name }}.
+
+  rescue:
+    - name: Mark CloudOSO as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: cloudosos
+        cr_name: "{{ cloudoso_cr_name }}"
+        cr_namespace: "{{ cloudoso_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "CloudOSO {{ cloudoso_cr_name | default('unknown') }} EDA provisioning failed"

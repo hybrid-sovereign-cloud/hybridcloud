@@ -1,0 +1,14 @@
+# DNS forwarder zones for the OpenShift DNS operator (operator.openshift.io/v1 DNS/default).
+# Each entry is added as a server in spec.servers; more-specific zones win over broader ones.
+servers:
+  # Internal lab DNS — resolves private infrastructure (vCenter, ESXi, bare-metal hosts).
+  # CoreDNS on worker nodes reads /etc/resolv.conf (which points to 127.0.0.1/11), so
+  # nodes resolve lab.example.com fine.  Pods do NOT — they use CoreDNS which without this
+  # entry falls through to the public example.com forwarder (8.8.8.8) and fails for private hosts.
+  - name: lab-signal9-forwarder
+    zones:
+      - lab.example.com
+    policy: Sequential
+    upstreams:
+      - 127.0.0.1
+      - 127.0.0.1

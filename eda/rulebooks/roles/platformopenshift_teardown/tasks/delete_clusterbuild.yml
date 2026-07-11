@@ -1,0 +1,78 @@
+---
+- name: Read Vault root token for Helm kubeconfig
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ vault_init_secret_name }}"
+    namespace: "{{ vault_init_secret_namespace }}"
+  register: vault_init_secret_info
+
+- name: Set Vault root token
+  ansible.builtin.set_fact:
+    vault_root_token: "{{ vault_init_secret_info.resources[0].data.root_token | b64decode }}"
+    cb_app_name: "{{ platformopenshift_cr_name }}"
+  no_log: true
+
+- name: Write central cluster kubeconfig for Helm
+  ansible.builtin.include_tasks: ../platformopenshift_provision/tasks/write_central_helm_kubeconfig.yml
+
+- name: Check for existing Helm release
+  ansible.builtin.command:
+    argv:
+      - helm
+      - status
+      - "{{ platformopenshift_cr_name }}"
+      - --namespace
+      - "{{ platformopenshift_cr_name }}"
+      - --kubeconfig
+      - "/tmp/{{ platformopenshift_cr_name }}-kubeconfig"
+  register: helm_status
+  failed_when: false
+  changed_when: false
+
+- name: Uninstall mce-cluster-build Helm release
+  ansible.builtin.command:
+    argv:
+      - helm
+      - uninstall
+      - "{{ platformopenshift_cr_name }}"
+      - --namespace
+      - "{{ platformopenshift_cr_name }}"
+      - --wait
+      - --timeout
+      - "30m"
+      - --kubeconfig
+      - "/tmp/{{ platformopenshift_cr_name }}-kubeconfig"
+  register: helm_uninstall
+  when: helm_status.rc == 0
+  failed_when: false
+  changed_when: helm_uninstall.rc == 0
+
+- name: Delete ClusterDeployment if still present
+  kubernetes.core.k8s:
+    state: absent
+    api_version: hive.openshift.io/v1
+    kind: ClusterDeployment
+    name: "{{ platformopenshift_cr_name }}"
+    namespace: "{{ platformopenshift_cr_name }}"
+  ignore_errors: true
+
+- name: Wait for ClusterDeployment deletion
+  kubernetes.core.k8s_info:
+    api_version: hive.openshift.io/v1
+    kind: ClusterDeployment
+    name: "{{ platformopenshift_cr_name }}"
+    namespace: "{{ platformopenshift_cr_name }}"
+  register: cd_wait
+  until: cd_wait.resources | length == 0
+  retries: 120
+  delay: 15
+  ignore_errors: true
+
+- name: Delete cluster namespace on central
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Namespace
+    name: "{{ platformopenshift_cr_name }}"
+  ignore_errors: true

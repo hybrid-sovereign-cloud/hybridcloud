@@ -1,0 +1,32 @@
+---
+- name: Check if group exists
+  ansible.builtin.uri:
+    url: "{{ keycloak_url }}/admin/realms/{{ item.realm }}/groups?search={{ item.name }}&exact=true"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ keycloak_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: group_check
+  loop: "{{ keycloak_groups }}"
+  retries: 3
+  delay: 5
+
+- name: Create groups that do not exist
+  ansible.builtin.uri:
+    url: "{{ keycloak_url }}/admin/realms/{{ item.item.realm }}/groups"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ keycloak_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      name: "{{ item.item.name }}"
+    validate_certs: false
+    status_code: [201, 409]
+  loop: "{{ group_check.results }}"
+  when: item.json | length == 0
+  loop_control:
+    label: "{{ item.item.realm }}/{{ item.item.name }}"
+  retries: 3
+  delay: 5

@@ -1,0 +1,69 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.gitea.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: git
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.gitea.syncWave | quote }}
+spec:
+  project: services
+
+  source:
+    repoURL: {{ printf "oci://%s/%s/gitea" .Values.oci.registry .Values.oci.repositoryBase | quote }}
+    chart: gitea
+    targetRevision: {{ .Values.gitea.chartVersion | quote }}
+    helm:
+      releaseName: gitea
+      values: |
+        {{- toYaml .Values.gitea.values | nindent 8 }}
+
+  destination:
+    server: {{ .Values.servicesCluster.server | quote }}
+    namespace: gitea
+
+  ignoreDifferences:
+    {{- include "sovereign-central.esoIgnoreDifferences" . | nindent 4 }}
+    - group: ""
+      kind: Namespace
+      jsonPointers:
+        - /metadata/labels
+        - /metadata/annotations
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/spec
+        - /spec/volumeClaimTemplates/1/spec
+        - /spec/template/spec/containers/0/securityContext
+        - /spec/template/spec/containers/1/securityContext
+        - /spec/template/spec/initContainers
+        - /spec/template/spec/containers/0/resources
+        - /spec/template/spec/containers/1/resources
+        - /spec/template/spec/securityContext
+        - /spec/template/metadata/annotations
+        - /spec/volumeClaimTemplates
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+{{- end }}

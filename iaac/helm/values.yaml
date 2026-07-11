@@ -1,0 +1,35 @@
+namespace: sovereign-cloud-plugins
+
+image:
+  repository: quay.example.com/hybrid-sovereign/iaac-git-sync
+  tag: "0.1.0"
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: quay-pull-secret
+
+gitea:
+  url: "https://gitea-gitea.apps.central.lab.example.com"
+  repoOwner: gitea_admin
+  repoName: tenancy_repo
+  externalSecret:
+    enabled: true
+    secretStoreName: vault-backend
+    secretStoreKind: ClusterSecretStore
+    vaultPath: gitea-admin
+    targetSecretName: gitea-admin-token
+    tokenKey: admin_token
+
+persistence:
+  size: 10Gi
+  storageClass: ""
+
+reconcileInterval: "300"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 50m
+    memory: 256Mi

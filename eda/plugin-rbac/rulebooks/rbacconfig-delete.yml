@@ -1,0 +1,14 @@
+---
+- name: RbacConfig Delete Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle RbacConfig Delete
+      condition: event.payload.reason == "RbacConfigDeleteRequested" and event.payload.regarding.kind == "RbacConfig"
+      action:
+        run_playbook:
+          name: rbacconfig-teardown-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

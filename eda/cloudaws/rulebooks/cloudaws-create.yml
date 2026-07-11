@@ -1,0 +1,14 @@
+---
+- name: CloudAWS Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle CloudAWS Create
+      condition: event.payload.reason in ["CloudAWSCreateRequested", "CloudAWSReconcileRequested"] and event.payload.regarding.kind == "CloudAWS"
+      action:
+        run_playbook:
+          name: cloudaws-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

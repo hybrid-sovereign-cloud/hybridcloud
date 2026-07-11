@@ -1,0 +1,21 @@
+---
+- name: Validate slug is 5 characters
+  ansible.builtin.assert:
+    that:
+      - aws_slug | length == 5
+    fail_msg: "CloudAWS slug must be exactly 5 characters. Got: '{{ aws_slug }}'"
+
+- name: Include clusterbuild fact derivation
+  ansible.builtin.include_tasks: aws_clusterbuild_facts.yml
+
+- name: Include clusterbuild credential retrieval
+  ansible.builtin.include_tasks: aws_clusterbuild_creds.yml
+
+- name: Include clusterbuild DNS preparation
+  ansible.builtin.include_tasks: aws_clusterbuild_dns.yml
+
+- name: Include clusterbuild deploy
+  ansible.builtin.include_tasks: aws_clusterbuild_deploy.yml
+
+- name: Include clusterbuild post-install tasks
+  ansible.builtin.include_tasks: aws_clusterbuild_postinstall.yml

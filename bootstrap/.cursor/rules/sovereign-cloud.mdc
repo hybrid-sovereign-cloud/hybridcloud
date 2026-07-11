@@ -1,0 +1,251 @@
+---
+description: Hybrid Sovereign Cloud — always-applied agent rules
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Sovereign Cloud Agent Rules
+
+## Design Philosophy
+
+- **Rapid initialisation**: `make check-env && make add-docker-repo && make upload-* && make ansible-runner && make init-central-argo` = zero-to-platform.
+- **Makefile portability**: every OpenShift mutation is a `make` target; rerunnable on any cluster by setting env vars.
+- **Make target files**: each make target lives in its own file under `make/*.mk`; the root `Makefile` imports them.
+- **OCP Appliance end-goal**: bootstrap pipeline will produce a versioned OCP Appliance image embedding all platform components for sovereign/air-gapped deployment.
+- **Developer sandbox**: clone bootstrap → set env → `make` = isolated dev cluster, no shared cluster needed.
+- **OC read-only**: `oc`/`kubectl` for investigation only; all mutations via `make` or ArgoCD.
+
+## NON-NEGOTIABLE rules (absolute, never override)
+
+- **NO_SECRETS_IN_GIT**: Zero plaintext or base64-encoded secrets, passwords, tokens, API keys, or credentials of any kind in any file committed to any git repository. All secrets live in Vault, delivered via `ExternalSecret` or `PushSecret`. Violating this rule is an immediate blocking issue.
+- **NO_DELETE_SOVEREIGN_NS**: Never delete any namespace prefixed `sovereign-*`. Deletion of these namespaces is permanently prohibited.
+- **DEPLOY_AFTER_PHASE**: After completing each phase of work: commit all changes, push to remote, trigger an ArgoCD sync (or `make init-central-argo` for Phase 1 init). No phase is complete without a deployed and healthy state.
+- **ARGOCD_ONLY_POST_INIT**: After `make init-central-argo`, all subsequent cluster changes must flow through ArgoCD. `oc apply`, `oc create`, or any direct YAML application is forbidden for configuration changes. Init via Makefile once; ArgoCD owns everything after.
+
+## Non-negotiable constraints
+
+- **Repo boundary**: modify only `bootstrap/` and `architecture/`. Never write to `/` (workspace root).
+- **Validate**: run `helm lint` before marking chart work done.
+- **Make for oc**: all OpenShift CLI interactions must go through `make` targets.
+- **GitOps**: after `make init-central-argo`, all installs must be ArgoCD ApplicationSet driven.
+- **Secrets**: all credentials via environment variables, passed through `helm --set`. Never hardcode.
+- **Git**: commit and push after each phase. Commit messages: `<type>: <description>`.
+- **No git history**: never use git log, git blame, or commit history for context. Only look at the current state of files.
+- **Docs**: update `bootstrap/README.md`, Makefile help, and `architecture/docs/` on every meaningful change. **Always update `architecture/docs/` after any architectural or topology change.**
+- **Iterate**: deploy → test → fix loop until `Synced + Healthy`. Debug with `oc` read commands.
+- **Diagrams**: use Mermaid in `architecture/docs/`. Keep each diagram small and focused (max ~15 nodes). Split complex diagrams into multiple files.
+- **Security**: after any chart or Makefile change, review `architecture/hardeningcheck/` and update if findings change.
+- **Hardening checks**: at the end of each work cycle, perform hardening checks and update or create entries in `architecture/hardeningcheck/`. Add new component files as components are added.
+- **Architecture**: always follow `architecture/docs/` as the source of truth for platform topology.
+- **Samples**: keep samples enabled for deployment but provide an enable/disable flag in the corresponding chart values.
+- **ExternalSecrets for secrets**: always use `kind: ExternalSecret` for secret consumption and `kind: PushSecret` for secret creation. Never use k8s Secrets with hardcoded values in Helm charts (except the init chart bootstrap phase).
+- **Commit and push after each phase**: every phase must end with a git commit and push. No exceptions.
+- **Test users**: create test users in Keycloak for testing, then delete users but leave groups intact.
+- **ArgoCD resources**: permitted to add ArgoCD resources and reorganize charts/templates/kind:Applications to avoid interdependencies on rollouts.
+
+## Operator placement rules
+
+- **`hybridsovereign.redhat` operators → services cluster**: all operators with API group `hybridsovereign.redhat` (e.g., Entity Operator, plugin_rbac) must be deployed to the **services cluster**. Their CRDs, deployments, and watched namespaces live on services.
+- **`helper.hybridsovereign.redhat` operators → central cluster**: all operators with API group `helper.hybridsovereign.redhat` must be deployed to the **central cluster**. Currently none exist; this rule applies to future additions.
+
+## ArgoCD interaction rules
+
+- **Central ArgoCD only**: all ArgoCD interaction must target the central cluster ArgoCD (`openshift-gitops` namespace on central). Never interact with ArgoCD on the services cluster.
+- **No ArgoCD on services**: do NOT create, modify, or query ArgoCD Applications/ApplicationSets on the services cluster. The services cluster has NO ArgoCD management.
+- **All deployments via central ArgoCD**: every cluster change flows through the central ArgoCD app-of-apps. No direct deployments to either cluster outside of `make` bootstrap targets.
+- **AppProject separation**: central cluster resources use `project: central`, services cluster resources use `project: services`. Never mix.
+
+## `oc` / `kubectl` usage rules
+
+- **Investigation and deletion only**: `oc` is permitted for read commands (`get`, `describe`, `logs`, `status`), resource deletion (`oc delete`), and triggering ArgoCD syncs/refreshes (`oc annotate ... argocd.argoproj.io/refresh=hard`) on the **central cluster only**.
+- **Never create YAML via oc**: do not use `oc apply -f -`, `oc create`, or pipe YAML into `oc`. All resource creation and mutation must go through Helm charts rendered by ArgoCD.
+- **No oc exec**: never use `oc exec` or `kubectl exec` to run commands inside pods. If in-cluster actions are needed, use an Ansible Job deployed via ArgoCD.
+- **Deletion via ArgoCD preferred**: the agent may delete resources directly with `oc delete` when necessary, but the preferred method is disabling the component in the app-of-apps (`enabled: false`) and letting ArgoCD prune.
+
+## Change methodology
+
+- **Primary method — app-of-apps**: all cluster changes must flow through the app-of-apps Helm chart (`helm/central`). Add, modify, or disable components there.
+- **Secondary method — Ansible via ArgoCD**: if the app-of-apps cannot achieve a change (e.g., imperative API calls, multi-step workflows, waiting for readiness), implement it as an Ansible playbook deployed as a Kubernetes Job via an ArgoCD-managed Helm chart (`helm/charts/*/`).
+- **Never ad-hoc**: do not apply ad-hoc YAML, run imperative `oc` mutations, or `oc exec` into pods as a way to make changes.
+
+## Human-readability rules
+
+- **No large files**: any file above 500 lines must be split into multiple files.
+- **No large diagrams**: split complex diagrams into multiple small, focused diagrams (max ~15 nodes each).
+- **Simple language**: documentation should be understandable by non-technical stakeholders where possible.
+- **One concern per file**: each file should have a single clear purpose.
+
+## ArgoCD rules
+
+- **Self-heal**: all ArgoCD Applications must have `selfHeal: true` in their sync policy.
+- **Prune**: all ArgoCD Applications must have `prune: true` to remove orphaned resources.
+- **Always in sync**: if any ArgoCD Application is not `Synced + Healthy`, investigate and fix immediately.
+- **Dynamic plugins**: always enable ArgoCD dynamic plugins when available (e.g., `argocd-vault-plugin`, UI plugins).
+- **Single app-of-apps**: there is ONE app-of-apps chart (`helm/central`) containing ALL Applications for BOTH clusters. Services-targeting apps use `destination.server: <services-cluster-url>`.
+- **No helm/services**: the `helm/services/` directory must not exist. All services-cluster apps are defined in `helm/central/`.
+
+## NON-NEGOTIABLE: Services cluster ArgoCD restrictions
+
+These rules are absolute and must never be violated under any circumstances:
+
+1. **NEVER create `kind: ApplicationSet` on the services cluster** — not manually, not via Helm, not via any automation.
+2. **NEVER create `kind: Application` on the services cluster** — not manually, not via Helm, not via any automation.
+3. **All management of the services cluster is done by the central cluster's ArgoCD** using `destination.server` pointing to the services cluster API URL.
+4. **Central ArgoCD has two clusters defined**: `https://kubernetes.default.svc` (central) and the services cluster URL. All deployments to services go through this mechanism.
+5. **ACM is ONLY on the central cluster** — never install ACM on the services cluster.
+
+## Base-config charts
+
+- **Do NOT sync `base-config-chart` or `base-configs`**: this project does not own them. Never modify, sync, or troubleshoot these ArgoCD applications. Ignore their `OutOfSync` status.
+
+## Ansible playbook development
+
+- **Test locally first**: always test Ansible playbooks locally from this agent (using `ansible-playbook` or `ansible-runner`) before packaging them into a Job or container image.
+- **Roles-only playbooks**: playbooks in `bootstrap/ansible/project/` must ONLY call roles. All task logic lives in `bootstrap/ansible/roles/`.
+- **Promote to Job after success**: once a playbook is fully functional locally, create a Kubernetes Job (via Helm chart) to run it in-cluster via ArgoCD.
+
+## Credential storage
+
+- **NEVER store credentials locally**: no secrets, tokens, passwords, or keys may be written to the local filesystem. All credentials must be stored in Kubernetes Secrets or HashiCorp Vault. Environment variables are acceptable for session-scoped usage only.
+
+## OCI / Quay rules
+
+- **Robot read-only**: the Quay robot account (`hybrid-sovereign+pull`) must have **read-only** access on all repositories in the `hybrid-sovereign` organization. Use the admin token (`OCI_REGISTRY_TOKEN`) for write operations (repo creation, chart push).
+- **Chart push uses admin token**: all `make upload-*` targets authenticate with the admin token for push, not the robot.
+
+## Required Environment Variables
+
+All of the following **must** be set before any `make` target is executed. Never hardcode these values.
+`make check-env` verifies them and tests logins.
+
+### Central Cluster
+| Variable | Purpose |
+|---|---|
+| `OCP_CENTRAL_SERVER` | Central cluster API URL |
+| `OCP_CENTRAL_USERNAME` | Central cluster login username |
+| `OCP_CENTRAL_PASSWORD` | Central cluster login password |
+
+### Services Cluster
+| Variable | Purpose |
+|---|---|
+| `OCP_SERVICES_SERVER` | Services cluster API URL |
+| `OCP_SERVICES_USERNAME` | Services cluster login username |
+| `OCP_SERVICES_PASSWORD` | Services cluster login password |
+
+### OCI Registry (admin)
+| Variable | Purpose |
+|---|---|
+| `OCI_REGISTRY` | Quay registry hostname or full URL |
+| `OCI_REGISTRY_TOKEN` | Admin bearer token (create repos, push charts/images) |
+
+### OCI Registry (robot/read-only)
+| Variable | Purpose |
+|---|---|
+| `OCI_ROBOT_USERNAME` | Robot account username — read-only pull |
+| `OCI_ROBOT_PASSWORD` | Robot account token |
+
+### Image Registry
+| Variable | Purpose |
+|---|---|
+| `IMAGE_REGISTRY` | Container image registry (e.g. `registry.redhat.io`) |
+| `IMAGE_REGISTRY_USERNAME` | Registry login username |
+| `IMAGE_REGISTRY_PASSWORD` | Registry login password/token |
+
+### Git
+| Variable | Purpose |
+|---|---|
+| `GITHUB_URL` | Repository base URL |
+| `GITHUB_TOKEN` | Personal access token (repo scope) |
+
+## Cluster Prerequisites (one-time, manual)
+
+Before running any bootstrap phase, both clusters must have:
+1. **OpenShift 4.x** installed
+2. **ArgoCD (OpenShift GitOps)** installed and accessible
+
+## Repository Folder Layout
+
+```
+bootstrap/
+├── Makefile                    # Imports all make/*.mk files
+├── make/                       # Individual make target files
+│   ├── check-env.mk           # Check bastion configs
+│   ├── add-docker-repo.mk     # Trust image registry
+│   ├── upload-acm-chart.mk    # Build artifact: RHACM chart
+│   ├── upload-sovereign-namespaces-chart.mk  # Build artifact: namespaces chart
+│   ├── upload-rhbk-chart.mk   # Build artifact: Keycloak chart
+│   ├── ansible-runner.mk      # Build artifact: ansible-runner image
+│   ├── init-central-argo.mk   # Bootstrap cluster
+│   └── help.mk
+├── helm/
+│   ├── charts/
+│   │   ├── rhacm/              # RHACM operator chart (OCI)
+│   │   ├── sovereign-namespaces/  # Namespace creation chart (OCI)
+│   │   ├── rhbk/              # Keycloak operator + instance chart (OCI)
+│   │   ├── rhbk-config/       # Keycloak config via Ansible (OCI)
+│   │   ├── acs/               # RHACS operator + Central (OCI)
+│   │   ├── vault/             # HashiCorp Vault HA (OCI, subchart)
+│   │   ├── aap/               # Ansible Automation Platform (OCI)
+│   │   ├── odf/               # ODF Noobaa object storage (OCI)
+│   │   ├── quay/              # Red Hat Quay registry (OCI)
+│   │   ├── crunchy-postgres/  # Crunchy Postgres for Kubernetes (OCI)
+│   │   └── gitea/             # Gitea self-hosted Git (OCI, subchart)
+│   ├── central/               # App-of-Apps for BOTH clusters
+│   └── init/                  # Bootstrap entry-point chart
+└── ansible/
+    ├── imagebuild/ansiblerunner/  # Containerfile for ansible-runner
+    ├── roles/                 # Ansible roles (ALL task logic here)
+    │   ├── keycloak-auth/
+    │   ├── keycloak-realms/
+    │   ├── keycloak-groups/
+    │   ├── keycloak-clients/
+    │   ├── keycloak-oauth/
+    │   ├── keycloak-rbac/
+    │   ├── vault-init/
+    │   ├── vault-kv/
+    │   ├── vault-secrets/
+    │   └── gitea-init/
+    └── project/               # Playbooks (role calls ONLY)
+        ├── initialize-vault.yml
+        └── configure-keycloak.yml
+```
+
+## Make Targets (grouped by section)
+
+### Check Bastion Configs
+| Target | Purpose |
+|---|---|
+| `make check-env` | Verify all required env vars + test logins |
+| `make add-docker-repo` | Trust IMAGE_REGISTRY on both clusters |
+
+### Build Artifacts
+| Target | Purpose |
+|---|---|
+| `make upload-acm-chart` | Push RHACM chart to OCI (admin token) |
+| `make upload-sovereign-namespaces-chart` | Push namespace chart to OCI |
+| `make upload-rhbk-chart` | Push Keycloak operator+instance chart to OCI |
+| `make upload-rhbk-config-chart` | Push Keycloak config chart to OCI |
+| `make upload-acs-chart` | Push ACS chart to OCI |
+| `make upload-vault-chart` | Push Vault chart to OCI |
+| `make upload-aap-chart` | Push AAP chart to OCI |
+| `make upload-odf-chart` | Push ODF chart to OCI |
+| `make upload-quay-chart` | Push Quay chart to OCI |
+| `make upload-crunchy-postgres-chart` | Push Crunchy Postgres for Kubernetes chart to OCI |
+| `make upload-gitea-chart` | Push Gitea chart to OCI |
+| `make ansible-runner` | Build + push ansible-runner image |
+
+### Bootstrap Cluster
+| Target | Purpose |
+|---|---|
+| `make init-central-argo` | Deploy init chart → ApplicationSet → ArgoCD takes over |
+
+## Key rules for agents working in each directory
+
+- `helm/charts/*` — after any change: `helm lint`, bump `Chart.yaml` version, re-run `make upload-*`.
+- `helm/central` — run `helm lint` after every change; update `values.yaml` when OCI chart is bumped.
+- `helm/init` — bootstrap entry-point; changes affect both clusters; test with `helm template`.
+- `make/*.mk` — each target in its own file; keep root Makefile as a thin importer.
+- `ansible/roles/*` — all task logic; playbooks only call roles. Test with `ansible-playbook` locally before packaging.
+- `ansible/project/*` — playbooks that ONLY call roles from `ansible/roles/`.
+- `architecture/docs/` — keep diagrams small, one concept per file.
+- `architecture/hardeningcheck/` — update after any security-impacting change.

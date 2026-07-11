@@ -1,0 +1,46 @@
+[
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "id": "hybridsovereign-admin",
+      "perspective": "admin",
+      "name": "%plugin__hybridsovereign-admin~Hybrid Sovereign%"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-overview",
+      "perspective": "admin",
+      "section": "hybridsovereign-admin",
+      "name": "%plugin__hybridsovereign-admin~Overview%",
+      "href": "/hybridsovereign/admin/overview"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-entities",
+      "perspective": "admin",
+      "section": "hybridsovereign-admin",
+      "name": "%plugin__hybridsovereign-admin~Entities%",
+      "href": "/hybridsovereign/admin/entities"
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/admin/overview",
+      "component": { "$codeRef": "AdminOverviewPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/admin/entities",
+      "component": { "$codeRef": "AdminEntitiesPage" }
+    }
+  }
+]

@@ -1,0 +1,112 @@
+---
+# DNS forwarder: forward OCP cluster subdomain queries to their authoritative Route53 NS.
+#
+# Problem: OCP provision pods resolve `api.<cluster>.<slug>.<base>` via CoreDNS.
+# The default upstreams (8.8.8.8) cache negative responses for 1-5 minutes which
+# causes provision pods to fail with "no such host" for newly-created Route53 A records.
+#
+# Fix: Forward directly to the authoritative Route53 NS for each zone so records
+# are visible immediately upon creation, bypassing public DNS caching.
+#
+# Key observation: The OCP installer creates `api.<cluster>.<slug>.<base>` A records
+# in the SLUG zone (<slug>.<base>), NOT in the cluster-specific child zone.
+# The cluster child zone (<cluster>.<slug>.<base>) only has NS + SOA records.
+# Therefore, we must forward to the SLUG zone NS, not the cluster zone NS.
+#
+# Zone hierarchy for sandbox5530.opentlc.com:
+#   sandbox5530.opentlc.com        NS: 205.251.197.94, 205.251.195.178  (public OPENTLC)
+#   73d59.sandbox5530.opentlc.com  NS: 205.251.195.52, 205.251.199.130  (ses7-env slug)
+#     api.ocp-ses7.73d59...  A record lives HERE (slug zone, not cluster zone)
+#   ocp-ses7.73d59...              NS: 205.251.194.203 (cluster zone, NS+SOA only)
+#
+# CoreDNS forwardPlugin is non-recursive. Forwarding to the cluster zone NS
+# returns NOERROR with 0 answers (AUTHORITY delegation) — not the A record.
+# Must target the SLUG zone NS which has the installer-created A records.
+apiVersion: operator.openshift.io/v1
+kind: DNS
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  servers:
+    # Forward 73d59.sandbox5530.opentlc.com subdomain queries directly to slug zone NS.
+    # The OCP installer places api.ocp-ses7.73d59.* A records here.
+    # Verified: dig @205.251.195.52 api.ocp-ses7.73d59... returns ANSWER (5 A records).
+    - name: sandbox5530-73d59-forwarder
+      zones:
+        - 73d59.sandbox5530.opentlc.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          - 205.251.195.52
+          - 205.251.199.130
+    - name: sandbox3512-04be0-forwarder
+      zones:
+        - 04be0.sandbox3512.opentlc.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          # CoreDNS forwardPlugin requires IP addresses, not hostnames.
+          - 205.251.197.240
+          - 205.251.192.221
+          - 205.251.195.91
+          - 205.251.198.1
+    - name: opentlc-forwarder
+      zones:
+        - opentlc.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          - 8.8.8.8
+          - 8.8.4.4
+    - name: signal9-forwarder
+      zones:
+        - example.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          - 8.8.8.8
+          - 8.8.4.4
+    # Forward lab.example.com to internal lab DNS servers.
+    # lab.example.com hosts private infrastructure (vCenter, ESXi, etc.) that only
+    # internal DNS at 127.0.0.1/127.0.0.1 can resolve.  Without this entry
+    # CoreDNS falls through to the signal9-forwarder (8.8.8.8) which has no knowledge
+    # of internal hosts — pods curl/reach them but nodes succeed via /etc/resolv.conf.
+    # More-specific than example.com, so this wins for all lab.example.com subdomains.
+    - name: lab-signal9-forwarder
+      zones:
+        - lab.example.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          - 127.0.0.1
+          - 127.0.0.1
+    # Forward a4fce.lab.example.com directly to the Route53 zone NS.
+    # The lab.example.com Route53 zone (Z04944392VFMLMB3L46MM) holds a4fce.* records
+    # but the parent example.com domain delegates lab.example.com to stale NS servers
+    # (old zone in a different account) that don't have a4fce records.
+    # More-specific zone wins in CoreDNS, so this overrides both forwarders above.
+    - name: ses4-a4fce-forwarder
+      zones:
+        - a4fce.lab.example.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          - 205.251.193.121
+          - 205.251.195.171
+          - 205.251.197.184
+          - 205.251.198.181
+    # Forward shc.example.com for OpenStack Designate DNS (internet-facing OCP clusters).
+    # Try public resolvers first (Designate records are internet-visible); internal lab
+    # DNS is fallback for private shc zones reachable only from lab network.
+    - name: shc-signal9-forwarder
+      zones:
+        - shc.example.com
+      forwardPlugin:
+        policy: Sequential
+        upstreams:
+          - 8.8.8.8
+          - 8.8.4.4
+          - 127.0.0.1
+          - 127.0.0.1

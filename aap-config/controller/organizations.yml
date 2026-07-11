@@ -1,0 +1,5 @@
+---
+# Hybrid Sovereign AAP Controller organization
+aap_organizations:
+  - name: sovereign
+    description: Hybrid Sovereign Cloud automation organization

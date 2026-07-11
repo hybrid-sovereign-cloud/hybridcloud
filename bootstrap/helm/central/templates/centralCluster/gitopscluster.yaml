@@ -1,0 +1,18 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.acmGitOpsCluster.enabled }}
+---
+apiVersion: apps.open-cluster-management.io/v1beta1
+kind: GitOpsCluster
+metadata:
+  name: services-gitops
+  namespace: {{ .Values.acmGitOpsCluster.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.acmGitOpsCluster.syncWave | quote }}
+spec:
+  argoServerServiceType: ClusterIP
+  placementRef:
+    apiVersion: cluster.open-cluster-management.io/v1beta1
+    kind: Placement
+    name: {{ .Values.acmGitOpsCluster.placementName }}
+  managedClusterSetRef:
+    name: {{ .Values.acmGitOpsCluster.managedClusterSet }}
+{{- end }}

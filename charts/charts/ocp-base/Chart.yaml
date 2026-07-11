@@ -1,0 +1,17 @@
+apiVersion: v2
+name: ocp-base
+description: >-
+  Base configuration chart for provisioned OpenShift clusters.
+  Installs External Secrets Operator and OpenShift GitOps Operator via OLM.
+  Deployed to basechart:true ManagedClusters via ACM ConfigurationPolicy.
+type: application
+version: 0.2.0
+appVersion: "4.21"
+keywords:
+  - openshift
+  - external-secrets
+  - base-config
+sources:
+  - https://github.com/hybrid-sovereign-cloud/charts
+maintainers:
+  - name: hybrid-sovereign-cloud

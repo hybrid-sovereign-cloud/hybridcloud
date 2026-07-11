@@ -1,0 +1,26 @@
+- name: Persona Create Automation
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Persona Create
+    condition: event.payload.reason == "PersonaCreateRequested" and event.payload.regarding.kind
+      == "Persona"
+    action:
+      run_job_template:
+        name: persona-provision
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'
+  - name: Handle Persona Reconcile
+    condition: event.payload.reason == "PersonaReconcileRequested" and event.payload.regarding.kind
+      == "Persona"
+    action:
+      run_job_template:
+        name: persona-provision
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

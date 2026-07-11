@@ -1,0 +1,48 @@
+{{- if .Values.multiClusterHub.enabled }}
+---
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: {{ include "rhacm.namespace" . }}
+  labels:
+    {{- include "rhacm.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    {{- with .Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  availabilityConfig: {{ .Values.multiClusterHub.availabilityConfig | quote }}
+  disableHubSelfManagement: {{ .Values.multiClusterHub.disableHubSelfManagement }}
+
+  {{- if .Values.multiClusterHub.imagePullSecret }}
+  imagePullSecret: {{ .Values.multiClusterHub.imagePullSecret | quote }}
+  {{- end }}
+
+  {{- with .Values.multiClusterHub.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.multiClusterHub.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- if .Values.multiClusterHub.storageClass }}
+  storageClass: {{ .Values.multiClusterHub.storageClass | quote }}
+  {{- end }}
+
+  {{- if .Values.multiClusterHub.customCAConfigmap }}
+  customCAConfigmap: {{ .Values.multiClusterHub.customCAConfigmap | quote }}
+  {{- end }}
+
+  overrides:
+    components:
+      {{- range $component, $enabled := .Values.multiClusterHub.components }}
+      - name: {{ $component }}
+        enabled: {{ $enabled }}
+      {{- end }}
+{{- end }}

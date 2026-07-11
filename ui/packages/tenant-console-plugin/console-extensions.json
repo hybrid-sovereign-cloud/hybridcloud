@@ -1,0 +1,46 @@
+[
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "id": "hybridsovereign-tenant",
+      "perspective": "admin",
+      "name": "%plugin__hybridsovereign-tenant~My Sovereign Cloud%"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-overview",
+      "perspective": "admin",
+      "section": "hybridsovereign-tenant",
+      "name": "%plugin__hybridsovereign-tenant~Overview%",
+      "href": "/hybridsovereign/tenant/overview"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-teams",
+      "perspective": "admin",
+      "section": "hybridsovereign-tenant",
+      "name": "%plugin__hybridsovereign-tenant~My Teams%",
+      "href": "/hybridsovereign/tenant/teams"
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/overview",
+      "component": { "$codeRef": "TenantOverviewPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/teams",
+      "component": { "$codeRef": "TenantTeamsPage" }
+    }
+  }
+]

@@ -1,0 +1,48 @@
+namePrefix: ""
+skipNamespace: false
+
+operator:
+  channel: stable-3.17
+  installPlanApproval: Automatic
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+
+namespace: quay-enterprise
+
+registry:
+  enabled: true
+  name: sovereign-registry
+  components:
+    objectstorage:
+      managed: false
+    postgres:
+      managed: true
+    clair:
+      managed: true
+    redis:
+      managed: true
+    mirror:
+      managed: true
+    route:
+      managed: true
+    tls:
+      managed: true
+    monitoring:
+      managed: true
+    horizontalpodautoscaler:
+      managed: true
+    clairpostgres:
+      managed: true
+
+objectStorage:
+  bucketName: "quay-datastorage"
+
+crunchy:
+  enabled: false
+  name: quay-pgcluster
+  instances: 2
+  storage: 20Gi
+  backupStorage: 20Gi
+
+dbInitJob:
+  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"

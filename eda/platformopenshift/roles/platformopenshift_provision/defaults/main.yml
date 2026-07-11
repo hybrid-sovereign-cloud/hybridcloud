@@ -1,0 +1,29 @@
+---
+platformopenshift_operator_namespace: sovereign-cloud
+central_api_server: "https://api.central.lab.example.com:6443"
+central_sa_secret_name: awshelper-creator-sa
+oso_central_sa_secret_name: osohelper-creator-sa
+central_sa_secret_namespace: sovereign-cloud
+eda_central_work_namespace: sovereign-cloud-jobs
+keycloak_internal_url: "{{ lookup('env', 'KEYCLOAK_INTERNAL_URL') | default('http://rhbk-services-service.services-rhbk.svc:8080', true) }}"
+keycloak_external_url: "{{ lookup('env', 'KEYCLOAK_EXTERNAL_URL') | default('https://rhbk-services.apps.services.lab.example.com', true) }}"
+keycloak_realm: "{{ lookup('env', 'KEYCLOAK_REALM') | default('sovereign-tenants', true) }}"
+keycloak_admin_secret_name: "rhbk-admin-credentials"
+
+default_pull_secret_vault_path: "aws/ocp-pull-secret"
+default_ssh_key_vault_path: "aws/ocp-ssh-key"
+default_ocp_image_set: "img4.21.9-x86-64-appsub"
+default_control_plane_count: 3
+default_worker_count: 3
+default_control_plane_flavor: "b1.xlarge"
+default_worker_flavor: "b1.large"
+default_glance_image_override: "rhcos-9.6.20250826"
+default_external_network: "internet"
+default_project_domain: "shc_domain"
+
+vault_init_secret_name: "vault-init-secrets"
+vault_init_secret_namespace: "central-vault"
+vault_init_addr: "http://vault-active.central-vault.svc:8200"
+mce_cluster_build_chart_version: "0.2.0"
+
+eda_dashboard_host: "https://sovereign-aap-aap.apps.central.lab.example.com"

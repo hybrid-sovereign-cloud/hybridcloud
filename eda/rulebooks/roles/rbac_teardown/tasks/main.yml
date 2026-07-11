@@ -1,0 +1,244 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        rbac_cr_name: "{{ event_payload.regarding.name }}"
+        rbac_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        rbac_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Read Namespace for entity context
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ rbac_cr_namespace }}"
+      register: rbac_final_ns
+
+    - name: Determine entity name
+      ansible.builtin.set_fact:
+        entity_name: >-
+          {{
+            rbac_final_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity']
+            if (rbac_final_ns.resources | length > 0)
+              and (rbac_final_ns.resources[0].metadata.labels is defined)
+              and (rbac_final_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] is defined)
+              and ((rbac_final_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | length) > 0)
+            else (rbac_cr_namespace | regex_replace('^entity-', ''))
+          }}
+        rbac_entity_ns_lifecycle_blocked: >-
+          {{
+            (rbac_final_ns.resources | length == 0)
+            or (rbac_final_ns.resources[0].status.phase | default('') == 'Terminating')
+          }}
+
+    - name: Look up Rbac CR on services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ rbac_cr_name }}"
+        namespace: "{{ rbac_cr_namespace }}"
+      register: rbac_cr_lookup
+
+    - name: Read referenced RbacConfig
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: RbacConfig
+        name: "{{ rbac_spec.config }}"
+        namespace: "{{ plugin_rbac_operator_namespace }}"
+      register: rbac_cfg_final
+      retries: "{{ 1 if (rbac_entity_ns_lifecycle_blocked | default(false) | bool) else 6 }}"
+      delay: 5
+      until: rbac_cfg_final.resources | length > 0
+
+    - name: Run Keycloak cleanup using admin credentials
+      when:
+        - rbac_cfg_final.resources | length > 0
+        - rbac_cfg_final.resources[0].spec.secret is defined
+      block:
+        - name: Discover Keycloak external URL from services cluster Route
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            api_version: route.openshift.io/v1
+            kind: Route
+            namespace: services-rhbk
+            label_selectors:
+              - "app=keycloak"
+          register: kc_route_final
+
+        - name: Set Keycloak URL from Route
+          ansible.builtin.set_fact:
+            svc_keycloak_url: "https://{{ kc_route_final.resources[0].spec.host }}"
+          when: kc_route_final.resources | length > 0
+
+        - name: Fallback to configured Keycloak URL
+          ansible.builtin.set_fact:
+            svc_keycloak_url: >-
+              {{ lookup('env', 'KEYCLOAK_EXTERNAL_URL')
+                 | default(plugin_rbac_keycloak_url_default, true) }}
+          when: kc_route_final.resources | length == 0
+
+        - name: Pin Keycloak URL hostname to reachable apps ingress IP
+          ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_https_url.yml"
+          vars:
+            pin_url: "{{ svc_keycloak_url }}"
+            pin_url_fact: svc_keycloak_url
+
+        - name: Load Keycloak admin credentials
+          ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
+          vars:
+            keycloak_vault_path: "{{ rbac_cfg_final.resources[0].spec.secret | default('rhbk-services-admin') }}"
+
+        - name: Obtain Keycloak admin access token
+          ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+          vars:
+            keycloak_url: "{{ svc_keycloak_url }}"
+            keycloak_url_http_headers: "{{ svc_keycloak_url_http_headers | default({}) }}"
+            keycloak_token_output_fact: svc_access_token_final
+
+        - name: Build Keycloak path queries for subgroup removal
+          ansible.builtin.set_fact:
+            kc_full_path_query: "{{ '%2F' + entity_name + '%2F' + rbac_cr_name }}"
+            kc_parent_path_query: "{{ '%2F' + entity_name }}"
+
+        - name: Look up RBAC subgroup to delete
+          ansible.builtin.uri:
+            url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/group-by-path/{{ kc_full_path_query }}"
+            method: GET
+            headers: "{{ {'Authorization': 'Bearer ' + svc_access_token_final} | combine(svc_keycloak_url_http_headers | default({})) }}"
+            validate_certs: false
+            status_code: [200, 404]
+          register: child_delete_lookup
+
+        - name: Delete RBAC subgroup from Keycloak
+          when: child_delete_lookup.status == 200
+          ansible.builtin.uri:
+            url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/groups/{{ child_delete_lookup.json.id }}"
+            method: DELETE
+            headers: "{{ {'Authorization': 'Bearer ' + svc_access_token_final} | combine(svc_keycloak_url_http_headers | default({})) }}"
+            validate_certs: false
+            status_code: [204, 404]
+
+        - name: Count remaining Rbac CRs in entity namespace
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            api_version: hybridsovereign.redhat/v1alpha1
+            kind: Rbac
+            namespace: "{{ rbac_cr_namespace }}"
+          register: remaining_rbac_crs
+
+        - name: Set sibling count
+          ansible.builtin.set_fact:
+            rbac_sibling_count: >-
+              {{
+                remaining_rbac_crs.resources
+                | default([])
+                | rejectattr('metadata.name', 'equalto', rbac_cr_name)
+                | list
+                | length
+              }}
+
+        - name: Look up parent entity group when no siblings remain
+          when: rbac_sibling_count | int == 0
+          ansible.builtin.uri:
+            url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/group-by-path/{{ kc_parent_path_query }}"
+            method: GET
+            headers: "{{ {'Authorization': 'Bearer ' + svc_access_token_final} | combine(svc_keycloak_url_http_headers | default({})) }}"
+            validate_certs: false
+            status_code: [200, 404]
+          register: parent_group_final_lookup
+
+        - name: Delete parent entity group from Keycloak
+          when:
+            - rbac_sibling_count | int == 0
+            - parent_group_final_lookup.status == 200
+          ansible.builtin.uri:
+            url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/groups/{{ parent_group_final_lookup.json.id }}"
+            method: DELETE
+            headers: "{{ {'Authorization': 'Bearer ' + svc_access_token_final} | combine(svc_keycloak_url_http_headers | default({})) }}"
+            validate_certs: false
+            status_code: [204, 404]
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        rbac_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark Rbac deletion complete on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacs
+        cr_name: "{{ rbac_cr_name }}"
+        cr_namespace: "{{ rbac_cr_namespace }}"
+        patch_ignore_not_found: true
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ rbac_delete_transition_time }}"
+          message: >-
+            Rbac {{ rbac_cr_name }} finalized. Keycloak subgroup removal attempted for
+            {{ entity_name }}/{{ rbac_cr_name }}.
+      when: rbac_cr_lookup.resources | length > 0
+
+    - name: Rbac CR already removed — idempotent teardown success
+      ansible.builtin.debug:
+        msg: >-
+          Rbac {{ rbac_cr_name }} CR no longer exists in {{ rbac_cr_namespace }};
+          Keycloak cleanup attempted during entity cascade delete (idempotent)
+      when: rbac_cr_lookup.resources | length == 0
+
+  rescue:
+    - name: Mark Rbac delete as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacs
+        cr_name: "{{ rbac_cr_name }}"
+        cr_namespace: "{{ rbac_cr_namespace }}"
+        patch_ignore_not_found: true
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA deletion failed')) }}"
+      ignore_errors: true
+      when:
+        - services_api_host is defined
+        - services_bearer_token is defined
+        - rbac_cr_lookup is defined
+        - rbac_cr_lookup.resources | length > 0
+
+    - name: Treat missing Rbac CR as idempotent teardown success
+      ansible.builtin.set_fact:
+        rbac_teardown_idempotent: true
+      when:
+        - rbac_cr_lookup is defined
+        - rbac_cr_lookup.resources | length == 0
+
+    - name: Treat 404 status patch as idempotent teardown success
+      ansible.builtin.set_fact:
+        rbac_teardown_idempotent: true
+      when:
+        - ansible_failed_result.stderr is defined
+        - "'404' in ansible_failed_result.stderr"
+        - "'not found' in ansible_failed_result.stderr"
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "Rbac {{ rbac_cr_name | default('unknown') }} EDA teardown failed"
+      when: not (rbac_teardown_idempotent | default(false))

@@ -1,0 +1,112 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        platformopenshift_cr_name: "{{ event_payload.regarding.name }}"
+        platformopenshift_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        platform_spec: "{{ event_payload.note | from_json }}"
+        eda_central_work_namespace: sovereign-cloud-jobs
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Read PlatformOpenshift CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: PlatformOpenshift
+        name: "{{ platformopenshift_cr_name }}"
+        namespace: "{{ platformopenshift_cr_namespace }}"
+      register: po_cr
+
+    - name: Set platform type and status facts
+      ansible.builtin.set_fact:
+        platform_type: "{{ po_cr.resources[0].spec.type | default(platform_spec.type | default('')) }}"
+        po_status_slug: "{{ po_cr.resources[0].status.slug | default('') }}"
+        po_status_domain: "{{ po_cr.resources[0].status.domain | default('') }}"
+      when: po_cr.resources | length > 0
+
+    - name: Set platform type fallback when CR unavailable
+      ansible.builtin.set_fact:
+        platform_type: "{{ platform_spec.type | default('') }}"
+        po_status_slug: ""
+        po_status_domain: ""
+      when: po_cr.resources | length == 0
+
+    - name: Tear down Hive cluster build on central
+      ansible.builtin.include_tasks: delete_clusterbuild.yml
+
+    - name: Tear down ACM policies and ManagedCluster
+      ansible.builtin.include_tasks: delete_acm.yml
+
+    - name: Tear down AWS DNS records
+      ansible.builtin.include_tasks: delete_dns_aws.yml
+      when: platform_type == "aws"
+
+    - name: Tear down OpenStack DNS records
+      ansible.builtin.include_tasks: delete_dns_openstack.yml
+      when: platform_type == "openstack"
+
+    - name: Delete per-CR PlatformOpenshift viewer RoleBinding
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: "{{ platformopenshift_cr_name }}-viewer"
+        namespace: "{{ platformopenshift_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Delete per-CR PlatformOpenshift viewer Role
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: "{{ platformopenshift_cr_name }}-viewer"
+        namespace: "{{ platformopenshift_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        platformopenshift_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark PlatformOpenshift deletion complete on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: platformopenshifts
+        cr_name: "{{ platformopenshift_cr_name }}"
+        cr_namespace: "{{ platformopenshift_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ platformopenshift_delete_transition_time }}"
+          message: PlatformOpenshift {{ platformopenshift_cr_name }} deleted by EDA
+
+  rescue:
+    - name: Mark PlatformOpenshift delete as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: platformopenshifts
+        cr_name: "{{ platformopenshift_cr_name }}"
+        cr_namespace: "{{ platformopenshift_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA teardown failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "PlatformOpenshift {{ platformopenshift_cr_name | default('unknown') }} EDA teardown failed"

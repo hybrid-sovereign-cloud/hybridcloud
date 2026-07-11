@@ -1,0 +1,119 @@
+---
+description: Hybrid Sovereign Cloud Architecture — always-applied agent rules
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Architecture Repo Agent Rules
+
+## NON-NEGOTIABLE rules (absolute, never override)
+
+- **NO_SECRETS_IN_GIT**: Zero plaintext or base64-encoded secrets, passwords, tokens, API keys, or credentials of any kind in any file committed to any git repository. All secrets live in Vault, delivered via `ExternalSecret` or `PushSecret`. Violating this rule is an immediate blocking issue.
+- **NO_DELETE_SOVEREIGN_NS**: Never delete any namespace prefixed `sovereign-*`. Deletion of these namespaces is permanently prohibited.
+- **DEPLOY_AFTER_PHASE**: After completing each phase of work: commit all changes, push to remote, trigger an ArgoCD sync. No phase is complete without a deployed and healthy state.
+- **ARGOCD_ONLY_POST_INIT**: After `make init-central-argo`, all subsequent cluster changes must flow through ArgoCD. Direct YAML application (`oc apply`) is forbidden for configuration changes.
+
+## Constraints
+
+- **Mermaid diagrams** — all architecture diagrams must use Mermaid syntax in code blocks.
+- **Small diagrams** — max ~15 nodes per diagram. Split complex topics into multiple focused diagrams.
+- **No large files** — any file above 500 lines must be split into multiple files.
+- **Simple language** — documentation should be understandable by non-technical stakeholders where possible.
+- **No secrets** — never write real tokens, passwords, API keys. Use `<placeholder>`.
+- **Follow architecture** — `docs/` directory is the source of truth for platform topology.
+- **Always update docs** — after any architectural, topology, or component change, update the relevant files in `docs/`.
+- **Hardening checks** — at the end of each work cycle, perform hardening checks and update or add entries in `hardeningcheck/`. Each new platform component must have its own hardening check file.
+- **Commit freely** — push to main at any time.
+- **Keep in sync** — any topology change in `bootstrap/` must be reflected here.
+- **No git history** — never use git log, git blame, or commit history for context. Only look at current file state.
+
+## Platform Components (actual, not aspirational)
+
+### Central Cluster Only
+- ArgoCD (OpenShift GitOps) — central cluster, self-heal + prune enabled
+- RHACM (MultiClusterHub) — central cluster, manages services cluster
+- Vault — central cluster, secrets management, standalone mode
+- External Secrets Operator — central cluster, syncs Vault secrets to K8s
+- Vault ClusterSecretStore — central cluster, connects ESO to Vault
+- Gitea — central cluster, self-hosted Git service
+
+### Both Clusters
+- Keycloak (RHBK) — both clusters, HA mode, operator from certified catalog
+- ACS (RHACS) — **disabled** (`enabled: false` in app-of-apps)
+- ODF / Noobaa — both clusters, S3-compatible object storage
+- Quay Registry — both clusters, enterprise container registry
+- Crunchy Postgres for Kubernetes — both clusters, certified operator from certified-operators catalog
+
+### Namespace Topology
+- **Central cluster**: `sovereign-cloud-jobs`, `sovereign-cloud-helpers`
+- **Services cluster**: `sovereign-cloud`, `sovereign-cloud-plugins`
+
+### Services Cluster Only
+- AAP (Ansible Automation Platform) — services cluster, controller + EDA + hub
+- Entity Operator — services cluster, provisions tenant namespaces from Entity CRs
+- Plugin RBAC Operator — services cluster, manages Keycloak group RBAC bindings
+- Plugin Vault Operator — services cluster, deploys dedicated Vault instances per tenant
+- Sovereign Dashboard — services cluster, entity management UI
+- Tenancy Dashboard — services cluster, tenant-scoped RBAC + Vault management UI
+- All `hybridsovereign.redhat` operators — services cluster (mandatory rule)
+
+### Operator Placement Rules
+- **`hybridsovereign.redhat` operators** → always on the **services cluster** (Entity Operator, plugin_rbac, etc.)
+- **`helper.hybridsovereign.redhat` operators** → always on the **central cluster** (future additions)
+
+### External
+- OCI Registry (Quay) — external, stores Helm charts + images, robot has read-only access
+- ApplicationSet — drives app-of-apps pattern from central cluster
+
+### Platform Automation
+- Ansible Runner — container image for platform automation jobs
+- Sovereign Jobs — Ansible jobs for Keycloak, Vault, Gitea configuration
+
+## ArgoCD rules
+
+- All Applications must have `selfHeal: true` and `prune: true`.
+- ArgoCD must always be fully in sync. If not, investigate and fix.
+- Enable dynamic plugins when available.
+- There is ONE app-of-apps chart (`helm/central/`) for BOTH clusters. No `helm/services/` directory.
+- All services cluster configs are deployed by central ArgoCD using `destination.server` targeting the services cluster URL.
+
+## NON-NEGOTIABLE: ArgoCD and cluster interaction rules
+
+1. **NEVER create `kind: ApplicationSet` on the services cluster.**
+2. **NEVER create `kind: Application` on the services cluster.**
+3. All management of services cluster goes through central ArgoCD with `destination.server`.
+4. **ACM is ONLY on the central cluster** — never on services.
+5. **Only interact with ArgoCD on central cluster** — never query, create, or modify ArgoCD resources on services.
+6. **All deployments via central ArgoCD** — no direct deployments outside of `make` bootstrap targets.
+7. **AppProject separation**: `project: central` for central resources, `project: services` for services resources.
+8. **`oc` client**: investigation + resource deletion + ArgoCD sync/refresh on central only. Never for YAML creation or `oc exec`.
+
+## Documentation rules
+
+- All documentation lives in `docs/technical/` (developer/operators) and `docs/concepts/` (non-technical/managers/presentations).
+- Technical docs: implementation details, step-by-step guides, CLI commands.
+- Concepts docs: high-level overviews, simple diagrams, presentation-friendly format.
+
+## OCI / Quay rules
+
+- Robot account has **read-only** access on all repositories.
+- Admin token used for write operations (repo creation, chart/image push).
+
+## Keycloak rules
+
+- Central cluster: realm `sovereign-central`, client `sovereign-central`
+- Services cluster: realm `sovereign-tenants`, client `sovereign-tenants-services`
+- Group `sovereign-admin` = cluster-admin on both clusters
+- Secrets stored in Vault KV `central/keycloak-clients`, delivered via External Secrets
+
+## Vault rules
+
+- Two Vault clusters: `vault-central` (central cluster) and `vault-services` (services cluster), both in `vault` namespace
+- **HA Raft mode, 3 replicas** — NOT standalone
+- Initialized via sovereign-jobs Ansible playbooks (vault-init, vault-services-init)
+- KV v2 engine `central/` on vault-central — single source of truth for all platform secrets
+- Unseal keys + root tokens stored in k8s Secret `vault-init-secrets` AND backed up in `vault-central` namespace via ExternalSecret
+- **Authentication**: ESO uses Kubernetes auth (not root token). Humans use Keycloak OIDC.
+- `kubernetes-central` mount on vault-central: for central cluster workloads
+- `kubernetes-services` mount on vault-central: for services cluster workloads
+- `sovereign-admin` Keycloak group maps to `sovereign-admin-policy` (full access) on both vaults

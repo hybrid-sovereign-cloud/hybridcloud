@@ -1,0 +1,4 @@
+---
+# Sovereign wrapper around os_migrate.vmware_migration_kit migration workflow.
+# Credential and VM variables are supplied via -e @vars.yml from migration_cr_handler.
+- import_playbook: os_migrate.vmware_migration_kit.migration

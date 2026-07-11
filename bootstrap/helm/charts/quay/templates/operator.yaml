@@ -1,0 +1,34 @@
+{{- if not .Values.skipNamespace }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+{{- end }}
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: {{ .Values.namePrefix | default "" }}quay-operator-group
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  targetNamespaces:
+    - {{ .Values.namespace }}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: {{ .Values.namePrefix | default "" }}quay-operator
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  channel: {{ .Values.operator.channel }}
+  installPlanApproval: {{ .Values.operator.installPlanApproval }}
+  name: quay-operator
+  source: {{ .Values.operator.source }}
+  sourceNamespace: {{ .Values.operator.sourceNamespace }}

@@ -1,0 +1,16 @@
+- name: Entity Delete Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Entity Delete
+    condition: event.payload.reason == "EntityDeleteRequested" and event.payload.regarding.kind
+      == "Entity"
+    action:
+      run_job_template:
+        name: entity-teardown
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

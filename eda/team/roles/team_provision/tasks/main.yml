@@ -1,0 +1,205 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        team_cr_name: "{{ event_payload.regarding.name }}"
+        team_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        team_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: teams
+        cr_name: "{{ team_cr_name }}"
+        cr_namespace: "{{ team_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read Team CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Team
+        name: "{{ team_cr_name }}"
+        namespace: "{{ team_cr_namespace }}"
+      register: team_cr_lookup
+
+    - name: Fail if Team CR is missing on services cluster
+      ansible.builtin.fail:
+        msg: Team CR {{ team_cr_name }} not found in {{ team_cr_namespace }}
+      when: team_cr_lookup.resources | length == 0
+
+    - name: Read namespace where the Team CR lives
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ team_cr_namespace }}"
+      register: team_target_ns
+
+    - name: Extract namespace labels and annotations
+      ansible.builtin.set_fact:
+        team_entity: "{{ team_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | default('') }}"
+        team_billing_id: "{{ team_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/billing-id'] | default('') }}"
+        team_description: "{{ (team_target_ns.resources[0].metadata.annotations | default({}))['hybridsovereign.redhat/description'] | default('') }}"
+        team_generation: "{{ team_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Resolve spec values
+      ansible.builtin.set_fact:
+        team_features_istio: "{{ team_spec.features.istio | default(false) | bool }}"
+        team_features_argo: "{{ team_spec.features.argo | default(false) | bool }}"
+        team_viewer_rbac_list: >-
+          {{
+            team_spec.teamViewerRbac
+            | default(team_spec.teamAdmin | default([]))
+          }}
+
+    - name: Resolve team viewer Rbac groups for per-CR binding
+      when: team_viewer_rbac_list | length > 0
+      block:
+        - name: Read team viewer Rbac CRs
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            api_version: hybridsovereign.redhat/v1alpha1
+            kind: Rbac
+            name: "{{ item }}"
+            namespace: "{{ team_cr_namespace }}"
+          register: team_viewer_rbacs
+          loop: "{{ team_viewer_rbac_list }}"
+
+        - name: Build team viewer group subjects
+          ansible.builtin.set_fact:
+            team_per_cr_subjects: >-
+              {{
+                team_viewer_rbacs.results
+                | default([])
+                | selectattr('resources', 'defined')
+                | map(attribute='resources')
+                | flatten
+                | selectattr('status.group', 'defined')
+                | map(attribute='status.group')
+                | map('community.general.dict_kv', 'name')
+                | map('combine', {'kind': 'Group', 'apiGroup': 'rbac.authorization.k8s.io'})
+                | list
+              }}
+
+    - name: Default team viewer subjects to empty
+      when: team_viewer_rbac_list | length == 0
+      ansible.builtin.set_fact:
+        team_per_cr_subjects: []
+
+    - name: Create per-Team viewer Role
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: "{{ team_cr_name }}-team-viewer"
+            namespace: "{{ team_cr_namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: team-operator
+              hybridsovereign.redhat/cr-name: "{{ team_cr_name }}"
+          rules:
+            - apiGroups: ["hybridsovereign.redhat"]
+              resources: ["teams"]
+              resourceNames: ["{{ team_cr_name }}"]
+              verbs: ["get", "list", "watch"]
+      when: team_per_cr_subjects | length > 0
+
+    - name: Create per-Team viewer RoleBinding
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: "{{ team_cr_name }}-team-viewer"
+            namespace: "{{ team_cr_namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: team-operator
+              hybridsovereign.redhat/cr-name: "{{ team_cr_name }}"
+          subjects: "{{ team_per_cr_subjects }}"
+          roleRef:
+            kind: Role
+            name: "{{ team_cr_name }}-team-viewer"
+            apiGroup: rbac.authorization.k8s.io
+      when: team_per_cr_subjects | length > 0
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        team_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update Team CR status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: teams
+        cr_name: "{{ team_cr_name }}"
+        cr_namespace: "{{ team_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          lastReconciledAt: "{{ team_status_transition_time }}"
+          name: "{{ team_cr_name }}"
+          namespace: "{{ team_cr_namespace }}"
+          entity: "{{ team_entity }}"
+          billingId: "{{ team_billing_id }}"
+          description: "{{ team_description }}"
+          features:
+            istio: "{{ team_features_istio }}"
+            argo: "{{ team_features_argo }}"
+          ready: true
+          observedGeneration: "{{ team_generation }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ team_status_transition_time }}"
+              reason: EDASucceeded
+              message: >-
+                Team {{ team_cr_name }} provisioned by EDA with istio={{ team_features_istio }},
+                argo={{ team_features_argo }}.
+
+  rescue:
+    - name: Mark Team as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: teams
+        cr_name: "{{ team_cr_name }}"
+        cr_namespace: "{{ team_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "Team {{ team_cr_name | default('unknown') }} EDA provisioning failed"

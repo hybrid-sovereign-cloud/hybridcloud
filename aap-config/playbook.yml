@@ -1,0 +1,161 @@
+---
+# Hybrid Sovereign AAP config-as-code entrypoint.
+# Replaces legacy aap-controller-config and eda-config Ansible roles.
+- name: Configure Hybrid Sovereign AAP Controller and EDA
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    aap_config_path: "{{ lookup('env', 'AAP_CONFIG_PATH') | default('/runner/project/aap-config', true) }}"
+    quay_registry: "{{ lookup('env', 'OCI_REGISTRY') | regex_replace('^https?://', '') | regex_replace('/.*$', '') }}/hybrid-sovereign"
+    quay_registry_host: "{{ lookup('env', 'OCI_REGISTRY') | regex_replace('^https?://', '') | regex_replace('/.*$', '') }}"
+    aap_validate_certs: false
+    aap_configuration_secure_logging: true
+    aap_configuration_collect_logs: true
+
+  pre_tasks:
+    - name: Load controller configuration
+      ansible.builtin.include_vars:
+        dir: "{{ aap_config_path }}/controller"
+        extensions:
+          - yml
+      tags:
+        - always
+
+    - name: Load EDA configuration
+      ansible.builtin.include_vars:
+        dir: "{{ aap_config_path }}/eda"
+        extensions:
+          - yml
+      tags:
+        - always
+
+    - name: Validate required connection environment variables
+      ansible.builtin.assert:
+        that:
+          - lookup('env', 'AAP_CONTROLLER_HOST') | length > 0
+          - lookup('env', 'EDA_CONTROLLER_HOST') | length > 0
+        fail_msg: >-
+          AAP_CONTROLLER_HOST and EDA_CONTROLLER_HOST must be set for config-as-code.
+
+    - name: Set AAP Controller API connection facts
+      ansible.builtin.set_fact:
+        aap_hostname: "{{ lookup('env', 'AAP_CONTROLLER_HOST') }}"
+        aap_username: admin
+        aap_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
+      no_log: true
+
+    - name: Validate AAP Controller admin password is available
+      ansible.builtin.assert:
+        that:
+          - aap_password | length > 0
+        fail_msg: AAP_ADMIN_PASSWORD must be provided via ExternalSecret-backed env var.
+      no_log: true
+
+  tasks:
+    - name: Configure AAP Controller organizations
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_organizations
+
+    - name: Configure AAP Controller credential types
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_credential_types
+
+    - name: Configure AAP Controller credentials
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_credentials
+      vars:
+        controller_configuration_credentials_secure_logging: true
+
+    - name: Configure AAP Controller execution environments
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_execution_environments
+
+    - name: Configure AAP Controller projects
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_projects
+
+    - name: Configure AAP Controller inventories
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_inventories
+
+    - name: Configure AAP Controller hosts
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_hosts
+
+    - name: Configure AAP Controller job templates
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.controller_job_templates
+
+    - name: Switch API target to EDA Controller
+      ansible.builtin.set_fact:
+        aap_hostname: "{{ lookup('env', 'EDA_CONTROLLER_HOST') }}"
+        aap_password: "{{ lookup('env', 'EDA_ADMIN_PASSWORD') }}"
+      no_log: true
+
+    - name: Validate EDA Controller admin password is available
+      ansible.builtin.assert:
+        that:
+          - aap_password | length > 0
+        fail_msg: EDA_ADMIN_PASSWORD must be provided via ExternalSecret-backed env var.
+      no_log: true
+
+    - name: Configure EDA credentials
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.eda_credentials
+      vars:
+        eda_configuration_credentials_secure_logging: true
+
+    - name: Configure EDA projects
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.eda_projects
+      vars:
+        eda_configuration_projects_secure_logging: true
+
+    - name: Configure EDA event streams
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.eda_event_streams
+      vars:
+        eda_configuration_event_streams_secure_logging: true
+
+    - name: Configure EDA decision environments
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.eda_decision_environments
+      vars:
+        eda_configuration_decision_environments_secure_logging: true
+
+    - name: Configure EDA rulebook activations
+      ansible.builtin.import_role:
+        name: infra.aap_configuration.eda_rulebook_activations
+      vars:
+        eda_configuration_rulebook_activations_secure_logging: true
+
+    - name: Disable test_mode on sovereign operator event stream
+      ansible.builtin.uri:
+        url: "{{ lookup('env', 'EDA_CONTROLLER_HOST') }}/api/eda/v1/event-streams/?name={{ 'sovereign-operator-events' | urlencode }}"
+        method: GET
+        validate_certs: false
+        url_username: admin
+        url_password: "{{ lookup('env', 'EDA_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        status_code: [200]
+      register: event_stream_lookup
+      no_log: true
+
+    - name: Patch event stream test_mode to false
+      ansible.builtin.uri:
+        url: "{{ lookup('env', 'EDA_CONTROLLER_HOST') }}/api/eda/v1/event-streams/{{ event_stream_lookup.json.results[0].id }}/"
+        method: PATCH
+        validate_certs: false
+        url_username: admin
+        url_password: "{{ lookup('env', 'EDA_ADMIN_PASSWORD') }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          test_mode: false
+        status_code: [200]
+      when:
+        - event_stream_lookup.json.results | length > 0
+        - event_stream_lookup.json.results[0].test_mode | default(false) | bool
+      no_log: true

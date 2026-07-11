@@ -1,0 +1,7 @@
+---
+- name: Project Provision Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - project_provision

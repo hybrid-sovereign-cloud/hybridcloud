@@ -1,0 +1,7 @@
+---
+- name: QuayConfig Teardown Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - quayconfig_teardown

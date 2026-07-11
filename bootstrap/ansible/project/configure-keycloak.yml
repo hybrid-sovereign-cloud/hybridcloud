@@ -1,0 +1,189 @@
+---
+- name: Configure Sovereign Cloud Identity & Secrets
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    # Keycloak endpoints
+    keycloak_central_url: "{{ lookup('env', 'KEYCLOAK_CENTRAL_URL') }}"
+    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') }}"
+    keycloak_admin_user: "{{ lookup('env', 'KEYCLOAK_ADMIN_USER') | default('admin', true) }}"
+    keycloak_admin_password: "{{ lookup('env', 'KEYCLOAK_ADMIN_PASSWORD') }}"
+
+    # Vault
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://vault.vault.svc:8200', true) }}"
+    vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
+
+    # Gitea
+    gitea_url: "{{ lookup('env', 'GITEA_URL') }}"
+
+    # Cluster endpoints
+    ocp_services_server: "{{ lookup('env', 'OCP_SERVICES_SERVER') }}"
+
+    # Realm configuration
+    realm_name: "sovereign-central"
+    admin_group: "sovereign-admin"
+
+    # Central cluster clients (in central RHBK)
+    central_clients:
+      - realm: "sovereign-central"
+        client_id: "quay-central"
+        name: "Quay Central Registry"
+        redirect_uris: ["*"]
+      - realm: "sovereign-central"
+        client_id: "vault"
+        name: "HashiCorp Vault"
+        redirect_uris: ["*"]
+      - realm: "sovereign-central"
+        client_id: "gitea"
+        name: "Gitea"
+        redirect_uris: ["*"]
+      - realm: "sovereign-central"
+        client_id: "openshift-central"
+        name: "OpenShift Central"
+        redirect_uris:
+          - "https://oauth-openshift.apps.shcstack-3.lab.example.com/oauth2callback/*"
+
+    # Services cluster clients (in services RHBK)
+    services_clients:
+      - realm: "sovereign-central"
+        client_id: "quay-services"
+        name: "Quay Services Registry"
+        redirect_uris: ["*"]
+      - realm: "sovereign-central"
+        client_id: "aap-services"
+        name: "Ansible Automation Platform"
+        redirect_uris: ["*"]
+      - realm: "sovereign-central"
+        client_id: "openshift-services"
+        name: "OpenShift Services"
+        redirect_uris:
+          - "https://oauth-openshift.apps.services.lab.example.com/oauth2callback/*"
+
+  tasks:
+    # --- Central RHBK configuration ---
+    - name: Authenticate to central Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-auth
+      vars:
+        keycloak_url: "{{ keycloak_central_url }}"
+
+    - name: Set central token
+      ansible.builtin.set_fact:
+        central_keycloak_token: "{{ keycloak_token }}"
+
+    - name: Create realm on central Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-realms
+      vars:
+        keycloak_url: "{{ keycloak_central_url }}"
+        keycloak_token: "{{ central_keycloak_token }}"
+        keycloak_realms:
+          - name: "{{ realm_name }}"
+            display_name: "Sovereign Central"
+
+    - name: Create sovereign-admin group on central Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-groups
+      vars:
+        keycloak_url: "{{ keycloak_central_url }}"
+        keycloak_token: "{{ central_keycloak_token }}"
+        keycloak_groups:
+          - realm: "{{ realm_name }}"
+            name: "{{ admin_group }}"
+
+    - name: Create clients on central Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-clients
+      vars:
+        keycloak_url: "{{ keycloak_central_url }}"
+        keycloak_token: "{{ central_keycloak_token }}"
+        keycloak_clients: "{{ central_clients }}"
+
+    - name: Save central client secrets
+      ansible.builtin.set_fact:
+        central_client_secrets: "{{ keycloak_client_secrets }}"
+
+    # --- Services RHBK configuration ---
+    - name: Authenticate to services Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-auth
+      vars:
+        keycloak_url: "{{ keycloak_services_url }}"
+
+    - name: Set services token
+      ansible.builtin.set_fact:
+        services_keycloak_token: "{{ keycloak_token }}"
+
+    - name: Create realm on services Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-realms
+      vars:
+        keycloak_url: "{{ keycloak_services_url }}"
+        keycloak_token: "{{ services_keycloak_token }}"
+        keycloak_realms:
+          - name: "{{ realm_name }}"
+            display_name: "Sovereign Central"
+
+    - name: Create sovereign-admin group on services Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-groups
+      vars:
+        keycloak_url: "{{ keycloak_services_url }}"
+        keycloak_token: "{{ services_keycloak_token }}"
+        keycloak_groups:
+          - realm: "{{ realm_name }}"
+            name: "{{ admin_group }}"
+
+    - name: Create clients on services Keycloak
+      ansible.builtin.include_role:
+        name: keycloak-clients
+      vars:
+        keycloak_url: "{{ keycloak_services_url }}"
+        keycloak_token: "{{ services_keycloak_token }}"
+        keycloak_clients: "{{ services_clients }}"
+
+    - name: Save services client secrets
+      ansible.builtin.set_fact:
+        services_client_secrets: "{{ keycloak_client_secrets }}"
+
+    # --- RBAC ---
+    - name: Configure cluster RBAC for sovereign-admin
+      ansible.builtin.include_role:
+        name: keycloak-rbac
+
+    # --- OAuth ---
+    - name: Merge all client secrets for OAuth
+      ansible.builtin.set_fact:
+        all_client_secrets: "{{ central_client_secrets | combine(services_client_secrets) }}"
+
+    - name: Configure OpenShift OAuth on both clusters
+      ansible.builtin.include_role:
+        name: keycloak-oauth
+      vars:
+        central_realm: "{{ realm_name }}"
+        services_realm: "{{ realm_name }}"
+        central_oauth_client_id: "openshift-central"
+        services_oauth_client_id: "openshift-services"
+        keycloak_client_secrets: "{{ all_client_secrets }}"
+
+    # --- Gitea Initialization ---
+    - name: Initialize Gitea
+      ansible.builtin.include_role:
+        name: gitea-init
+      vars:
+        gitea_url: "{{ gitea_url }}"
+      when: gitea_url | length > 0
+
+    # --- Store all secrets in Vault ---
+    - name: Store client secrets and admin credentials in Vault
+      ansible.builtin.include_role:
+        name: vault-secrets
+      vars:
+        vault_kv_path: "central"
+        vault_secrets:
+          keycloak-clients: "{{ all_client_secrets }}"
+          gitea: "{{ gitea_credentials | default({}) }}"
+          admin-credentials:
+            vault_root_token: "{{ vault_token }}"

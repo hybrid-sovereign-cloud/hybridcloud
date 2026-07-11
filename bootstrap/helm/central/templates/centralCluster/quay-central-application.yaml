@@ -1,0 +1,57 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.quay.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: quay-central
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+    app.kubernetes.io/component: registry
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.quay.syncWave | quote }}
+spec:
+  project: central
+
+  source:
+    repoURL: {{ printf "oci://%s/%s/quay" .Values.oci.registry .Values.oci.repositoryBase | quote }}
+    chart: quay
+    targetRevision: {{ .Values.quay.chartVersion | quote }}
+    helm:
+      releaseName: quay-central
+      values: |
+        {{- toYaml .Values.quay.values | nindent 8 }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.quay.destinationNamespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: {{ .Values.quay.values.registry.configBundleSecretName | default (printf "%s-config-bundle" (.Values.quay.values.registry.name | default "sovereign-registry")) }}
+      jsonPointers:
+        - /data/config.yaml
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+      name: {{ printf "%s-quay-app" (.Values.quay.values.registry.name | default "sovereign-registry") }}
+      jqPathExpressions:
+        - .spec.maxReplicas
+        - .spec.minReplicas
+{{- end }}

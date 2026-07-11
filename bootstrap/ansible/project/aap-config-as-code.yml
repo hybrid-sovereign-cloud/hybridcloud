@@ -1,0 +1,5 @@
+---
+# Bootstrap wrapper for hybridcloud/aap-config config-as-code.
+# Replaces legacy sovereignJobs aapControllerConfig and edaConfig jobs.
+- name: Apply Hybrid Sovereign AAP config-as-code
+  ansible.builtin.import_playbook: aap-config/playbook.yml

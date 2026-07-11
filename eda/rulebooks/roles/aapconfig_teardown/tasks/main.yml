@@ -1,0 +1,163 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        aapconfig_cr_name: "{{ event_payload.regarding.name }}"
+        aapconfig_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        aapconfig_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Read services bearer token
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: argocd-cluster-services
+        namespace: openshift-gitops
+      register: argocd_cluster_secret
+      no_log: true
+
+    - name: Fail if services cluster secret is missing
+      ansible.builtin.fail:
+        msg: Secret argocd-cluster-services not found in openshift-gitops
+      when: argocd_cluster_secret.resources | length == 0
+
+    - name: Pin services API host to reachable IP (skip stale DNS A records)
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/pin_reachable_services_api.yml"
+
+    - name: Read AAP admin secret
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        kind: Secret
+        name: "{{ aapconfig_spec.secret }}"
+        namespace: "{{ aapconfig_cr_namespace }}"
+      register: _aap_secret
+      no_log: true
+      ignore_errors: true
+
+    - name: Delete OIDC authenticator from AAP
+      when: _aap_secret.resources | default([]) | length > 0
+      block:
+        - name: Decode AAP credentials
+          ansible.builtin.set_fact:
+            aap_username: "{{ _aap_secret.resources[0].data.username | b64decode }}"
+            aap_password: "{{ _aap_secret.resources[0].data.password | b64decode }}"
+          no_log: true
+
+        - name: Lookup authenticator by slug
+          ansible.builtin.uri:
+            url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticators/?slug=oidc-{{ aapconfig_cr_name | lower }}"
+            method: GET
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            status_code: [200]
+          register: _auth_lookup
+
+        - name: Delete authenticator
+          ansible.builtin.uri:
+            url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticators/{{ _auth_lookup.json.results[0].id }}/"
+            method: DELETE
+            user: "{{ aap_username }}"
+            password: "{{ aap_password }}"
+            force_basic_auth: true
+            validate_certs: false
+            status_code: [200, 204, 404]
+          when: _auth_lookup.json.results | length > 0
+      ignore_errors: true
+
+    - name: Delete Keycloak OIDC client
+      block:
+        - name: Read Keycloak admin secret
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            kind: Secret
+            name: rhbk-admin-credentials
+            namespace: "{{ aapconfig_cr_namespace }}"
+          register: _kc_secret
+          no_log: true
+
+        - name: Decode Keycloak credentials
+          ansible.builtin.set_fact:
+            kc_admin_user: "{{ _kc_secret.resources[0].data.username | default(_kc_secret.resources[0].data.ADMIN_USERNAME | default('')) | b64decode }}"
+            kc_admin_pass: "{{ _kc_secret.resources[0].data.password | default(_kc_secret.resources[0].data.ADMIN_PASSWORD | default('')) | b64decode }}"
+          no_log: true
+          when: _kc_secret.resources | default([]) | length > 0
+
+        - name: Get Keycloak token
+          ansible.builtin.uri:
+            url: "{{ keycloak_internal_url }}/realms/master/protocol/openid-connect/token"
+            method: POST
+            body_format: form-urlencoded
+            body:
+              grant_type: password
+              client_id: admin-cli
+              username: "{{ kc_admin_user }}"
+              password: "{{ kc_admin_pass }}"
+            validate_certs: false
+            status_code: [200]
+          register: _kc_token
+          no_log: true
+          when: _kc_secret.resources | default([]) | length > 0
+
+        - name: Find Keycloak client
+          ansible.builtin.uri:
+            url: "{{ keycloak_internal_url }}/admin/realms/{{ keycloak_realm }}/clients?clientId=aap-{{ aapconfig_cr_name }}"
+            method: GET
+            headers:
+              Authorization: "Bearer {{ _kc_token.json.access_token }}"
+            validate_certs: false
+          register: _kc_client
+          when: _kc_token is defined
+
+        - name: Delete Keycloak client
+          ansible.builtin.uri:
+            url: "{{ keycloak_internal_url }}/admin/realms/{{ keycloak_realm }}/clients/{{ _kc_client.json[0].id }}"
+            method: DELETE
+            headers:
+              Authorization: "Bearer {{ _kc_token.json.access_token }}"
+            validate_certs: false
+            status_code: [204, 404]
+          when: _kc_client is defined and _kc_client.json | length > 0
+      when: _kc_secret is defined and _kc_secret.resources | default([]) | length > 0
+      ignore_errors: true
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        aapconfig_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark AAPConfig deletion complete on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aapconfigs
+        cr_name: "{{ aapconfig_cr_name }}"
+        cr_namespace: "{{ aapconfig_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ aapconfig_delete_transition_time }}"
+          message: AAPConfig {{ aapconfig_cr_name }} deleted by EDA
+
+  rescue:
+    - name: Mark AAPConfig delete as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aapconfigs
+        cr_name: "{{ aapconfig_cr_name }}"
+        cr_namespace: "{{ aapconfig_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA deletion failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "AAPConfig {{ aapconfig_cr_name | default('unknown') }} EDA teardown failed"

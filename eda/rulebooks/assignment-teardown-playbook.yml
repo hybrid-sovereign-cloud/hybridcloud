@@ -1,0 +1,7 @@
+---
+- name: Assignment Teardown Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - assignment_teardown

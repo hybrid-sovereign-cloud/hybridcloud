@@ -1,0 +1,29 @@
+---
+- name: Get migration phase timestamp
+  ansible.builtin.set_fact:
+    migration_status_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+- name: Patch OpenStackMigration phase status
+  ansible.builtin.include_tasks: "{{ migration_common_tasks_path }}/patch_cr_status.yml"
+  vars:
+    cr_api_version: hybridsovereign.redhat/v1alpha1
+    cr_plural: openstackmigrations
+    cr_name: "{{ migration_cr_name }}"
+    cr_namespace: "{{ migration_cr_namespace }}"
+    cr_status_body:
+      status: "{{ migration_lifecycle_status | default('reconciling') }}"
+      phase: "{{ migration_phase }}"
+      ready: false
+      observedGeneration: "{{ migration_generation | default(0) }}"
+      lastReconciledAt: "{{ migration_status_time }}"
+      source: "{{ migration_source | default('') }}"
+      vmName: "{{ migration_vm_name }}"
+      cloudoso: "{{ migration_cloudoso_name }}"
+      message: "{{ migration_phase_message | default('Migration phase ' ~ migration_phase) }}"
+      phases: "{{ migration_phase_history | default([]) }}"
+      conditions:
+        - type: Ready
+          status: "False"
+          lastTransitionTime: "{{ migration_status_time }}"
+          reason: MigrationInProgress
+          message: "{{ migration_phase_message | default('Migration phase ' ~ migration_phase) }}"

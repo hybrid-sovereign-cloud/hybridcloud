@@ -1,0 +1,46 @@
+---
+cluster:
+  name: {{ cb_cluster_name }}
+  importToHub: true
+  useACM: true
+  createGitopsManifestWorks: false
+  createGitopsSyncSet: false
+  type: ocp
+  baseDomain: "{{ cb_cluster_domain }}"
+  clusterImageSet: "{{ cb_image_set }}"
+  controlPlaneCount: {{ cb_control_plane_count }}
+  workerCount: {{ cb_worker_count }}
+  infraCount: 0
+  apiVIP: "{{ cb_api_vip }}"
+  ingressVIP: "{{ cb_ingress_vip }}"
+  pullSecretVault: "{{ cb_pull_secret_vault }}"
+  sshKeyVault: "{{ cb_ssh_key_vault }}"
+  trustedCAs: "{{ cb_trust_bundle | default('') }}"
+  sshPubKey: ""
+  dnsServers: []
+
+provider:
+  type: "{{ 'OpenStack' if cb_external_network else 'AWS' }}"
+  providerCredsVault: "{{ cb_provider_creds_vault }}"
+  providerCAs: "{{ cb_trust_bundle | default('') }}"
+{% if cb_external_network %}
+  openstack:
+    cloud: openstack
+    externalNetwork: "{{ cb_external_network }}"
+    existingImage: "{{ cb_glance_image }}"
+    controlPlaneFlavor: "{{ cb_controller_flavor }}"
+    workerFlavor: "{{ cb_worker_flavor }}"
+    computeFlavor: "{{ cb_controller_flavor }}"
+    lbFloatingNetwork: "{{ cb_external_network }}"
+{% else %}
+  aws:
+    region: "{{ cb_region }}"
+    controlPlaneFlavor: "{{ cb_controller_flavor }}"
+    workerFlavor: "{{ cb_worker_flavor }}"
+    credentialsKeyAccessKeyId: "AWS_ACCESS_KEY_ID"
+    credentialsKeySecretAccessKey: "AWS_SECRET_ACCESS_KEY"
+{% endif %}
+
+installConfigVault: "{{ cb_install_config_vault }}"
+
+secretStoreName: vault-backend

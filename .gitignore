@@ -1,0 +1,39 @@
+# Secrets and credentials — never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*
+*secret*
+*token*
+kubeconfig
+clouds.yaml
+
+# Build artifacts
+node_modules/
+dist/
+build/
+*.tgz
+*.tar.gz
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ansible
+*.retry
+
+# Go
+vendor/

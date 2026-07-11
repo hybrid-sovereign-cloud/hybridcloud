@@ -1,0 +1,14 @@
+---
+- name: Assignment Delete Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle Assignment Delete
+      condition: event.payload.reason == "AssignmentDeleteRequested" and event.payload.regarding.kind == "Assignment"
+      action:
+        run_playbook:
+          name: assignment-teardown-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

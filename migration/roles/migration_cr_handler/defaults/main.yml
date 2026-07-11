@@ -1,0 +1,15 @@
+---
+migration_repo_root: "{{ playbook_dir | default(role_path + '/../..') }}"
+migration_playbooks_dir: "{{ migration_repo_root }}/playbooks"
+migration_inventory: "{{ migration_repo_root }}/inventory/localhost.yml"
+migration_common_tasks_path: "{{ role_path }}/../../../eda/common/tasks"
+migration_work_dir: "/tmp/os-migrate-{{ migration_cr_name | default('migration') }}"
+
+default_vmware_vault_path: vmware-credentials
+default_cloudoso_vault_path: oso/accounts/shc_admin
+eda_central_work_namespace: sovereign-cloud-jobs
+clouds_yaml_cloud: openstack
+
+migration_dry_run: false
+migration_skip_vddk: true
+migration_run_full_workload_import: false

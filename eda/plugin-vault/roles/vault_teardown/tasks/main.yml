@@ -1,0 +1,213 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        vault_cr_name: "{{ event_payload.regarding.name }}"
+        vault_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        vault_instance_name: "vault-{{ event_payload.regarding.name }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Read Vault CR for entity context
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Vault
+        name: "{{ vault_cr_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+      register: vault_cr_final
+
+    - name: Delete Vault StatefulSet
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: apps/v1
+        kind: StatefulSet
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Delete Vault Services
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: v1
+        kind: Service
+        name: "{{ item }}"
+        namespace: "{{ vault_cr_namespace }}"
+      loop:
+        - "{{ vault_instance_name }}"
+        - "{{ vault_instance_name }}-internal"
+      ignore_errors: true
+
+    - name: Delete Vault Route
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Delete Vault init Secret
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: v1
+        kind: Secret
+        name: "{{ vault_instance_name }}-init"
+        namespace: "{{ vault_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Delete Vault ServiceAccount
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: v1
+        kind: ServiceAccount
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Read Keycloak admin Secret for cleanup
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Secret
+        name: rhbk-services-admin
+        namespace: sovereign-cloud-plugins
+      register: kc_admin_secret_fin
+      ignore_errors: true
+
+    - name: Run Keycloak OIDC client cleanup
+      when: kc_admin_secret_fin.resources | default([]) | length > 0
+      block:
+        - name: Decode Keycloak credentials
+          ansible.builtin.set_fact:
+            kc_admin_user_fin: "{{ kc_admin_secret_fin.resources[0].data.username | b64decode }}"
+            kc_admin_password_fin: "{{ kc_admin_secret_fin.resources[0].data.password | b64decode }}"
+          no_log: true
+
+        - name: Get Keycloak external URL
+          kubernetes.core.k8s_info:
+            host: "{{ services_api_host }}"
+            api_key: "{{ services_bearer_token }}"
+            validate_certs: false
+            api_version: route.openshift.io/v1
+            kind: Route
+            namespace: services-rhbk
+            label_selectors:
+              - "app=keycloak"
+          register: kc_route_fin
+
+        - name: Set Keycloak URL
+          ansible.builtin.set_fact:
+            kc_external_url_fin: >-
+              {{
+                ('https://' + kc_route_fin.resources[0].spec.host)
+                if (kc_route_fin.resources | length > 0)
+                else lookup('env', 'KEYCLOAK_EXTERNAL_URL') | default('https://rhbk-services.apps.cluster.local', true)
+              }}
+
+        - name: Get Keycloak admin token
+          ansible.builtin.uri:
+            url: "{{ kc_external_url_fin }}/realms/master/protocol/openid-connect/token"
+            method: POST
+            body_format: form-urlencoded
+            body:
+              client_id: admin-cli
+              username: "{{ kc_admin_user_fin }}"
+              password: "{{ kc_admin_password_fin }}"
+              grant_type: password
+            validate_certs: false
+            status_code: [200]
+          register: kc_token_fin
+          ignore_errors: true
+          no_log: true
+
+        - name: Derive Vault OIDC client ID
+          ansible.builtin.set_fact:
+            vault_fin_entity: "{{ vault_cr_final.resources[0].status.entity | default('') }}"
+            vault_fin_oidc_client_id: "vault-{{ vault_cr_final.resources[0].status.entity | default('') }}-{{ vault_cr_name }}"
+          when: vault_cr_final.resources | length > 0
+
+        - name: Look up Vault Keycloak OIDC client
+          ansible.builtin.uri:
+            url: "{{ kc_external_url_fin }}/admin/realms/sovereign-tenants/clients?clientId={{ vault_fin_oidc_client_id | urlencode }}"
+            method: GET
+            headers:
+              Authorization: "Bearer {{ kc_token_fin.json.access_token }}"
+            validate_certs: false
+            status_code: [200]
+          register: kc_client_lookup_fin
+          when:
+            - vault_fin_oidc_client_id is defined
+            - kc_token_fin.status | default(0) == 200
+          ignore_errors: true
+
+        - name: Delete Vault Keycloak OIDC client
+          ansible.builtin.uri:
+            url: "{{ kc_external_url_fin }}/admin/realms/sovereign-tenants/clients/{{ kc_client_lookup_fin.json[0].id }}"
+            method: DELETE
+            headers:
+              Authorization: "Bearer {{ kc_token_fin.json.access_token }}"
+            validate_certs: false
+            status_code: [200, 204, 404]
+          when:
+            - kc_client_lookup_fin is defined
+            - kc_client_lookup_fin.json | default([]) | length > 0
+          ignore_errors: true
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        vault_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark Vault deletion complete on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaults
+        cr_name: "{{ vault_cr_name }}"
+        cr_namespace: "{{ vault_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ vault_delete_transition_time }}"
+          message: Vault {{ vault_cr_name }} finalized by EDA
+
+  rescue:
+    - name: Mark Vault delete as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaults
+        cr_name: "{{ vault_cr_name }}"
+        cr_namespace: "{{ vault_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA deletion failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "Vault {{ vault_cr_name | default('unknown') }} EDA teardown failed"

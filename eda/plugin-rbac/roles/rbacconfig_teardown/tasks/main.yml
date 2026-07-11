@@ -1,0 +1,121 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        rbac_config_cr_name: "{{ event_payload.regarding.name }}"
+        rbac_config_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        rbac_config_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Discover Keycloak external URL
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: services-rhbk
+        label_selectors:
+          - "app=keycloak"
+      register: kc_route
+
+    - name: Set Keycloak URL
+      ansible.builtin.set_fact:
+        plugin_rbac_keycloak_url: >-
+          {{
+            ('https://' + kc_route.resources[0].spec.host)
+            if (kc_route.resources | length > 0)
+            else lookup('env', 'KEYCLOAK_EXTERNAL_URL') | default('https://rhbk-services.apps.cluster.local', true)
+          }}
+
+    - name: Pin Keycloak URL hostname to reachable apps ingress IP
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_https_url.yml"
+      vars:
+        pin_url: "{{ plugin_rbac_keycloak_url }}"
+        pin_url_fact: plugin_rbac_keycloak_url
+
+    - name: Run Keycloak admin cleanup when spec is available
+      when: rbac_config_spec.secret is defined
+      block:
+        - name: Load Keycloak admin credentials
+          ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
+          vars:
+            keycloak_vault_path: "{{ rbac_config_spec.secret | default('rhbk-services-admin') }}"
+
+        - name: Obtain Keycloak admin access token
+          ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+          vars:
+            keycloak_url: "{{ plugin_rbac_keycloak_url }}"
+            keycloak_url_http_headers: "{{ plugin_rbac_keycloak_url_http_headers | default({}) }}"
+
+        - name: Look up Keycloak client internal id
+          ansible.builtin.uri:
+            url: >-
+              {{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients?clientId={{ rbac_config_cr_name | urlencode }}
+            method: GET
+            headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+            validate_certs: false
+            status_code: [200]
+          register: kc_client_lookup_final
+
+        - name: Delete Keycloak OIDC client when present
+          when: kc_client_lookup_final.json | length > 0
+          ansible.builtin.uri:
+            url: "{{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients/{{ kc_client_lookup_final.json[0].id }}"
+            method: DELETE
+            headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+            validate_certs: false
+            status_code: [204, 404]
+
+    - name: Delete Keycloak client credentials Secret
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: absent
+        api_version: v1
+        kind: Secret
+        name: "{{ rbac_config_cr_name }}-client"
+        namespace: "{{ rbac_config_cr_namespace }}"
+      ignore_errors: true
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        rbac_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark RbacConfig deletion complete on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacconfigs
+        cr_name: "{{ rbac_config_cr_name }}"
+        cr_namespace: "{{ rbac_config_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: false
+          deletionComplete: true
+          lastReconciledAt: "{{ rbac_delete_transition_time }}"
+          message: >-
+            RbacConfig {{ rbac_config_cr_name }} finalized. Keycloak client and Secret removed by EDA.
+
+  rescue:
+    - name: Mark RbacConfig delete as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacconfigs
+        cr_name: "{{ rbac_config_cr_name }}"
+        cr_namespace: "{{ rbac_config_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA deletion failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise teardown failure
+      ansible.builtin.fail:
+        msg: "RbacConfig {{ rbac_config_cr_name | default('unknown') }} EDA teardown failed"

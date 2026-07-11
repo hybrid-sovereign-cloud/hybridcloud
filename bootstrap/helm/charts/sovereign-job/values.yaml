@@ -1,0 +1,18 @@
+namespace: sovereign-cloud-jobs
+serviceAccount: sovereign-ansible-runner
+image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+backoffLimit: 5
+
+imagePullSecrets:
+  - name: quay-pull-secret
+
+job:
+  name: ""
+  playbook: ""
+  activeDeadlineSeconds: 600
+  env: []
+  volumeMounts: []
+  volumes: []
+
+externalSecrets: {}
+pushSecrets: {}

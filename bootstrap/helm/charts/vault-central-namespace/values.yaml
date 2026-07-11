@@ -1,0 +1,69 @@
+namespace: vault-central
+
+secretStore:
+  name: vault-backend
+  kind: ClusterSecretStore
+
+# PushSecret: push vault-init-secrets K8s secret → Vault (runs AFTER vault-init job)
+vaultInitPushSecret:
+  enabled: true
+  sourceNamespace: central-vault
+  sourceSecretName: vault-init-secrets
+  remoteKey: vault-init
+
+# PushSecret: push vault-services-init-secrets K8s secret → Vault (runs AFTER vault-services-init job)
+vaultServicesInitPushSecret:
+  enabled: true
+  sourceNamespace: services-vault
+  sourceSecretName: vault-services-init-secrets
+  remoteKey: vault-services-init
+
+# Copy of central vault init secrets (backup reference)
+vaultInitSecretsCopy:
+  enabled: true
+  targetSecretName: vault-init-secrets-copy
+  refreshInterval: "1h"
+  vaultPath: "vault-init"
+  keys:
+    - secretKey: root_token
+      property: root_token
+    - secretKey: unseal_keys
+      property: unseal_keys
+    - secretKey: unseal_keys_base64
+      property: unseal_keys_base64
+
+# Copy of services vault init secrets (backup reference)
+vaultServicesInitSecretsCopy:
+  enabled: true
+  targetSecretName: vault-services-init-secrets-copy
+  refreshInterval: "1h"
+  vaultPath: "vault-services-init"
+  keys:
+    - secretKey: root_token
+      property: root_token
+    - secretKey: unseal_keys
+      property: unseal_keys
+    - secretKey: unseal_keys_base64
+      property: unseal_keys_base64
+
+# Dashboard Central Reader: SA + token + push to Vault
+dashboardCentralReader:
+  enabled: false
+  namespace: sovereign-cloud-jobs
+  jobServiceAccount: sovereign-ansible-runner
+  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  imagePullSecrets:
+    - name: quay-pull-secret
+  vaultAddr: "http://vault-active.central-vault.svc:8200"
+  vaultPath: "central/data/dashboard-central-reader"
+  apiServer: ""
+
+# Central Service Accounts: create SAs + push tokens to Vault for cross-cluster access
+centralServiceAccounts: {}
+
+# EDA S3 credentials: ExternalSecret that creates eda-s3-creds in openshift-gitops
+# for EDA playbooks to upload job logs to NooBaa S3
+edaS3Creds:
+  enabled: false
+  bucketName: "eda-job-logs"
+  endpoint: "https://s3-openshift-storage.apps.services.lab.example.com"

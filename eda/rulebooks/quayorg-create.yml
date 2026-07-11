@@ -1,0 +1,16 @@
+- name: QuayOrg Create Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle QuayOrg Create
+    condition: event.payload.reason in ["QuayOrgCreateRequested", "QuayOrgReconcileRequested"] and event.payload.regarding.kind
+      == "QuayOrg"
+    action:
+      run_job_template:
+        name: quayorg-provision
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

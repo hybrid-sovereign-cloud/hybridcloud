@@ -1,0 +1,318 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        aaporg_cr_name: "{{ event_payload.regarding.name }}"
+        aaporg_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        aaporg_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Load AAP admin credentials from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_aap_admin_credentials.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aaporgs
+        cr_name: "{{ aaporg_cr_name }}"
+        cr_namespace: "{{ aaporg_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read AAPOrg CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: AAPOrg
+        name: "{{ aaporg_cr_name }}"
+        namespace: "{{ aaporg_cr_namespace }}"
+      register: _aaporg_cr
+
+    - name: Fail if AAPOrg CR is missing
+      ansible.builtin.fail:
+        msg: AAPOrg {{ aaporg_cr_name }} not found in {{ aaporg_cr_namespace }}
+      when: _aaporg_cr.resources | length == 0
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        aaporg_generation: "{{ _aaporg_cr.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Read AAPConfig CR
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: AAPConfig
+        name: "{{ aaporg_spec.aapConfig }}"
+        namespace: "{{ plugin_aap_config_namespace }}"
+      register: _aap_config
+
+    - name: Fail if AAPConfig not found
+      ansible.builtin.fail:
+        msg: "AAPConfig {{ aaporg_spec.aapConfig }} not found in {{ plugin_aap_config_namespace }}"
+      when: _aap_config.resources | length == 0
+
+    - name: Fail if AAPConfig not ready
+      ansible.builtin.fail:
+        msg: "AAPConfig {{ aaporg_spec.aapConfig }} is not ready"
+      when: not (_aap_config.resources[0].status.ready | default(false))
+
+    - name: Discover AAP gateway Route from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: sovereign-aap
+        namespace: aap
+      register: aap_gw_route
+
+    - name: Override aap_gateway_internal_url with discovered Route
+      ansible.builtin.set_fact:
+        aap_gateway_internal_url: "https://{{ aap_gw_route.resources[0].spec.host }}"
+      when: aap_gw_route.resources | length > 0
+
+    - name: Read entity Namespace
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ aaporg_cr_namespace }}"
+      register: aaporg_target_ns
+
+    - name: Assert namespace has entity label
+      ansible.builtin.assert:
+        that:
+          - aaporg_target_ns.resources | length > 0
+          - aaporg_target_ns.resources[0].metadata.labels is defined
+          - aaporg_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] is defined
+          - (aaporg_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | length) > 0
+        fail_msg: >-
+          Namespace '{{ aaporg_cr_namespace }}' must include a non-empty
+          label 'hybridsovereign.redhat/entity' referencing the owning Entity.
+
+    - name: Record entity name
+      ansible.builtin.set_fact:
+        entity_name: "{{ aaporg_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] }}"
+
+    - name: Set org name with entity prefix
+      ansible.builtin.set_fact:
+        org_name: "{{ entity_name }}-{{ aaporg_cr_name }}"
+
+    - name: Create organization via gateway API
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/gateway/v1/organizations/"
+        method: POST
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          name: "{{ org_name }}"
+          description: "Sovereign tenant org for entity {{ entity_name }}"
+        validate_certs: false
+        status_code: [200, 201, 400, 409]
+      register: _gw_org_create
+
+    - name: Fetch existing gateway org if creation conflicted
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/gateway/v1/organizations/?name={{ org_name | urlencode }}"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: _gw_org_lookup
+      when: _gw_org_create.status | default(0) not in [200, 201]
+
+    - name: Set gateway org ID
+      ansible.builtin.set_fact:
+        gw_org_id: >-
+          {{ _gw_org_create.json.id | default(
+             _gw_org_lookup.json.results[0].id
+             if (_gw_org_lookup is defined and _gw_org_lookup.json is defined and _gw_org_lookup.json.results | default([]) | length > 0)
+             else 0
+          ) | int }}
+
+    - name: Wait for org to sync to controller
+      ansible.builtin.pause:
+        seconds: 3
+      when: gw_org_id | int > 0
+
+    - name: Lookup controller org ID by name
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/organizations/?name={{ org_name | urlencode }}"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: _ctrl_org_lookup
+      retries: 5
+      delay: 3
+      until: _ctrl_org_lookup.json.count | default(0) > 0
+      when: gw_org_id | int > 0
+
+    - name: Set controller org ID
+      ansible.builtin.set_fact:
+        aap_org_id: "{{ _ctrl_org_lookup.json.results[0].id | default(0) | int }}"
+      when: gw_org_id | int > 0
+
+    - name: Default controller org ID when gateway failed
+      ansible.builtin.set_fact:
+        aap_org_id: 0
+      when: gw_org_id | int == 0
+
+    - name: Resolve admin RBAC groups from Rbac CRs
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ aaporg_cr_namespace }}"
+      register: _admin_rbac_crs
+      loop: "{{ aaporg_spec.aapAdminRbac | default([]) }}"
+
+    - name: Build admin group list
+      ansible.builtin.set_fact:
+        admin_groups: >-
+          {{ _admin_rbac_crs.results
+             | selectattr('resources', 'defined')
+             | map(attribute='resources')
+             | flatten
+             | selectattr('status.group', 'defined')
+             | map(attribute='status.group')
+             | list }}
+
+    - name: Resolve executor RBAC groups from Rbac CRs
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ aaporg_cr_namespace }}"
+      register: _exec_rbac_crs
+      loop: "{{ aaporg_spec.aapJobExecutorRbac | default([]) }}"
+
+    - name: Build executor group list
+      ansible.builtin.set_fact:
+        executor_groups: >-
+          {{ _exec_rbac_crs.results
+             | selectattr('resources', 'defined')
+             | map(attribute='resources')
+             | flatten
+             | selectattr('status.group', 'defined')
+             | map(attribute='status.group')
+             | list }}
+
+    - name: Resolve viewer RBAC groups from Rbac CRs
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ aaporg_cr_namespace }}"
+      register: _viewer_rbac_crs
+      loop: "{{ aaporg_spec.aapViewerRbac | default([]) }}"
+
+    - name: Build viewer group list
+      ansible.builtin.set_fact:
+        viewer_groups: >-
+          {{ _viewer_rbac_crs.results
+             | selectattr('resources', 'defined')
+             | map(attribute='resources')
+             | flatten
+             | selectattr('status.group', 'defined')
+             | map(attribute='status.group')
+             | list }}
+
+    - name: Get AAP authenticator ID from AAPConfig
+      ansible.builtin.set_fact:
+        aap_auth_id: "{{ _aap_config.resources[0].status.authMethodId | default('') }}"
+
+    - name: Configure teams, OIDC mappings, and role grants
+      ansible.builtin.include_tasks: teams_and_roles.yml
+
+    - name: Build team mapping summary string
+      ansible.builtin.set_fact:
+        team_mappings_str: "admins={{ org_name }}-admins executors={{ org_name }}-executors viewers={{ org_name }}-viewers adminGroups={{ admin_groups | join(',') }} executorGroups={{ executor_groups | join(',') }} viewerGroups={{ viewer_groups | join(',') }}"
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        aaporg_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update AAPOrg status as ready on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aaporgs
+        cr_name: "{{ aaporg_cr_name }}"
+        cr_namespace: "{{ aaporg_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ aaporg_generation }}"
+          lastReconciledAt: "{{ aaporg_status_transition_time }}"
+          orgId: "{{ aap_org_id | string }}"
+          orgName: "{{ org_name }}"
+          aapControllerUrl: "{{ aap_controller_url }}"
+          loginUrl: "{{ aap_gateway_url }}"
+          adminGroups: "{{ admin_groups }}"
+          executorGroups: "{{ executor_groups }}"
+          viewerGroups: "{{ viewer_groups }}"
+          authMethodId: "{{ aap_auth_id }}"
+          teamMappings: "{{ team_mappings_str }}"
+          entity: "{{ entity_name }}"
+          message: "Organization {{ org_name }} created with OIDC group mappings"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ aaporg_status_transition_time }}"
+              reason: EDASucceeded
+              message: AAPOrg {{ aaporg_cr_name }} provisioned by EDA
+
+  rescue:
+    - name: Mark AAPOrg as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aaporgs
+        cr_name: "{{ aaporg_cr_name }}"
+        cr_namespace: "{{ aaporg_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "AAPOrg {{ aaporg_cr_name | default('unknown') }} EDA provisioning failed"

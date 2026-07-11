@@ -1,0 +1,14 @@
+---
+- name: VaultKV Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle VaultKV Create
+      condition: event.payload.reason in ["VaultKVCreateRequested", "VaultKVReconcileRequested"] and event.payload.regarding.kind == "VaultKV"
+      action:
+        run_playbook:
+          name: vaultkv-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

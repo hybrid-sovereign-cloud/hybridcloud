@@ -1,0 +1,118 @@
+---
+# Deploy destination conversion host on CloudOSO without VDDK library validation.
+# Performs network reachability checks only; full VDDK install tests are deferred.
+- name: Validate migration connectivity
+  hosts: migrator
+  connection: local
+  gather_facts: false
+  vars:
+    runner_from_aee: true
+    os_migrate_data_dir: "{{ os_migrate_vmw_data_dir | default('/tmp/os-migrate') }}"
+  tasks:
+    - name: Assert VMware vCenter host is defined
+      ansible.builtin.assert:
+        that:
+          - vcenter_hostname is defined
+          - vcenter_hostname | length > 0
+        fail_msg: vcenter_hostname must be set from OpenStackMigration plan or Vault.
+
+    - name: Assert OpenStack clouds.yaml is available
+      ansible.builtin.assert:
+        that:
+          - os_migrate_clouds_path is defined
+          - os_migrate_clouds_path | length > 0
+        fail_msg: os_migrate_clouds_path must be set by migration_cr_handler.
+
+    - name: Check VMware vCenter HTTPS reachability
+      ansible.builtin.uri:
+        url: "https://{{ vcenter_hostname }}/sdk"
+        method: GET
+        validate_certs: false
+        status_code: [200, 301, 302, 401, 403, 404, 500]
+        timeout: 30
+      register: vcenter_reachability
+      failed_when: false
+
+    - name: Fail when vCenter is unreachable
+      ansible.builtin.fail:
+        msg: >-
+          Cannot reach VMware vCenter at {{ vcenter_hostname }}
+          (status={{ vcenter_reachability.status | default('connection failed') }}).
+      when: vcenter_reachability.status is not defined or vcenter_reachability.status == -1
+
+    - name: Load clouds.yaml for connectivity check
+      ansible.builtin.slurp:
+        src: "{{ os_migrate_clouds_path }}"
+      register: migration_clouds_slurp
+
+    - name: Parse clouds.yaml
+      ansible.builtin.set_fact:
+        migration_clouds_data: "{{ migration_clouds_slurp.content | b64decode | from_yaml }}"
+
+    - name: Resolve Keystone auth URL
+      ansible.builtin.set_fact:
+        migration_keystone_url: >-
+          {{
+            migration_clouds_data.clouds[os_migrate_dst_cloud_name | default('openstack')].auth.auth_url
+            | default(migration_clouds_data.clouds.values() | map(attribute='auth') | map(attribute='auth_url') | first)
+          }}
+
+    - name: Check OpenStack identity endpoint reachability
+      ansible.builtin.uri:
+        url: "{{ migration_keystone_url }}"
+        method: GET
+        validate_certs: false
+        status_code: [200, 300, 401, 403, 404, 501]
+        timeout: 30
+      register: openstack_reachability
+      failed_when: false
+
+    - name: Fail when OpenStack API is unreachable
+      ansible.builtin.fail:
+        msg: "Cannot reach OpenStack identity at {{ migration_keystone_url }}"
+      when: openstack_reachability.status is not defined or openstack_reachability.status == -1
+
+- name: Deploy destination conversion host (no VDDK content)
+  hosts: migrator
+  connection: local
+  gather_facts: false
+  environment:
+    OS_CLIENT_CONFIG_FILE: "{{ os_migrate_clouds_path }}"
+  vars:
+    os_migrate_deploy_src_conversion_host: false
+    os_migrate_link_conversion_hosts: false
+    os_migrate_conversion_host_content_install: false
+    os_migrate_reboot_conversion_hosts: false
+    os_migrate_dst_conversion_host_name: "{{ conversion_host_name | default('sovereign-conv-host') }}"
+    os_migrate_dst_conversion_manage_network: "{{ conversion_host_manage_network | default(true) }}"
+    os_migrate_dst_conversion_manage_fip: "{{ conversion_host_manage_fip | default(true) }}"
+    os_migrate_dst_conversion_external_network_name: "{{ conversion_host_external_network | default('') }}"
+    os_migrate_dst_conversion_flavor_name: "{{ conversion_host_flavor | default('') }}"
+    os_migrate_dst_conversion_net_name: "{{ conversion_host_network | default('sovereign-migrate-net') }}"
+  tasks:
+    - name: Deploy destination conversion host instance
+      ansible.builtin.include_role:
+        name: os_migrate.os_migrate.conversion_host
+      vars:
+        os_migrate_conversion_host_name: "{{ os_migrate_dst_conversion_host_name }}"
+        os_migrate_conversion_cloud: dst
+        os_migrate_conversion_image_name: "{{ conversion_host_image | default('os_migrate_conv') }}"
+        os_migrate_conversion_net_name: "{{ os_migrate_dst_conversion_net_name }}"
+        os_migrate_conversion_subnet_name: "{{ conversion_host_subnet | default(os_migrate_dst_conversion_net_name) }}"
+        os_migrate_conversion_router_name: "{{ conversion_host_router | default(os_migrate_dst_conversion_net_name) }}"
+        os_migrate_conversion_secgroup_name: "{{ conversion_host_secgroup | default(os_migrate_dst_conversion_net_name) }}"
+        os_migrate_conversion_keypair_name: "{{ conversion_host_keypair | default('sovereign-migrate') }}"
+        os_migrate_conversion_external_network_name: "{{ os_migrate_dst_conversion_external_network_name }}"
+        os_migrate_conversion_manage_network: "{{ os_migrate_dst_conversion_manage_network }}"
+        os_migrate_conversion_manage_fip: "{{ os_migrate_dst_conversion_manage_fip }}"
+        os_migrate_conversion_flavor_name: "{{ os_migrate_dst_conversion_flavor_name if (os_migrate_dst_conversion_flavor_name | length > 0) else omit }}"
+
+    - name: Wait for conversion host SSH
+      ansible.builtin.wait_for:
+        host: "{{ hostvars['os_migrate_conv_dst']['ansible_ssh_host'] | default(conversion_host_address) }}"
+        port: 22
+        search_regex: OpenSSH
+        timeout: 600
+      when:
+        - hostvars.get('os_migrate_conv_dst', {}).get('ansible_ssh_host') is defined
+          or conversion_host_address is defined

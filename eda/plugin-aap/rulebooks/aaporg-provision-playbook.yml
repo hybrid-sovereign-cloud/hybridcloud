@@ -1,0 +1,7 @@
+---
+- name: AAPOrg Provision Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - aaporg_provision

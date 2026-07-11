@@ -1,0 +1,11 @@
+---
+controller_inventories:
+  - name: sovereign-localhost
+    organization: sovereign
+
+controller_hosts:
+  - name: localhost
+    inventory: sovereign-localhost
+    variables:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ '{{' }} ansible_playbook_python {{ '}}' }}"

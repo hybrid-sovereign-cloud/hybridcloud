@@ -1,0 +1,16 @@
+- name: QuayConfig Delete Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle QuayConfig Delete
+    condition: event.payload.reason == "QuayConfigDeleteRequested" and event.payload.regarding.kind
+      == "QuayConfig"
+    action:
+      run_job_template:
+        name: quayconfig-teardown
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

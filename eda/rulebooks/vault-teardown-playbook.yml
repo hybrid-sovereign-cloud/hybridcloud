@@ -1,0 +1,7 @@
+---
+- name: Vault Teardown Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - vault_teardown

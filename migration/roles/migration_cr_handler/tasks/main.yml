@@ -1,0 +1,228 @@
+---
+- block:
+    - name: Parse event payload when launched from EDA
+      ansible.builtin.set_fact:
+        migration_cr_name: "{{ event_payload.regarding.name }}"
+        migration_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        migration_event_spec: "{{ event_payload.note | from_json }}"
+        ansible_operator_meta:
+          name: "{{ event_payload.regarding.name }}"
+          namespace: "{{ event_payload.regarding.namespace }}"
+      when: event_payload is defined
+
+    - name: Use direct CR coordinates when not event-driven
+      ansible.builtin.set_fact:
+        migration_cr_name: "{{ migration_cr_name | default(ansible_operator_meta.name) }}"
+        migration_cr_namespace: "{{ migration_cr_namespace | default(ansible_operator_meta.namespace) }}"
+      when: event_payload is not defined
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ migration_common_tasks_path }}/resolve_services_cluster_connection.yml"
+
+    - name: Resolve central cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ migration_common_tasks_path }}/resolve_central_cluster_connection.yml"
+
+    - name: Read OpenStackMigration CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: OpenStackMigration
+        name: "{{ migration_cr_name }}"
+        namespace: "{{ migration_cr_namespace }}"
+      register: migration_cr_lookup
+
+    - name: Fail if OpenStackMigration CR is missing
+      ansible.builtin.fail:
+        msg: OpenStackMigration {{ migration_cr_name }} not found in {{ migration_cr_namespace }}
+      when: migration_cr_lookup.resources | length == 0
+
+    - name: Extract migration spec and plan from CR
+      ansible.builtin.set_fact:
+        migration_generation: "{{ migration_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+        migration_spec: "{{ migration_cr_lookup.resources[0].spec | default({}) }}"
+        migration_plan: "{{ migration_cr_lookup.resources[0].spec.plan | default({}) }}"
+        migration_source: "{{ migration_cr_lookup.resources[0].spec.source | default('') }}"
+        migration_vm_name: "{{ migration_cr_lookup.resources[0].spec.vmName | default('') }}"
+        migration_cloudoso_name: "{{ migration_cr_lookup.resources[0].spec.cloudoso | default('') }}"
+        migration_vmware_vault_path: >-
+          {{
+            migration_cr_lookup.resources[0].spec.plan.source.credentialsSecret
+            | default(default_vmware_vault_path)
+          }}
+        migration_target_project: "{{ migration_cr_lookup.resources[0].spec.plan.targetProject | default('') }}"
+        migration_deploy_conversion_host: >-
+          {{
+            migration_cr_lookup.resources[0].spec.plan.conversionHost.deploy
+            | default(true)
+            | bool
+          }}
+        migration_phase_history: "{{ migration_cr_lookup.resources[0].status.phases | default([]) }}"
+
+    - name: Overlay event note spec when operator emitted partial payload
+      ansible.builtin.set_fact:
+        migration_spec: "{{ migration_spec | combine(migration_event_spec, recursive=True) }}"
+        migration_plan: "{{ migration_plan | combine(migration_event_spec.plan | default({}), recursive=True) }}"
+      when:
+        - migration_event_spec is defined
+        - migration_event_spec | length > 0
+
+    - name: Read CloudOSO CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: CloudOSO
+        name: "{{ migration_cloudoso_name }}"
+        namespace: "{{ migration_cr_namespace }}"
+      register: cloudoso_cr_lookup
+
+    - name: Fail if target CloudOSO CR is missing
+      ansible.builtin.fail:
+        msg: >-
+          CloudOSO {{ migration_cloudoso_name }} not found in {{ migration_cr_namespace }}.
+          Provision CloudOSO before migration.
+      when: cloudoso_cr_lookup.resources | length == 0
+
+    - name: Set CloudOSO spec facts
+      ansible.builtin.set_fact:
+        cloudoso_spec: "{{ cloudoso_cr_lookup.resources[0].spec | default({}) }}"
+        cloudoso_status: "{{ cloudoso_cr_lookup.resources[0].status | default({}) }}"
+
+    - name: Resolve VMware credentials from Vault
+      ansible.builtin.include_tasks: resolve_vmware_credentials.yml
+
+    - name: Resolve CloudOSO OpenStack credentials from Vault
+      ansible.builtin.include_tasks: resolve_cloudoso_credentials.yml
+
+    - name: Build os-migrate variable bundle from CR plan
+      ansible.builtin.include_tasks: build_migration_vars.yml
+
+    - name: Record validating phase
+      ansible.builtin.set_fact:
+        migration_phase_history: >-
+          {{
+            migration_phase_history
+            + [{
+                'name': 'validating',
+                'status': 'running',
+                'startedAt': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z'),
+                'message': 'Resolved VMware and CloudOSO credentials'
+              }]
+          }}
+
+    - name: Patch CR status — validating
+      ansible.builtin.include_tasks: patch_migration_phase.yml
+      vars:
+        migration_phase: validating
+        migration_lifecycle_status: reconciling
+        migration_phase_message: Resolved VMware and CloudOSO credentials from Vault
+
+    - name: Deploy conversion host without VDDK when plan requests it
+      ansible.builtin.command: >-
+        ansible-playbook
+        -i {{ migration_inventory }}
+        {{ migration_playbooks_dir }}/conversion-host-deploy.yml
+        -e @{{ migration_vars_file }}
+      register: conversion_host_deploy
+      changed_when: conversion_host_deploy.rc == 0
+      when:
+        - migration_deploy_conversion_host | bool
+        - not (migration_dry_run | bool)
+
+    - name: Patch CR status — deployingConversionHost
+      ansible.builtin.include_tasks: patch_migration_phase.yml
+      vars:
+        migration_phase: deployingConversionHost
+        migration_lifecycle_status: reconciling
+        migration_phase_message: Conversion host deployed (network checks only; VDDK deferred)
+      when:
+        - migration_deploy_conversion_host | bool
+        - not (migration_dry_run | bool)
+
+    - name: Run VMware-to-CloudOSO migration playbook
+      ansible.builtin.command: >-
+        ansible-playbook
+        -i {{ migration_inventory }}
+        {{ migration_playbooks_dir }}/vmware-to-cloudoso.yml
+        -e @{{ migration_vars_file }}
+      register: migration_playbook_run
+      changed_when: migration_playbook_run.rc == 0
+      when: not (migration_dry_run | bool)
+
+    - name: Patch CR status — importingWorkloads
+      ansible.builtin.include_tasks: patch_migration_phase.yml
+      vars:
+        migration_phase: importingWorkloads
+        migration_lifecycle_status: reconciling
+        migration_phase_message: Migration playbook completed; workload import phase recorded
+      when: not (migration_dry_run | bool)
+
+    - name: Get completion timestamp
+      ansible.builtin.set_fact:
+        migration_status_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+        migration_final_phases: >-
+          {{
+            migration_phase_history
+            + [
+              {
+                'name': 'ready',
+                'status': 'succeeded',
+                'startedAt': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z'),
+                'completedAt': lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z'),
+                'message': 'Migration workflow completed (VDDK tests deferred)'
+              }
+            ]
+          }}
+
+    - name: Mark OpenStackMigration ready
+      ansible.builtin.include_tasks: "{{ migration_common_tasks_path }}/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: openstackmigrations
+        cr_name: "{{ migration_cr_name }}"
+        cr_namespace: "{{ migration_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          phase: ready
+          ready: true
+          observedGeneration: "{{ migration_generation }}"
+          lastReconciledAt: "{{ migration_status_time }}"
+          source: "{{ migration_source }}"
+          vmName: "{{ migration_vm_name }}"
+          cloudoso: "{{ migration_cloudoso_name }}"
+          targetProject: "{{ migration_target_project | default(cloudoso_status.projectName | default('')) }}"
+          migrationMethod: "{{ migration_plan.migrationMethod | default('nbdkit') }}"
+          message: >-
+            Migration workflow completed for VM {{ migration_vm_name }}
+            to CloudOSO {{ migration_cloudoso_name }} (VDDK validation deferred).
+          phases: "{{ migration_final_phases }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ migration_status_time }}"
+              reason: EDASucceeded
+              message: Migration workflow completed
+
+  rescue:
+    - name: Mark OpenStackMigration failed
+      ansible.builtin.include_tasks: "{{ migration_common_tasks_path }}/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: openstackmigrations
+        cr_name: "{{ migration_cr_name | default('unknown') }}"
+        cr_namespace: "{{ migration_cr_namespace | default('unknown') }}"
+        cr_status_body:
+          status: failed
+          phase: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('Migration job failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise migration failure
+      ansible.builtin.fail:
+        msg: "OpenStackMigration {{ migration_cr_name | default('unknown') }} migration failed"

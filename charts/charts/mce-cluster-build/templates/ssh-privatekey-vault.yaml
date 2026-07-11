@@ -1,0 +1,20 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ .Values.cluster.name }}-ssh-key
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: {{ .Values.secretStoreName | default "vault-backend" }}
+  target:
+    name: {{ .Values.cluster.name }}-ssh-key
+    creationPolicy: Owner
+  data:
+    - secretKey: ssh-privatekey
+      remoteRef:
+        key: {{ .Values.cluster.sshKeyVault }}
+        property: ssh_private_key

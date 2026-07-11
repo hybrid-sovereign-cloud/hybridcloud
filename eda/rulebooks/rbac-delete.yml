@@ -1,0 +1,16 @@
+- name: Rbac Delete Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Rbac Delete
+    condition: event.payload.reason == "RbacDeleteRequested" and event.payload.regarding.kind
+      == "Rbac"
+    action:
+      run_job_template:
+        name: rbac-teardown
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

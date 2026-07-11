@@ -1,0 +1,72 @@
+{{- if and (include "sovereign-central.applicationsEnabled" .) .Values.clusterBuilds.enabled }}
+---
+# ApplicationSet: cluster-builds-clusters
+#
+# Multi-source ApplicationSet for Hive/MCE cluster deployments.
+# Chart is sourced from the sovereign charts repo; values from cluster_builds.
+# Helpers write builds/<provider>/<slug>/build.yaml plus helm_values/build-values.yaml.
+#
+# Schema (builds/{aws,oso}/<name>/build.yaml):
+#   app:
+#     name: <string>                          # ArgoCD Application name, e.g. ocp-qwert
+#     chartsTargetRevision: <string>          # charts repo branch/tag, default: main
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cluster-builds-clusters
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-central.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.clusterBuilds.syncWave | default "50" | quote }}
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=zero
+  generators:
+    - git:
+        repoURL: {{ .Values.clusterBuilds.repoURL | quote }}
+        revision: HEAD
+        files:
+          - path: "builds/aws/*/build.yaml"
+          - path: "builds/oso/*/build.yaml"
+  template:
+    metadata:
+      name: "{{ "{{" }}.app.name{{ "}}" }}"
+      namespace: {{ .Values.argocd.namespace }}
+      labels:
+        app.kubernetes.io/part-of: hybrid-sovereign-cloud
+        app.kubernetes.io/managed-by: cluster-builds-clusters-appset
+        cluster-build: "true"
+    spec:
+      project: cluster-builds
+      sources:
+        - repoURL: {{ .Values.clusterBuilds.chartsRepoURL | quote }}
+          chart: {{ .Values.clusterBuilds.mceChartName | quote }}
+          targetRevision: {{ .Values.clusterBuilds.mceChartVersion | quote }}
+          helm:
+            releaseName: "{{ "{{" }}.app.name{{ "}}" }}"
+            valueFiles:
+              - "$values/{{ "{{" }}index .path.segments 0{{ "}}" }}/{{ "{{" }}index .path.segments 1{{ "}}" }}/{{ "{{" }}index .path.segments 2{{ "}}" }}/helm_values/build-values.yaml"
+        - repoURL: {{ .Values.clusterBuilds.repoURL | quote }}
+          ref: values
+          targetRevision: HEAD
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: openshift-gitops
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 10m
+{{- end }}

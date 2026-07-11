@@ -1,0 +1,235 @@
+---
+- name: Check ClusterDeployment installation status
+  kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
+    api_version: hive.openshift.io/v1
+    kind: ClusterDeployment
+    name: "{{ cb_cluster_name }}"
+    namespace: "{{ cb_cluster_name }}"
+  register: cd_info
+  ignore_errors: true
+
+- name: Set cluster installed flag
+  ansible.builtin.set_fact:
+    cb_cluster_installed: "{{ cd_info.resources | default([]) | length > 0 and (cd_info.resources[0].spec.installed | default(false) | bool) }}"
+    cb_admin_kubeconfig_secret: "{{ (cd_info.resources[0].spec.clusterMetadata.adminKubeconfigSecretRef.name | default('')) if (cd_info.resources | default([]) | length > 0) else '' }}"
+    cb_admin_password_secret: "{{ (cd_info.resources[0].spec.clusterMetadata.adminPasswordSecretRef.name | default('')) if (cd_info.resources | default([]) | length > 0) else '' }}"
+    cb_console_url: "{{ (cd_info.resources[0].status.webConsoleURL | default('')) if (cd_info.resources | default([]) | length > 0) else '' }}"
+    cb_power_state: "{{ (cd_info.resources[0].status.powerState | default('Unknown')) if (cd_info.resources | default([]) | length > 0) else 'Unknown' }}"
+    cb_install_version: "{{ (cd_info.resources[0].status.installVersion | default('')) if (cd_info.resources | default([]) | length > 0) else '' }}"
+    cb_provision_status: >-
+      {{ (cd_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'Provisioned')
+          | map(attribute='reason') | first | default('Unknown'))
+         if (cd_info.resources | default([]) | length > 0) else 'Unknown' }}
+    cb_cluster_ready: >-
+      {{ (cd_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'Ready')
+          | map(attribute='status') | first | default('Unknown'))
+         if (cd_info.resources | default([]) | length > 0) else 'Unknown' }}
+
+- name: Check ManagedCluster ACM status
+  kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
+    api_version: cluster.open-cluster-management.io/v1
+    kind: ManagedCluster
+    name: "{{ cb_cluster_name }}"
+  register: mc_info
+  ignore_errors: true
+
+- name: Extract ACM managed cluster info
+  ansible.builtin.set_fact:
+    cb_acm_available: >-
+      {{ (mc_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'ManagedClusterConditionAvailable')
+          | map(attribute='status') | first | default('Unknown'))
+         if (mc_info.resources | default([]) | length > 0) else 'Unknown' }}
+    cb_acm_joined: >-
+      {{ (mc_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'ManagedClusterJoined')
+          | map(attribute='status') | first | default('Unknown'))
+         if (mc_info.resources | default([]) | length > 0) else 'Unknown' }}
+    cb_cluster_version: >-
+      {{ (mc_info.resources[0].status.clusterClaims | default([])
+          | selectattr('name', 'equalto', 'version.openshift.io')
+          | map(attribute='value') | first | default(''))
+         if (mc_info.resources | default([]) | length > 0) else (cb_install_version | default('')) }}
+
+- name: Create PushSecrets for cluster credentials
+  when: cb_cluster_installed | bool
+  block:
+    - name: Vault path prefix for cluster secrets
+      ansible.builtin.set_fact:
+        cb_vault_cluster_path: "cluster/oso/{{ cb_app_name }}"
+
+    - name: PushSecret — admin kubeconfig
+      kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          metadata:
+            name: "{{ cb_app_name }}-push-kubeconfig"
+            namespace: "{{ cb_cluster_name }}"
+            labels:
+              app.kubernetes.io/managed-by: eda-platformopenshift
+              platformopenshift: "{{ cb_cluster_name }}"
+          spec:
+            refreshInterval: 1h
+            secretStoreRefs:
+              - name: vault-backend
+                kind: ClusterSecretStore
+            selector:
+              secret:
+                name: "{{ cb_admin_kubeconfig_secret }}"
+            data:
+              - match:
+                  secretKey: kubeconfig
+                  remoteRef:
+                    remoteKey: "{{ cb_vault_cluster_path }}/admin-kubeconfig"
+                    property: kubeconfig
+              - match:
+                  secretKey: raw-kubeconfig
+                  remoteRef:
+                    remoteKey: "{{ cb_vault_cluster_path }}/admin-kubeconfig"
+                    property: raw-kubeconfig
+      when: cb_admin_kubeconfig_secret != ''
+
+    - name: PushSecret — admin password
+      kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          metadata:
+            name: "{{ cb_app_name }}-push-admin-password"
+            namespace: "{{ cb_cluster_name }}"
+            labels:
+              app.kubernetes.io/managed-by: eda-platformopenshift
+              platformopenshift: "{{ cb_cluster_name }}"
+          spec:
+            refreshInterval: 1h
+            secretStoreRefs:
+              - name: vault-backend
+                kind: ClusterSecretStore
+            selector:
+              secret:
+                name: "{{ cb_admin_password_secret }}"
+            data:
+              - match:
+                  secretKey: username
+                  remoteRef:
+                    remoteKey: "{{ cb_vault_cluster_path }}/admin-password"
+                    property: username
+              - match:
+                  secretKey: password
+                  remoteRef:
+                    remoteKey: "{{ cb_vault_cluster_path }}/admin-password"
+                    property: password
+      when: cb_admin_password_secret != ''
+
+    - name: PushSecret — SSH private key
+      kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          metadata:
+            name: "{{ cb_app_name }}-push-ssh-key"
+            namespace: "{{ cb_cluster_name }}"
+            labels:
+              app.kubernetes.io/managed-by: eda-platformopenshift
+              platformopenshift: "{{ cb_cluster_name }}"
+          spec:
+            refreshInterval: 1h
+            secretStoreRefs:
+              - name: vault-backend
+                kind: ClusterSecretStore
+            selector:
+              secret:
+                name: "{{ cb_cluster_name }}-ssh-key"
+            data:
+              - match:
+                  secretKey: ssh-privatekey
+                  remoteRef:
+                    remoteKey: "{{ cb_vault_cluster_path }}/ssh-key"
+                    property: ssh-privatekey
+
+    - name: PushSecret — install config
+      kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: external-secrets.io/v1alpha1
+          kind: PushSecret
+          metadata:
+            name: "{{ cb_app_name }}-push-install-config"
+            namespace: "{{ cb_cluster_name }}"
+            labels:
+              app.kubernetes.io/managed-by: eda-platformopenshift
+              platformopenshift: "{{ cb_cluster_name }}"
+          spec:
+            refreshInterval: 1h
+            secretStoreRefs:
+              - name: vault-backend
+                kind: ClusterSecretStore
+            selector:
+              secret:
+                name: "{{ cb_cluster_name }}-install-config"
+            data:
+              - match:
+                  secretKey: install-config.yaml
+                  remoteRef:
+                    remoteKey: "{{ cb_vault_cluster_path }}/install-config"
+                    property: install-config.yaml
+
+    - name: Update status with secrets pushed flag
+      ansible.builtin.set_fact:
+        cb_secrets_pushed: true
+
+- name: Set secrets pushed to false if not installed
+  ansible.builtin.set_fact:
+    cb_secrets_pushed: false
+  when: not (cb_cluster_installed | bool)
+
+- name: Apply basechart:true label to ManagedCluster
+  kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
+    state: patched
+    api_version: cluster.open-cluster-management.io/v1
+    kind: ManagedCluster
+    name: "{{ cb_cluster_name }}"
+    definition:
+      metadata:
+        labels:
+          basechart: "true"
+  ignore_errors: true
+
+- name: Set clusterbuild output facts
+  ansible.builtin.set_fact:
+    cb_app_name: "{{ cb_app_name }}"
+    cb_api_url: "https://api.{{ cb_cluster_name }}.{{ cb_cluster_domain }}:6443"
+    cb_apps_url: "*.apps.{{ cb_cluster_name }}.{{ cb_cluster_domain }}"
+    cb_base_domain: "{{ cb_cluster_domain }}"
+    cb_admin_password_vault: "{{ cb_vault_cluster_path | default('cluster/oso/' + cb_app_name) }}/admin-password"
+    cb_kubeconfig_vault: "{{ cb_vault_cluster_path | default('cluster/oso/' + cb_app_name) }}/admin-kubeconfig"
+    cb_secrets_vault_path: "{{ cb_vault_cluster_path | default('cluster/oso/' + cb_app_name) }}"
+    cb_cluster_health: "{{ 'Healthy' if (cb_cluster_ready | default('Unknown') | trim == 'True') else 'Degraded' if (cb_cluster_installed | bool) else 'Provisioning' }}"
+    cb_acm_available: "{{ (cb_acm_available | default('False') | trim) in ['True', 'true'] }}"

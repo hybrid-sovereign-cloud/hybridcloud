@@ -1,0 +1,14 @@
+---
+- name: AAPOrg Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle AAPOrg Create
+      condition: event.payload.reason in ["AAPOrgCreateRequested", "AAPOrgReconcileRequested"] and event.payload.regarding.kind == "AAPOrg"
+      action:
+        run_playbook:
+          name: aaporg-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

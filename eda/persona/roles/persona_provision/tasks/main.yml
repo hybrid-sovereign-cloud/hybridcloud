@@ -1,0 +1,122 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        persona_cr_name: "{{ event_payload.regarding.name }}"
+        persona_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        persona_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: personas
+        cr_name: "{{ persona_cr_name }}"
+        cr_namespace: "{{ persona_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read Persona CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Persona
+        name: "{{ persona_cr_name }}"
+        namespace: "{{ persona_cr_namespace }}"
+      register: persona_cr_lookup
+
+    - name: Fail if Persona CR is missing on services cluster
+      ansible.builtin.fail:
+        msg: Persona CR {{ persona_cr_name }} not found in {{ persona_cr_namespace }}
+      when: persona_cr_lookup.resources | length == 0
+
+    - name: Set derived facts from CR spec
+      ansible.builtin.set_fact:
+        persona_generation: "{{ persona_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+        persona_rbac_ref: "{{ persona_spec.rbac }}"
+        persona_type: "{{ persona_spec.type }}"
+
+    - name: Read referenced Rbac CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ persona_rbac_ref }}"
+        namespace: "{{ persona_cr_namespace }}"
+      register: rbac_cr_lookup
+
+    - name: Fail if Rbac CR is missing
+      ansible.builtin.fail:
+        msg: Rbac CR {{ persona_rbac_ref }} not found in {{ persona_cr_namespace }}
+      when: rbac_cr_lookup.resources | length == 0
+
+    - name: Set Keycloak group from Rbac CR
+      ansible.builtin.set_fact:
+        keycloak_group: "{{ rbac_cr_lookup.resources[0].status.group | default('') }}"
+
+    - name: Verify Rbac CR has a group
+      ansible.builtin.assert:
+        that:
+          - keycloak_group | length > 0
+        fail_msg: "Rbac CR {{ persona_rbac_ref }} does not have status.group set"
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        persona_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update Persona status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: personas
+        cr_name: "{{ persona_cr_name }}"
+        cr_namespace: "{{ persona_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ persona_generation }}"
+          lastReconciledAt: "{{ persona_status_transition_time }}"
+          keycloakGroup: "{{ keycloak_group }}"
+          message: "Persona {{ persona_type }} bound to group {{ keycloak_group }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ persona_status_transition_time }}"
+              reason: EDASucceeded
+              message: "Persona {{ persona_cr_name }} provisioned by EDA"
+
+  rescue:
+    - name: Mark Persona as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: personas
+        cr_name: "{{ persona_cr_name }}"
+        cr_namespace: "{{ persona_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "Persona {{ persona_cr_name | default('unknown') }} EDA provisioning failed"

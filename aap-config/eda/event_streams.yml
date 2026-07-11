@@ -1,0 +1,6 @@
+---
+eda_event_streams:
+  - name: sovereign-operator-events
+    credential_name: sovereign-operator-events-credential
+    organization: Default
+    forward_events: true

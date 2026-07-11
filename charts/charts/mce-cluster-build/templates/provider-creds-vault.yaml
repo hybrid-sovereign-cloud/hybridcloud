@@ -1,0 +1,38 @@
+{{- if .Values.provider.providerCredsVault -}}
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ .Values.cluster.name }}-provider-creds
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: {{ .Values.secretStoreName | default "vault-backend" }}
+  target:
+    name: {{ .Values.cluster.name }}-provider-creds
+    creationPolicy: Owner
+  {{- if eq .Values.provider.type "OpenStack" }}
+  data:
+    - secretKey: clouds.yaml
+      remoteRef:
+        key: {{ .Values.provider.providerCredsVault }}
+        property: clouds.yaml
+  {{- else if eq .Values.provider.aws.credentialsMode "Mint" }}
+  data:
+    - secretKey: aws_access_key_id
+      remoteRef:
+        key: {{ .Values.provider.providerCredsVault }}
+        property: {{ .Values.provider.aws.credentialsKeyAccessKeyId | default "aws_access_key_id" }}
+    - secretKey: aws_secret_access_key
+      remoteRef:
+        key: {{ .Values.provider.providerCredsVault }}
+        property: {{ .Values.provider.aws.credentialsKeySecretAccessKey | default "aws_secret_access_key" }}
+  {{- else }}
+  dataFrom:
+    - extract:
+        key: {{ .Values.provider.providerCredsVault }}
+  {{- end }}
+{{- end -}}

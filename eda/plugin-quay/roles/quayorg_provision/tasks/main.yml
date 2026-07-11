@@ -1,0 +1,335 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        quayorg_cr_name: "{{ event_payload.regarding.name }}"
+        quayorg_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        quayorg_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Load Quay admin credentials from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_quay_admin_credentials.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: quayorgs
+        cr_name: "{{ quayorg_cr_name }}"
+        cr_namespace: "{{ quayorg_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read QuayOrg CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: QuayOrg
+        name: "{{ quayorg_cr_name }}"
+        namespace: "{{ quayorg_cr_namespace }}"
+      register: _quayorg_cr
+
+    - name: Fail if QuayOrg CR is missing
+      ansible.builtin.fail:
+        msg: QuayOrg {{ quayorg_cr_name }} not found in {{ quayorg_cr_namespace }}
+      when: _quayorg_cr.resources | length == 0
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        quayorg_generation: "{{ _quayorg_cr.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Read QuayConfig
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: QuayConfig
+        name: "{{ quayorg_spec.quayConfig }}"
+        namespace: "{{ plugin_quay_config_namespace }}"
+      register: _quay_config
+
+    - name: Fail if QuayConfig not found
+      ansible.builtin.fail:
+        msg: "QuayConfig {{ quayorg_spec.quayConfig }} not found in {{ plugin_quay_config_namespace }}"
+      when: _quay_config.resources | length == 0
+
+    - name: Fail if QuayConfig not ready
+      ansible.builtin.fail:
+        msg: "QuayConfig {{ quayorg_spec.quayConfig }} is not ready"
+      when: not (_quay_config.resources[0].status.ready | default(false))
+
+    - name: Read entity Namespace
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ quayorg_cr_namespace }}"
+      register: quayorg_target_ns
+
+    - name: Assert namespace has entity label
+      ansible.builtin.assert:
+        that:
+          - quayorg_target_ns.resources | length > 0
+          - quayorg_target_ns.resources[0].metadata.labels is defined
+          - quayorg_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] is defined
+          - (quayorg_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | length) > 0
+        fail_msg: >-
+          Namespace '{{ quayorg_cr_namespace }}' must include a non-empty
+          label 'hybridsovereign.redhat/entity' referencing the owning Entity.
+
+    - name: Record entity name
+      ansible.builtin.set_fact:
+        entity_name: "{{ quayorg_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] }}"
+
+    - name: Set org name with entity prefix
+      ansible.builtin.set_fact:
+        org_name: "{{ entity_name }}-{{ quayorg_cr_name }}"
+
+    - name: Create organization in Quay
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          name: "{{ org_name }}"
+          email: "{{ org_name }}@sovereign.local"
+          description: "Sovereign tenant org for entity {{ entity_name }}"
+        validate_certs: false
+        status_code: [200, 201, 400]
+      register: _org_create
+      retries: 3
+      delay: 10
+      until: _org_create.status | default(0) != 503
+      ignore_errors: true
+
+    - name: Resolve admin RBAC groups
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ quayorg_cr_namespace }}"
+      register: _admin_rbac_crs
+      loop: "{{ quayorg_spec.quayAdminRbac | default([]) }}"
+
+    - name: Build admin group list
+      ansible.builtin.set_fact:
+        admin_groups: >-
+          {{ _admin_rbac_crs.results
+             | selectattr('resources', 'defined')
+             | map(attribute='resources') | flatten
+             | selectattr('status.group', 'defined')
+             | map(attribute='status.group') | list }}
+
+    - name: Resolve creator RBAC groups
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ quayorg_cr_namespace }}"
+      register: _creator_rbac_crs
+      loop: "{{ quayorg_spec.quayCreatorRbac | default([]) }}"
+
+    - name: Build creator group list
+      ansible.builtin.set_fact:
+        creator_groups: >-
+          {{ _creator_rbac_crs.results
+             | selectattr('resources', 'defined')
+             | map(attribute='resources') | flatten
+             | selectattr('status.group', 'defined')
+             | map(attribute='status.group') | list }}
+
+    - name: Resolve member RBAC groups
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ item }}"
+        namespace: "{{ quayorg_cr_namespace }}"
+      register: _member_rbac_crs
+      loop: "{{ quayorg_spec.quayMemberRbac | default([]) }}"
+
+    - name: Build member group list
+      ansible.builtin.set_fact:
+        member_groups: >-
+          {{ _member_rbac_crs.results
+             | selectattr('resources', 'defined')
+             | map(attribute='resources') | flatten
+             | selectattr('status.group', 'defined')
+             | map(attribute='status.group') | list }}
+
+    - name: Create admin team in Quay
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/{{ org_name }}/team/admins"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          role: admin
+          description: Admin team mapped from Keycloak RBAC groups
+        validate_certs: false
+        status_code: [200, 201, 400]
+      ignore_errors: true
+
+    - name: Create creator team in Quay
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/{{ org_name }}/team/creators"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          role: creator
+          description: Creator team mapped from Keycloak RBAC groups
+        validate_certs: false
+        status_code: [200, 201, 400]
+      ignore_errors: true
+
+    - name: Create member team in Quay
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/{{ org_name }}/team/members"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          role: member
+          description: Member team mapped from Keycloak RBAC groups
+        validate_certs: false
+        status_code: [200, 201, 400]
+      ignore_errors: true
+
+    - name: Sync admin team with OIDC group
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/{{ org_name }}/team/admins/syncing"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          group_dn: "{{ item }}"
+        validate_certs: false
+        status_code: [200, 201, 400]
+      loop: "{{ admin_groups }}"
+      when: admin_groups | length > 0
+      ignore_errors: true
+
+    - name: Sync creator team with OIDC group
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/{{ org_name }}/team/creators/syncing"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          group_dn: "{{ item }}"
+        validate_certs: false
+        status_code: [200, 201, 400]
+      loop: "{{ creator_groups }}"
+      when: creator_groups | length > 0
+      ignore_errors: true
+
+    - name: Sync member team with OIDC group
+      ansible.builtin.uri:
+        url: "{{ quay_url }}/api/v1/organization/{{ org_name }}/team/members/syncing"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ quay_api_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          group_dn: "{{ item }}"
+        validate_certs: false
+        status_code: [200, 201, 400]
+      loop: "{{ member_groups }}"
+      when: member_groups | length > 0
+      ignore_errors: true
+
+    - name: Build team summary as JSON string
+      ansible.builtin.set_fact:
+        team_summary: "{{ {'admins': admin_groups, 'creators': creator_groups, 'members': member_groups} | to_json }}"
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        quayorg_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update QuayOrg status as ready on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: quayorgs
+        cr_name: "{{ quayorg_cr_name }}"
+        cr_namespace: "{{ quayorg_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ quayorg_generation }}"
+          lastReconciledAt: "{{ quayorg_status_transition_time }}"
+          orgName: "{{ org_name }}"
+          quayUrl: "{{ quay_url }}"
+          orgUrl: "{{ quay_url }}/organization/{{ org_name }}"
+          loginUrl: "{{ quay_url }}/oauth/login?provider=oidc"
+          adminGroups: "{{ admin_groups }}"
+          creatorGroups: "{{ creator_groups }}"
+          memberGroups: "{{ member_groups }}"
+          teams: "{{ team_summary | string }}"
+          entity: "{{ entity_name }}"
+          message: "Quay org {{ org_name }} created with team-to-group mappings"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ quayorg_status_transition_time }}"
+              reason: EDASucceeded
+              message: QuayOrg {{ quayorg_cr_name }} provisioned by EDA
+
+  rescue:
+    - name: Mark QuayOrg as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: quayorgs
+        cr_name: "{{ quayorg_cr_name }}"
+        cr_namespace: "{{ quayorg_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "QuayOrg {{ quayorg_cr_name | default('unknown') }} EDA provisioning failed"

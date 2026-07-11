@@ -1,0 +1,1006 @@
+<!DOCTYPE html><html><head>
+      <title>DESIGN_UI_Existing</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="file:////home/gshankar/.vscode/extensions/shd101wyy.markdown-preview-enhanced-0.8.30/crossnote/dependencies/katex/katex.min.css">
+      
+      
+      
+      <script type="text/javascript" src="file:////home/gshankar/.vscode/extensions/shd101wyy.markdown-preview-enhanced-0.8.30/crossnote/dependencies/mermaid/mermaid.min.js" charset="UTF-8"></script>
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-details{margin:0;padding:0;border:none}.markdown-preview .md-toc summary.md-toc-link-wrapper{cursor:pointer;list-style-position:outside}.markdown-preview .md-toc summary.md-toc-link-wrapper::marker{font-size:.85em}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='0']{margin-left:12px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='1']{margin-left:28px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='2']{margin-left:44px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='3']{margin-left:60px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='4']{margin-left:76px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='5']{margin-left:80px}.markdown-preview a.tag,.markdown-preview a.tag:active,.markdown-preview a.tag:link,.markdown-preview a.tag:visited,.markdown-preview span.tag:not(.token){display:inline-block;background-color:var(--vscode-badge-background,rgba(127,127,127,.18));color:var(--vscode-badge-foreground,currentColor);border-radius:2em;font-size:.85em;font-weight:500;padding:.05em .55em;line-height:1.5;white-space:nowrap;text-decoration:none;text-shadow:none;box-shadow:none;transition:background-color .12s ease,opacity .12s ease}.markdown-preview a.tag{cursor:pointer}.markdown-preview a.tag:focus,.markdown-preview a.tag:hover{background-color:var(--vscode-badge-background,rgba(127,127,127,.32));color:var(--vscode-badge-foreground,currentColor);opacity:.85;text-decoration:none;outline:0}.markdown-preview .wikilink-embed-content{border-left:3px solid var(--vscode-textBlockQuote-border,rgba(128,128,128,.3));background:var(--vscode-textBlockQuote-background,rgba(128,128,128,.05));margin:.5em 0;padding:.5em .75em;border-radius:0 3px 3px 0}.markdown-preview .wikilink-embed-content.wikilink-embed-error{border-left-color:var(--vscode-errorForeground,#cf222e);color:var(--vscode-errorForeground,#cf222e);font-style:italic;opacity:.8}.markdown-preview .wikilink-embed-content h1:first-child,.markdown-preview .wikilink-embed-content h2:first-child,.markdown-preview .wikilink-embed-content h3:first-child,.markdown-preview .wikilink-embed-content h4:first-child,.markdown-preview .wikilink-embed-content h5:first-child,.markdown-preview .wikilink-embed-content h6:first-child{margin-top:.25em}.markdown-preview .wikilink-embed-content .wikilink-embed-content{margin:.25em 0;padding:.25em .5em}.markdown-preview .block-id{display:none}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));border:4px solid var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));background-clip:content-box}.scrollbar-style::-webkit-scrollbar-thumb:hover{background-color:var(--vscode-scrollbarSlider-hoverBackground,rgba(120,120,120,.66))}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));border:4px solid var(--vscode-scrollbarSlider-background,rgba(150,150,150,.66));background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb:hover{background-color:var(--vscode-scrollbarSlider-hoverBackground,rgba(120,120,120,.66))}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-details{margin:0;padding:0;border:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='0']{padding-left:0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='1']{padding-left:16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='2']{padding-left:32px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='3']{padding-left:48px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='4']{padding-left:64px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='5']{padding-left:80px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <!-- The content below will be included at the end of the <head> element. -->
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script>
+    </head>
+    <body for="html-export">
+      <div class="crossnote markdown-preview  ">
+      
+<h1 id="sovereign-cloud-uiux-design--existing-console-plugins">Sovereign Cloud UI/UX Design — Existing Console Plugins </h1>
+<p><strong>Role:</strong> Principal UI Architect<br>
+<strong>Scope:</strong> <code>user_dashboard</code> (Global Admin) and <code>tenancy_dashboard</code> (Tenant Admin)<br>
+<strong>Target aesthetic:</strong> OpenShift Console (PatternFly 5, admin perspective, native navigation)<br>
+<strong>Status:</strong> Design proposal — no code changes<br>
+<strong>Date:</strong> 2026-06-30</p>
+<hr>
+<h2 id="1-executive-summary">1. Executive Summary </h2>
+<p>Sovereign Cloud already ships two OpenShift Console dynamic plugins (<code>sovereign-admin-plugin</code>, <code>sovereign-tenant-plugin</code>) built on PatternFly 5 and <code>@openshift-console/dynamic-plugin-sdk</code>. The foundation is sound: console-native navigation, user OAuth token for all K8s calls, compact tables, status badges, and EDA job chips.</p>
+<p>The primary UX gap is <strong>cognitive load</strong>. Operators manage a graph of interdependent custom resources (Entity → Team/Project/Platform → Assignment → spoke provisioning) but the UI presents mostly <strong>flat tables</strong>. The redesign keeps the OpenShift Console shell and elevates <strong>live topology diagrams</strong>, <strong>reconciliation pipelines</strong>, and <strong>guided workflows</strong> so the interface reflects the underlying implementation rather than hiding it behind YAML.</p>
+<h3 id="design-north-stars">Design North Stars </h3>
+<table>
+<thead>
+<tr>
+<th>Principle</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Console-native</strong></td>
+<td>Feel like an OCP admin page: breadcrumbs, list/detail, tabs, status popovers, no custom chrome</td>
+</tr>
+<tr>
+<td><strong>Implementation-visible</strong></td>
+<td>CR dependency graph, EDA/AAP pipeline, and ArgoCD sync state are first-class UI elements</td>
+</tr>
+<tr>
+<td><strong>Scope-aware</strong></td>
+<td>Global admin = cluster-wide, no namespace filter. Tenant admin = entity namespace as primary context</td>
+</tr>
+<tr>
+<td><strong>Actionable health</strong></td>
+<td>Every red/yellow indicator links to root cause, logs, or the next remediation step</td>
+</tr>
+<tr>
+<td><strong>Progressive disclosure</strong></td>
+<td>Overview → list → detail → YAML; experts can go deep, novices stay guided</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="2-current-state-assessment">2. Current State Assessment </h2>
+<h3 id="21-technology-baseline-both-plugins">2.1 Technology baseline (both plugins) </h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Current</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Framework</td>
+<td>React + PatternFly 5</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td>OCP dynamic plugin (<code>console-extensions.json</code>, <code>consoleFetch</code>)</td>
+</tr>
+<tr>
+<td>Auth</td>
+<td>User bearer token via console proxy (no pod SA for user actions)</td>
+</tr>
+<tr>
+<td>Styling</td>
+<td><code>main.css</code> with PF CSS variables — dark mode compatible</td>
+</tr>
+<tr>
+<td>Shared patterns</td>
+<td><code>PageHeader</code>, <code>StatusBadge</code>, <code>EdaJobsChips</code>, <code>ForceReconcileButton</code>, <code>ResourceDetail</code> tabs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-global-admin-user_dashboard--today">2.2 Global Admin (<code>user_dashboard</code>) — today </h3>
+<p><strong>Navigation section:</strong> Sovereign Admin<br>
+<strong>Routes:</strong> Overview, Entities, Personas, Service URLs, Operators</p>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Strengths</th>
+<th>Gaps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Overview</strong></td>
+<td>Donut chart, cluster tiles, alerts table, per-kind health</td>
+<td>No topology view; alerts lack deep links; scroll-heavy single column</td>
+</tr>
+<tr>
+<td><strong>Entities</strong></td>
+<td>List + inline detail via <code>ResourceDetail</code>; create form</td>
+<td>No entity-scoped topology; delete uses <code>window.confirm</code></td>
+</tr>
+<tr>
+<td><strong>Personas</strong></td>
+<td>List pattern</td>
+<td>Read-only feel; weak link to Entity/Persona RBAC story</td>
+</tr>
+<tr>
+<td><strong>Service URLs</strong></td>
+<td>Multi-cluster routes + live HTTP health</td>
+<td>Card/table toggle missing; no cluster topology context</td>
+</tr>
+<tr>
+<td><strong>Operators</strong></td>
+<td>CSV grouping by category</td>
+<td>No link from degraded operator → affected CRs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-tenant-admin-tenancy_dashboard--today">2.3 Tenant Admin (<code>tenancy_dashboard</code>) — today </h3>
+<p><strong>Navigation section:</strong> Sovereign Cloud (Tenancy + Access Control separators)<br>
+<strong>Routes:</strong> 14 resource types + create/edit flows</p>
+<table>
+<thead>
+<tr>
+<th>Page</th>
+<th>Strengths</th>
+<th>Gaps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Overview</strong></td>
+<td>Namespace picker, kind stats, OIDC cluster cards</td>
+<td>Topology absent; Entity entry point is namespace dropdown only</td>
+</tr>
+<tr>
+<td><strong>Resource lists</strong></td>
+<td>Reusable <code>ResourceList</code>: auto-refresh, stat bar, detail drawer</td>
+<td>14 similar pages — no unified “my stack” view</td>
+</tr>
+<tr>
+<td><strong>Create forms</strong></td>
+<td>Dependency dropdowns (e.g. Assignment pulls Team/Project/Platform)</td>
+<td>Flat forms; no wizard; no live validation against CR readiness</td>
+</tr>
+<tr>
+<td><strong>Resource detail</strong></td>
+<td>Overview / Configuration / Conditions / YAML tabs</td>
+<td>No Related Resources tab; no pipeline diagram; no Events from K8s API</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24-underlying-implementation-the-ui-must-reflect">2.4 Underlying implementation the UI must reflect </h3>
+<p>From the platform architecture, the operator-facing mental model is:</p>
+<div class="mermaid">flowchart TD
+    Entity["Entity CR"]
+    NS["entity-namespace"]
+    Persona["Persona CR"]
+    Team["Team CR"]
+    Project["Project CR"]
+    PO["PlatformOpenshift CR"]
+    Cloud["CloudOSO / CloudAWS"]
+    Assign["Assignment CR"]
+    Rbac["Rbac CR"]
+    Vault["Vault / VaultKV"]
+    Spoke["Spoke cluster via RHACM"]
+
+    Entity --&gt; NS
+    NS --&gt; Persona
+    NS --&gt; Team
+    NS --&gt; Project
+    NS --&gt; PO
+    NS --&gt; Cloud
+    Cloud --&gt; PO
+    Team --&gt; Assign
+    Project --&gt; Assign
+    PO --&gt; Assign
+    Assign --&gt; Spoke
+    NS --&gt; Rbac
+    NS --&gt; Vault
+</div><p><strong>Automation path</strong> (what “EDA Jobs” chips represent):</p>
+<div class="mermaid">flowchart LR
+    CR["CR change"]
+    Op["Operator"]
+    Ev["K8s Event"]
+    Fwd["Event Forwarder"]
+    EDA["EDA Activation"]
+    AAP["AAP Job"]
+    Job["Ansible Job pod"]
+    Status["CR status update"]
+
+    CR --&gt; Op
+    Op --&gt; Ev
+    Ev --&gt; Fwd
+    Fwd --&gt; EDA
+    EDA --&gt; AAP
+    AAP --&gt; Job
+    Job --&gt; Status
+</div><p>The UI should make both graphs <strong>live</strong> — nodes colored from CR <code>status.ready</code>, edges from spec references, pipeline stages from <code>status.edaJobs</code> and conditions.</p>
+<hr>
+<h2 id="3-openshift-console-alignment-strategy">3. OpenShift Console Alignment Strategy </h2>
+<h3 id="31-visual-language">3.1 Visual language </h3>
+<p>Adopt OCP Console list/detail conventions explicitly:</p>
+<table>
+<thead>
+<tr>
+<th>OCP pattern</th>
+<th>Sovereign application</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ListPage</strong> layout</td>
+<td>Title left, actions right, filter bar below title</td>
+</tr>
+<tr>
+<td><strong>ResourceKebab</strong></td>
+<td>Reconcile, Edit, Delete in overflow menu on detail pages</td>
+</tr>
+<tr>
+<td><strong>StatusPopup</strong></td>
+<td>Hover on StatusBadge → conditions + last transition</td>
+</tr>
+<tr>
+<td><strong>Breadcrumbs</strong></td>
+<td>Use console breadcrumb extension where possible; fallback to PF breadcrumb matching OCP spacing</td>
+</tr>
+<tr>
+<td><strong>Label / LabelGroup</strong></td>
+<td>Kind, cluster, entity labels — same compact style as OCP</td>
+</tr>
+<tr>
+<td><strong>EmptyState</strong></td>
+<td>Illustrated empty states with primary CTA (already started in <code>ResourceList</code>)</td>
+</tr>
+<tr>
+<td><strong>Modal</strong></td>
+<td>Delete confirmation (tenant plugin); extend to global admin</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-layout-grid">3.2 Layout grid </h3>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>┌─────────────────────────────────────────────────────────────────┐
+│ OCP Global Header (existing)                                     │
+├──────────┬──────────────────────────────────────────────────────┤
+│ OCP Nav  │  [Namespace bar — tenant only]                        │
+│          │  Breadcrumb &gt; Resource name                           │
+│ Sovereign│  ┌─────────────────────────────────────────────────┐ │
+│ section  │  │ Page title          [Refresh] [Create] [⋮]      │ │
+│          │  ├─────────────────────────────────────────────────┤ │
+│          │  │ Filter / tabs                                     │ │
+│          │  │ ┌──────────────────────┬──────────────────────┐  │ │
+│          │  │ │ Primary content      │ Context panel (opt)  │  │ │
+│          │  │ │ table | diagram      │ related resources    │  │ │
+│          │  │ └──────────────────────┴──────────────────────┘  │ │
+│          └──────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre><ul>
+<li><strong>Max content width:</strong> keep <code>1400px</code> (current <code>.sc-page</code>) — matches OCP admin pages.</li>
+<li><strong>No custom sidebar</strong> inside plugins — rely on OCP nav from <code>console-extensions.json</code>.</li>
+<li><strong>Dark mode:</strong> continue using <code>--pf-v5-global--*</code> tokens only; avoid hardcoded grays.</li>
+</ul>
+<h3 id="33-navigation-ia-improvements">3.3 Navigation IA improvements </h3>
+<p><strong>Global Admin</strong> — add secondary structure without new top-level noise:</p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>Sovereign Admin
+├── Overview          ← platform health + topology summary
+├── Entities          ← tenant onboarding
+├── Personas          ← global persona templates / cross-entity view
+├── ── Platform ──
+├── Service URLs      ← route health
+├── Operators         ← CSV health
+</code></pre><p><strong>Tenant Admin</strong> — reorder to match dependency flow (implementation order):</p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>Sovereign Cloud
+├── Entity Overview   ← rename route label from "Entity" to "Overview"
+├── ── Tenancy ──
+├── Teams
+├── Projects
+├── Platform Openshift
+├── Cloud OSO
+├── Cloud AWS
+├── Migrate to OpenStack
+├── Assignments       ← move after dependencies
+├── Personas
+├── ── Access Control ──
+├── RBAC
+├── Vaults
+├── AAP Orgs
+├── Quay Orgs
+</code></pre><p>Add a <strong>“Topology”</strong> nav item under Tenancy (or Overview sub-tab) showing the live CR graph for the selected namespace.</p>
+<hr>
+<h2 id="4-global-admin-design-user_dashboard">4. Global Admin Design (<code>user_dashboard</code>) </h2>
+<p><strong>Audience:</strong> Platform operators, sovereign-admin group<br>
+<strong>Context:</strong> Cluster-wide visibility on services cluster (+ multi-cluster routes/operators)<br>
+<strong>No namespace picker</strong> — correct for global scope</p>
+<h3 id="41-overview--redesigned">4.1 Overview — redesigned </h3>
+<p><img src="design-assets/design-global-admin-overview.png" alt="Global Admin Overview"></p>
+<p><strong>Layout (top → bottom):</strong></p>
+<ol>
+<li><strong>Platform health strip</strong> — donut + counts + last sync (keep existing, widen to full row)</li>
+<li><strong>OpenShift cluster tiles</strong> — keep; add ACM managed-cluster link and console deep link</li>
+<li><strong>Live platform topology (NEW)</strong> — mini force-directed or layered graph:
+<ul>
+<li>Layer 1: Entities</li>
+<li>Layer 2: entity namespaces (aggregated count)</li>
+<li>Layer 3: Assignments / Platforms (aggregated)</li>
+<li>Click node → filtered list page</li>
+<li>Node color = health ratio</li>
+</ul>
+</li>
+<li><strong>Alerts</strong> — failed CRs with columns: Resource, Kind, Message, <strong>Pipeline stage</strong>, Actions</li>
+<li><strong>Kind status tables</strong> — keep Tenancy / Services sections; add row click → pre-filtered list</li>
+</ol>
+<p><strong>Interactions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Data source</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Topology nodes</td>
+<td><code>listAllCRs()</code> grouped by kind/namespace</td>
+<td>Poll 30s; pulse on status change</td>
+</tr>
+<tr>
+<td>Pipeline stage</td>
+<td><code>status.edaJobs</code>, <code>status.conditions</code></td>
+<td>Tooltip with job name + link pattern</td>
+</tr>
+<tr>
+<td>Cluster tile</td>
+<td><code>PlatformOpenshift.status</code> + ACM routes</td>
+<td>External link to spoke console</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-entities--redesigned">4.2 Entities — redesigned </h3>
+<p><img src="design-assets/design-global-admin-entities.png" alt="Global Admin Entities"></p>
+<p><strong>List view enhancements:</strong></p>
+<ul>
+<li>Replace inline detail toggle with <strong>OCP-style row navigation</strong> to <code>/sovereign-admin/entities/:name</code> (new route) OR keep slide-over but add <strong>Topology tab</strong></li>
+<li>Columns: Name, Billing ID, Entity Namespace, <strong>Ready</strong>, EDA Jobs, Created, Actions</li>
+<li>Filter bar: text search, ready/failed/pending filter chips</li>
+<li>Delete → PatternFly Modal (match tenant plugin)</li>
+</ul>
+<p><strong>Entity detail — new tabs:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overview</td>
+<td>status fields, console URL, billing ID</td>
+</tr>
+<tr>
+<td><strong>Topology (NEW)</strong></td>
+<td>Live diagram: Entity → namespace → child CR counts by kind; click to open tenant plugin filtered view</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td>spec</td>
+</tr>
+<tr>
+<td>Events / Conditions</td>
+<td>existing</td>
+</tr>
+<tr>
+<td>YAML</td>
+<td>existing</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Create Entity — wizard (lightweight):</strong></p>
+<ol>
+<li>Identity (name, billing ID, description)</li>
+<li>Review + create</li>
+<li>Post-create banner: “Namespace provisioning started” with link to topology</li>
+</ol>
+<h3 id="43-service-urls--redesigned">4.3 Service URLs — redesigned </h3>
+<p><img src="design-assets/design-global-admin-services.png" alt="Global Admin Service URLs"></p>
+<p>Enhance existing <code>ServicesPage</code>:</p>
+<ul>
+<li><strong>View toggle:</strong> Cards (default for exec glance) / Table (operator dense)</li>
+<li><strong>Cluster tabs:</strong> All | Central | Services | Spoke (from route metadata)</li>
+<li><strong>Health pulse:</strong> green/red dot with last-checked relative time (existing batch health — surface more prominently)</li>
+<li><strong>Group by service type:</strong> Keycloak, Vault, Quay, AAP, Gitea, ArgoCD (existing priority sort — add visual section headers)</li>
+</ul>
+<h3 id="44-operators--redesigned">4.4 Operators — redesigned </h3>
+<ul>
+<li>KPI cards at top (already present) — add trend arrow if historical data added later</li>
+<li>Row click → side panel: CSV conditions, related CRDs, link to OCP OperatorHub instance</li>
+<li><strong>Degraded operator banner</strong> on Overview when any CSV not ready</li>
+</ul>
+<h3 id="45-personas--redesigned">4.5 Personas — redesigned </h3>
+<ul>
+<li>Cross-entity list with Entity column</li>
+<li>Link persona → RBAC role bindings (read-only from Persona status)</li>
+<li>Filter by entity namespace</li>
+</ul>
+<hr>
+<h2 id="5-tenant-admin-design-tenancy_dashboard">5. Tenant Admin Design (<code>tenancy_dashboard</code>) </h2>
+<p><strong>Audience:</strong> Entity admins, tenant operators<br>
+<strong>Context:</strong> Selected entity namespace (<code>hybridsovereign.redhat/entity</code> label)<br>
+<strong>Primary control:</strong> <code>NamespacePicker</code> (keep; enhance)</p>
+<h3 id="51-namespace-context-bar--enhanced">5.1 Namespace context bar — enhanced </h3>
+<p>Current <code>NamespacePicker</code> is functional. Improve:</p>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>┌─────────────────────────────────────────────────────────────────┐
+│ Entity namespace  [ sovereign-acme-corp        ▼ ]  [Topology] │
+│ Billing: ACME-001  ·  847 resources  ·  98% healthy             │
+└─────────────────────────────────────────────────────────────────┘
+</code></pre><ul>
+<li>Show entity metadata from Entity CR (billing ID, description snippet)</li>
+<li><strong>Topology button</strong> → full-page graph for current namespace</li>
+<li>Persist selection in <code>sessionStorage</code> (already likely via context — verify)</li>
+</ul>
+<h3 id="52-overview--redesigned">5.2 Overview — redesigned </h3>
+<p><img src="design-assets/design-tenant-overview.png" alt="Tenant Overview"></p>
+<p><strong>Sections:</strong></p>
+<ol>
+<li><strong>Health summary</strong> — donut + stat tiles (keep; align tile design with OCP dashboard cards)</li>
+<li><strong>Live entity topology (NEW)</strong> — full-width interactive diagram for selected namespace:
+<ul>
+<li>Nodes = CR instances (not just kinds)</li>
+<li>Edges = spec references (team → assignment ← project)</li>
+<li>Status halo: green/yellow/red from <code>status.ready</code></li>
+<li>Zoom/pan; click node → resource detail</li>
+</ul>
+</li>
+<li><strong>Issues panel</strong> — keep; add <strong>Reconcile</strong> action per row</li>
+<li><strong>Kind tables</strong> — Tenancy / Access Control sections with View links (keep)</li>
+</ol>
+<p><strong>Implementation note:</strong> Build topology from a single <code>fetchAllForNamespace()</code> aggregator (same as Overview <code>KIND_CONFIG</code>) plus spec field mapping:</p>
+<table>
+<thead>
+<tr>
+<th>Edge</th>
+<th>From spec field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Assignment → Team</td>
+<td><code>spec.team</code></td>
+</tr>
+<tr>
+<td>Assignment → Project</td>
+<td><code>spec.projects[]</code></td>
+</tr>
+<tr>
+<td>Assignment → Platform</td>
+<td><code>spec.openshift</code></td>
+</tr>
+<tr>
+<td>Assignment → RBAC</td>
+<td><code>spec.toolRbac.*</code></td>
+</tr>
+<tr>
+<td>Platform → Cloud</td>
+<td>CloudOSO/AWS status refs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="53-resource-lists--unified-pattern">5.3 Resource lists — unified pattern </h3>
+<p>Keep <code>ResourceList</code> as the single list engine. Add:</p>
+<ul>
+<li><strong>Column presets</strong> per kind (already via <code>columns</code> prop)</li>
+<li><strong>Bulk reconcile</strong> (select rows → Reconcile selected) for sovereign-admin</li>
+<li><strong>Quick filters</strong> in toolbar: Ready | Failed | Pending</li>
+<li><strong>Row highlight</strong> when resource appears in failed state on Overview</li>
+</ul>
+<h3 id="54-resource-detail--redesigned">5.4 Resource detail — redesigned </h3>
+<p>Extend <code>ResourceDetail</code> tabs:</p>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Overview</td>
+<td>key status fields</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td>spec form-readonly grid</td>
+</tr>
+<tr>
+<td><strong>Related Resources (NEW)</strong></td>
+<td>Linked CRs as cards; unresolved refs in warning state</td>
+</tr>
+<tr>
+<td><strong>Pipeline (NEW)</strong></td>
+<td>Vertical stage diagram (see Assignment mockup)</td>
+</tr>
+<tr>
+<td>Events / Conditions</td>
+<td>merge K8s Events API + conditions</td>
+</tr>
+<tr>
+<td>YAML</td>
+<td>keep</td>
+</tr>
+</tbody>
+</table>
+<p><img src="design-assets/design-tenant-assignment-pipeline.png" alt="Assignment Pipeline Detail"></p>
+<p><strong>Pipeline stages (generic template):</strong></p>
+<ol>
+<li><strong>CR accepted</strong> — <code>metadata.creationTimestamp</code></li>
+<li><strong>Operator observed</strong> — Ready=False, reason=Reconciling</li>
+<li><strong>EDA triggered</strong> — from <code>status.edaJobs[]</code> (chip expand)</li>
+<li><strong>AAP / Job completed</strong> — job status from edaJobs</li>
+<li><strong>Downstream ready</strong> — e.g. <code>status.assignmentProvisioned</code></li>
+<li><strong>Ready=True</strong> — condition timestamp</li>
+</ol>
+<p>Each stage: icon, label, timestamp, optional “View logs” (link to AAP if URL in status).</p>
+<h3 id="55-create-flows--wizard-pattern">5.5 Create flows — wizard pattern </h3>
+<p><img src="design-assets/design-tenant-create-wizard.png" alt="Create Assignment Wizard"></p>
+<p>Replace flat create forms for complex CRs with <strong>PfWizard</strong> (PatternFly Wizard):</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Steps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Assignment</strong></td>
+<td>1 Context (namespace) → 2 Bind Team/Project/Platform (live diagram preview) → 3 RBAC roles → 4 Review</td>
+</tr>
+<tr>
+<td><strong>PlatformOpenshift</strong></td>
+<td>1 Identity → 2 Cloud source (CloudOSO/AWS) → 3 OIDC → 4 Review</td>
+</tr>
+<tr>
+<td><strong>Team / Project</strong></td>
+<td>1 Identity → 2 Review (simple)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Live validation during wizard:</strong></p>
+<ul>
+<li>Dropdown options gray out if referenced CR not Ready</li>
+<li>Preview panel shows resulting topology before submit</li>
+<li>Inline Alert if required dependency missing</li>
+</ul>
+<h3 id="56-migrate-to-openstack--specialized-ux">5.6 Migrate to OpenStack — specialized UX </h3>
+<p>MTV migration is a multi-phase workflow. Dedicated design:</p>
+<ul>
+<li><strong>List:</strong> migration plans with phase progress bar (Inventory → Copy → Cutover)</li>
+<li><strong>Create:</strong> step wizard aligned with MTV CR fields (<code>mtvCatalog</code> utils already exist)</li>
+<li><strong>Detail:</strong> pipeline diagram specific to MTV + OpenStack target from CloudOSO</li>
+</ul>
+<hr>
+<h2 id="6-live-diagram-system-shared-component">6. Live Diagram System (shared component) </h2>
+<p>Proposed shared component: <strong><code>LiveTopologyDiagram</code></strong></p>
+<h3 id="61-requirements">6.1 Requirements </h3>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data-driven</td>
+<td>Nodes/edges from CR list + spec resolver map</td>
+</tr>
+<tr>
+<td>Real-time</td>
+<td>WebSocket optional; start with 30s poll + manual refresh</td>
+</tr>
+<tr>
+<td>Accessible</td>
+<td>List alternative view (“Accessibility view: table of relationships”)</td>
+</tr>
+<tr>
+<td>Performant</td>
+<td>Cap at ~50 nodes; aggregate beyond that (“12 Teams”)</td>
+</tr>
+<tr>
+<td>Console styling</td>
+<td>PF colors, no custom graph library theming</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-technology-options">6.2 Technology options </h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>React Flow</strong></td>
+<td>Pan/zoom, custom nodes, widely used</td>
+<td>New dependency</td>
+</tr>
+<tr>
+<td><strong>D3 force (light)</strong></td>
+<td>Full control</td>
+<td>More custom code</td>
+</tr>
+<tr>
+<td><strong>Mermaid live render</strong></td>
+<td>Simple</td>
+<td>Not interactive enough</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation:</strong> React Flow with PF-styled node components — matches OCP Topology view feel (see Networking → Topology).</p>
+<h3 id="63-node-card-design">6.3 Node card design </h3>
+<pre data-role="codeBlock" data-info="" class="language-text"><code>┌─────────────────────┐
+│ ● Team              │
+│ prod-team           │
+│ Ready               │
+└─────────────────────┘
+</code></pre><ul>
+<li>Kind label (uppercase small)</li>
+<li>Name (truncated)</li>
+<li>Status badge</li>
+<li>Optional icon per kind (Team, Project, etc. from <code>@patternfly/react-icons</code>)</li>
+</ul>
+<h3 id="64-pipeline-diagram-detail-tab">6.4 Pipeline diagram (detail tab) </h3>
+<p>Vertical <strong>Stepper</strong> component (PF Progress Stepper):</p>
+<ul>
+<li>Each step maps to condition or edaJob entry</li>
+<li>Failed step expands inline with message + Reconcile button</li>
+<li>Matches mockup in <code>design-tenant-assignment-pipeline.png</code></li>
+</ul>
+<hr>
+<h2 id="7-component-library-extensions">7. Component Library Extensions </h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Used in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LiveTopologyDiagram</code></td>
+<td>CR relationship graph</td>
+<td>Both overviews, Entity detail, Topology page</td>
+</tr>
+<tr>
+<td><code>ReconciliationPipeline</code></td>
+<td>Vertical automation stages</td>
+<td>Resource detail</td>
+</tr>
+<tr>
+<td><code>RelatedResourcesPanel</code></td>
+<td>Spec/status cross-links</td>
+<td>Resource detail</td>
+</tr>
+<tr>
+<td><code>StatusPopover</code></td>
+<td>Conditions on hover</td>
+<td>All lists</td>
+</tr>
+<tr>
+<td><code>ResourceKebab</code></td>
+<td>OCP-standard actions menu</td>
+<td>Detail headers</td>
+</tr>
+<tr>
+<td><code>CreateWizardShell</code></td>
+<td>PfWizard wrapper with namespace guard</td>
+<td>Tenant creates</td>
+</tr>
+<tr>
+<td><code>ClusterHealthTile</code></td>
+<td>PlatformOpenshift card</td>
+<td>Both overviews</td>
+</tr>
+<tr>
+<td><code>KindHealthTable</code></td>
+<td>Reusable kind stats table</td>
+<td>Both overviews</td>
+</tr>
+<tr>
+<td><code>FilterToolbar</code></td>
+<td>Search + status chips</td>
+<td>All lists</td>
+</tr>
+</tbody>
+</table>
+<h3 id="71-eda-jobs-chips--enhance">7.1 EDA Jobs chips — enhance </h3>
+<p>Current <code>EdaJobsChips</code> is high-value. Extend:</p>
+<ul>
+<li>Click chip → popover with job name, status, start time</li>
+<li>Link to central AAP job template (if URL in CR status)</li>
+<li>Color: running=blue, success=green, failed=red</li>
+</ul>
+<h3 id="72-force-reconcile--enhance">7.2 Force Reconcile — enhance </h3>
+<ul>
+<li>Add confirmation for bulk reconcile</li>
+<li>Toast notification on success (OCP alert toast pattern)</li>
+<li>Disable while operator generation conflict likely</li>
+</ul>
+<hr>
+<h2 id="8-page-mockup-gallery">8. Page Mockup Gallery </h2>
+<table>
+<thead>
+<tr>
+<th>Mockup</th>
+<th>Path</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Global Overview</td>
+<td><a href="design-assets/design-global-admin-overview.png">design-assets/design-global-admin-overview.png</a></td>
+<td>Health + clusters + live topology</td>
+</tr>
+<tr>
+<td>Global Entities</td>
+<td><a href="design-assets/design-global-admin-entities.png">design-assets/design-global-admin-entities.png</a></td>
+<td>List + detail topology tab</td>
+</tr>
+<tr>
+<td>Global Service URLs</td>
+<td><a href="design-assets/design-global-admin-services.png">design-assets/design-global-admin-services.png</a></td>
+<td>Route health cards by cluster</td>
+</tr>
+<tr>
+<td>Tenant Overview</td>
+<td><a href="design-assets/design-tenant-overview.png">design-assets/design-tenant-overview.png</a></td>
+<td>Namespace context + entity topology</td>
+</tr>
+<tr>
+<td>Assignment Pipeline</td>
+<td><a href="design-assets/design-tenant-assignment-pipeline.png">design-assets/design-tenant-assignment-pipeline.png</a></td>
+<td>Detail pipeline + related resources</td>
+</tr>
+<tr>
+<td>Create Wizard</td>
+<td><a href="design-assets/design-tenant-create-wizard.png">design-assets/design-tenant-create-wizard.png</a></td>
+<td>Assignment bind step with preview</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="9-ux-flows">9. UX Flows </h2>
+<h3 id="91-onboard-new-tenant-global-admin">9.1 Onboard new tenant (global admin) </h3>
+<div class="mermaid">flowchart LR
+    A["Create Entity"] --&gt; B["Watch namespace provision"]
+    B --&gt; C["Topology shows sovereign-entity"]
+    C --&gt; D["Hand off to tenant admin"]
+</div><ol>
+<li>Global admin creates Entity on <strong>Entities → Create</strong></li>
+<li>Overview topology animates new node (pending → ready)</li>
+<li>Entity detail shows namespace + link “Open in Tenant Admin” (deep link with namespace query param)</li>
+</ol>
+<h3 id="92-provision-assignment-tenant-admin">9.2 Provision assignment (tenant admin) </h3>
+<div class="mermaid">flowchart LR
+    A["Create Team"] --&gt; B["Create Project"]
+    B --&gt; C["Create Platform"]
+    C --&gt; D["Wizard: Assignment"]
+    D --&gt; E["Pipeline view until Ready"]
+</div><ul>
+<li>Wizard validates all dependencies Ready before submit</li>
+<li>After create, redirect to Assignment detail Pipeline tab</li>
+<li>Overview topology highlights new edges</li>
+</ul>
+<h3 id="93-diagnose-failure-both">9.3 Diagnose failure (both) </h3>
+<ol>
+<li>Overview alerts / issues table → click row</li>
+<li>Land on Resource detail → Pipeline tab shows failed stage</li>
+<li>Related Resources tab shows broken ref (e.g. Platform not Ready)</li>
+<li>Force Reconcile or fix upstream CR</li>
+</ol>
+<hr>
+<h2 id="10-accessibility--responsive">10. Accessibility &amp; Responsive </h2>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keyboard nav</td>
+<td>All graph nodes have list-view alternative; wizard fully keyboard accessible</td>
+</tr>
+<tr>
+<td>Screen readers</td>
+<td>Topology described via <code>aria-label</code> on nodes; pipeline steps as ordered list</td>
+</tr>
+<tr>
+<td>Color</td>
+<td>Never rely on color alone — keep text labels on StatusBadge</td>
+</tr>
+<tr>
+<td>Mobile</td>
+<td>Console admin is desktop-first; tables horizontal scroll; topology collapses to list on <code>&lt;768px</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-implementation-roadmap">11. Implementation Roadmap </h2>
+<p>Phased delivery to limit risk:</p>
+<h3 id="phase-1--console-polish-23-sprints">Phase 1 — Console polish (2–3 sprints) </h3>
+<ul>
+<li>Modal delete on global admin</li>
+<li>StatusPopover on all lists</li>
+<li>Filter toolbar + search on Entities and ResourceList</li>
+<li>Namespace context bar metadata</li>
+<li>Related Resources tab (static links from spec)</li>
+</ul>
+<h3 id="phase-2--live-diagrams-34-sprints">Phase 2 — Live diagrams (3–4 sprints) </h3>
+<ul>
+<li><code>LiveTopologyDiagram</code> on tenant Overview</li>
+<li>Mini topology on global Overview</li>
+<li>Entity detail topology tab</li>
+<li>React Flow integration + PF node styling</li>
+</ul>
+<h3 id="phase-3--pipelines--wizards-34-sprints">Phase 3 — Pipelines &amp; wizards (3–4 sprints) </h3>
+<ul>
+<li><code>ReconciliationPipeline</code> on detail pages</li>
+<li>Assignment + PlatformOpenshift create wizards</li>
+<li>Enhanced EDA job popovers</li>
+<li>MTV migration progress UI</li>
+</ul>
+<h3 id="phase-4--deep-integration-ongoing">Phase 4 — Deep integration (ongoing) </h3>
+<ul>
+<li>K8s Events tab (Events API)</li>
+<li>AAP job deep links from status</li>
+<li>ACM managed cluster links from Platform tiles</li>
+<li>Historical health trends (optional metrics backend)</li>
+</ul>
+<hr>
+<h2 id="12-success-metrics">12. Success Metrics </h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Time to diagnose failed Assignment</td>
+<td>−40% (pipeline tab)</td>
+</tr>
+<tr>
+<td>Create Assignment error rate</td>
+<td>−30% (wizard validation)</td>
+</tr>
+<tr>
+<td>Overview → root cause clicks</td>
+<td>≤3 clicks</td>
+</tr>
+<tr>
+<td>Console plugin parity score</td>
+<td>Match OCP list/detail patterns on 90% of pages</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="13-what-not-to-change">13. What Not to Change </h2>
+<ul>
+<li><strong>No standalone app chrome</strong> — stay within OCP plugin model</li>
+<li><strong>No ServiceAccount API access</strong> for user actions</li>
+<li><strong>No secrets in UI</strong> — mask Vault paths; never display credentials</li>
+<li><em><em>No deletion of sovereign-</em> namespaces</em>* from UI</li>
+<li><strong>GitOps boundary</strong> — UI manages CRs; does not <code>oc apply</code> platform config</li>
+</ul>
+<hr>
+<h2 id="14-references">14. References </h2>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../docs/12-console-plugins.md">architecture/docs/12-console-plugins.md</a></td>
+<td>Plugin deployment and nav</td>
+</tr>
+<tr>
+<td><a href="../docs/technical/15-sovereign-dashboard.md">architecture/docs/technical/15-sovereign-dashboard.md</a></td>
+<td>Global admin scope</td>
+</tr>
+<tr>
+<td><a href="../docs/technical/20-tenancy-dashboard.md">architecture/docs/technical/20-tenancy-dashboard.md</a></td>
+<td>Tenant admin scope</td>
+</tr>
+<tr>
+<td><a href="../docs/concepts/10-component-interaction-map.md">architecture/docs/concepts/10-component-interaction-map.md</a></td>
+<td>CR dependency graph</td>
+</tr>
+<tr>
+<td><a href="../docs/technical/006-eda-architecture.md">architecture/docs/technical/006-eda-architecture.md</a></td>
+<td>Pipeline stages</td>
+</tr>
+<tr>
+<td><code>user_dashboard/plugin/console-extensions.json</code></td>
+<td>Current global nav</td>
+</tr>
+<tr>
+<td><code>tenancy_dashboard/plugin/console-extensions.json</code></td>
+<td>Current tenant nav</td>
+</tr>
+<tr>
+<td><code>tenancy_dashboard/plugin/src/components/ResourceList.tsx</code></td>
+<td>List pattern baseline</td>
+</tr>
+<tr>
+<td><code>user_dashboard/plugin/src/pages/OverviewPage.tsx</code></td>
+<td>Global overview baseline</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>This document describes intended UX improvements for the existing console plugins. Mockup images are in <code>design-assets/</code>.</em></p>
+
+      </div>
+      
+      
+    
+    
+    <script type="module">
+// TODO: If ZenUML gets integrated into mermaid in the future,
+//      we can remove the following lines.
+
+
+var MERMAID_CONFIG = ({"startOnLoad":false});
+if (typeof MERMAID_CONFIG !== 'undefined') {
+  MERMAID_CONFIG.startOnLoad = false
+  MERMAID_CONFIG.cloneCssStyles = false
+  MERMAID_CONFIG.theme = "default"
+}
+
+mermaid.initialize(MERMAID_CONFIG || {})
+if (typeof(window['Reveal']) !== 'undefined') {
+  function mermaidRevealHelper(event) {
+    var currentSlide = event.currentSlide
+    var diagrams = currentSlide.querySelectorAll('div.mermaid')
+    for (var i = 0; i < diagrams.length; i++) {
+      var diagram = diagrams[i]
+      if (!diagram.hasAttribute('data-processed')) {
+        mermaid.init(null, diagram, ()=> {
+          Reveal.slide(event.indexh, event.indexv)
+        })
+      }
+    }
+  }
+  Reveal.addEventListener('slidetransitionend', mermaidRevealHelper)
+  Reveal.addEventListener('ready', mermaidRevealHelper)
+  await mermaid.run({
+    nodes: document.querySelectorAll('div.mermaid')
+  })
+} else {
+  await mermaid.run({
+    nodes: document.querySelectorAll('div.mermaid')
+  })
+}
+</script>
+    
+    
+    
+  
+    </body></html>

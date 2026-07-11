@@ -1,0 +1,14 @@
+---
+- name: Publish operator event to AMQ Streams Kafka topic
+  ansible.builtin.uri:
+    url: "{{ amq_kafka_broker_url | default('http://hybridsovereign-kafka-kafka-bootstrap.amq-streams.svc:9092') }}"
+    method: POST
+    body_format: json
+    body:
+      topic: "{{ amq_kafka_topic | default('hybridsovereign-events') }}"
+      key: "{{ event_regarding_kind | default('unknown') }}/{{ event_regarding_name | default('unknown') }}"
+      value: "{{ amq_event_payload | to_json }}"
+    status_code: [200, 201, 202]
+  when: amq_kafka_enabled | default(true) | bool
+  no_log: true
+  ignore_errors: true

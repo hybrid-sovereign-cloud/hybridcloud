@@ -1,0 +1,61 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: {{ .Values.instanceName }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  instances: {{ .Values.keycloak.instances }}
+  {{- if .Values.keycloak.hostname }}
+  hostname:
+    hostname: {{ .Values.keycloak.hostname | quote }}
+  {{- else }}
+  hostname:
+    hostname: ""
+  {{- end }}
+  {{- if .Values.keycloak.db.enabled }}
+  db:
+    vendor: {{ .Values.keycloak.db.vendor }}
+    {{- if .Values.keycloak.db.host }}
+    host: {{ .Values.keycloak.db.host | quote }}
+    {{- end }}
+    {{- if .Values.keycloak.db.database }}
+    database: {{ .Values.keycloak.db.database | quote }}
+    {{- end }}
+    usernameSecret:
+      name: {{ .Values.keycloak.db.usernameSecret.name }}
+      key: {{ .Values.keycloak.db.usernameSecret.key }}
+    passwordSecret:
+      name: {{ .Values.keycloak.db.passwordSecret.name }}
+      key: {{ .Values.keycloak.db.passwordSecret.key }}
+  {{- end }}
+  http:
+    {{- if .Values.keycloak.tls.enabled }}
+    tlsSecret: {{ .Values.keycloak.tls.secretName }}
+    {{- else }}
+    httpEnabled: true
+    {{- end }}
+  {{- if not .Values.keycloak.tls.enabled }}
+  proxy:
+    headers: xforwarded
+  {{- end }}
+  resources:
+    requests:
+      cpu: 500m
+      memory: 768Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+  features:
+    enabled:
+      - token-exchange
+      - admin-fine-grained-authz
+  additionalOptions:
+    - name: http-enabled
+      value: "true"
+    - name: hostname-strict
+      value: "false"
+{{- end }}

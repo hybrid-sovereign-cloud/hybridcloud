@@ -1,0 +1,74 @@
+---
+- name: Check if client exists
+  ansible.builtin.uri:
+    url: "{{ keycloak_url }}/admin/realms/{{ item.realm }}/clients?clientId={{ item.client_id }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ keycloak_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: client_check
+  loop: "{{ keycloak_clients }}"
+  retries: 3
+  delay: 5
+
+- name: Create clients that do not exist
+  ansible.builtin.uri:
+    url: "{{ keycloak_url }}/admin/realms/{{ item.item.realm }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ keycloak_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      clientId: "{{ item.item.client_id }}"
+      name: "{{ item.item.name | default(item.item.client_id) }}"
+      enabled: true
+      clientAuthenticatorType: client-secret
+      serviceAccountsEnabled: true
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: true
+      redirectUris: "{{ item.item.redirect_uris | default(['*']) }}"
+    validate_certs: false
+    status_code: [201, 409]
+  loop: "{{ client_check.results }}"
+  when: item.json | length == 0
+  loop_control:
+    label: "{{ item.item.realm }}/{{ item.item.client_id }}"
+  retries: 3
+  delay: 5
+
+- name: Get client IDs for secret retrieval
+  ansible.builtin.uri:
+    url: "{{ keycloak_url }}/admin/realms/{{ item.realm }}/clients?clientId={{ item.client_id }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ keycloak_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: client_ids
+  loop: "{{ keycloak_clients }}"
+  retries: 3
+  delay: 5
+
+- name: Get client secrets
+  ansible.builtin.uri:
+    url: "{{ keycloak_url }}/admin/realms/{{ item.item.realm }}/clients/{{ item.json[0].id }}/client-secret"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ keycloak_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: client_secrets_result
+  loop: "{{ client_ids.results }}"
+  loop_control:
+    label: "{{ item.item.client_id }}"
+  retries: 3
+  delay: 5
+
+- name: Build client secrets dictionary
+  ansible.builtin.set_fact:
+    keycloak_client_secrets: "{{ keycloak_client_secrets | default({}) | combine({item.item.item.client_id: item.json.value}) }}"
+  loop: "{{ client_secrets_result.results }}"
+  loop_control:
+    label: "{{ item.item.item.client_id }}"

@@ -1,0 +1,6 @@
+---
+- ansible.builtin.include_role:
+    name: migration_cr_handler
+  vars:
+    migration_repo_root: "{{ role_path }}/../../../../migration"
+    migration_common_tasks_path: "{{ role_path }}/../../../common/tasks"

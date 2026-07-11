@@ -1,0 +1,14 @@
+---
+- name: AAPConfig Delete Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle AAPConfig Delete
+      condition: event.payload.reason == "AAPConfigDeleteRequested" and event.payload.regarding.kind == "AAPConfig"
+      action:
+        run_playbook:
+          name: aapconfig-teardown-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

@@ -1,0 +1,20 @@
+externalSecrets:
+  enabled: true
+  channel: stable
+  installPlanApproval: Automatic
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+
+gitopsOperator:
+  enabled: true
+  channel: latest
+  installPlanApproval: Automatic
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+
+vault:
+  enabled: false
+  url: ""
+  authPath: ""
+  role: ""
+  secretStoreName: vault-backend

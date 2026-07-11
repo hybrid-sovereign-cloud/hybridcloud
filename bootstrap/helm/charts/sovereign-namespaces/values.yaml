@@ -1,0 +1,22 @@
+namespaces:
+  - name: sovereign-cloud-jobs
+    enabled: true
+  - name: sovereign-cloud-helpers
+    enabled: true
+
+ociPullSecret:
+  enabled: false
+  vaultPath: "oci-credentials"
+  secretStoreName: "vault-backend"
+  secretStoreKind: "ClusterSecretStore"
+
+networkPolicies:
+  enabled: false  # Set to true after validating operator connectivity
+
+oauth:
+  enabled: false
+  identityProviderName: ""
+  clientId: ""
+  clientSecretName: ""
+  issuer: ""
+  caConfigMap: ""

@@ -1,0 +1,14 @@
+---
+- name: QuayConfig Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle QuayConfig Create
+      condition: event.payload.reason in ["QuayConfigCreateRequested", "QuayConfigReconcileRequested"] and event.payload.regarding.kind == "QuayConfig"
+      action:
+        run_playbook:
+          name: quayconfig-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

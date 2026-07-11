@@ -1,0 +1,7 @@
+---
+- name: RbacConfig Provision Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - rbacconfig_provision

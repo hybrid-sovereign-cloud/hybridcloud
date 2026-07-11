@@ -1,0 +1,292 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        rbac_cr_name: "{{ event_payload.regarding.name }}"
+        rbac_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        rbac_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacs
+        cr_name: "{{ rbac_cr_name }}"
+        cr_namespace: "{{ rbac_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read Rbac CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Rbac
+        name: "{{ rbac_cr_name }}"
+        namespace: "{{ rbac_cr_namespace }}"
+      register: rbac_cr_lookup
+
+    - name: Read entity Namespace
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ rbac_cr_namespace }}"
+      register: rbac_target_ns
+
+    - name: Record entity name and billing ID
+      ansible.builtin.set_fact:
+        entity_name: "{{ rbac_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] }}"
+        entity_billing_id: "{{ rbac_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/billing-id'] | default('') }}"
+        entity_description: "{{ rbac_target_ns.resources[0].metadata.annotations['hybridsovereign.redhat/description'] | default('') }}"
+        rbac_generation: "{{ rbac_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+        rbac_creator: >-
+          {{
+            rbac_cr_lookup.resources[0].metadata.annotations['hybridsovereign.redhat/creator']
+            | default(rbac_cr_lookup.resources[0].metadata.managedFields[0].manager | default('unknown'))
+          }}
+
+    - name: Read referenced RbacConfig
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: RbacConfig
+        name: "{{ rbac_spec.config }}"
+        namespace: "{{ plugin_rbac_operator_namespace }}"
+      register: rbac_cfg_lookup
+      retries: 12
+      delay: 5
+      until: rbac_cfg_lookup.resources | length > 0
+
+    - name: Cache RbacConfig spec and status fields
+      ansible.builtin.set_fact:
+        rbac_cfg_status: "{{ rbac_cfg_lookup.resources[0].status }}"
+        rbac_cfg_spec: "{{ rbac_cfg_lookup.resources[0].spec }}"
+
+    - name: Discover Keycloak external URL from services cluster Route
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: services-rhbk
+        label_selectors:
+          - "app=keycloak"
+      register: kc_route
+
+    - name: Set Keycloak URL from Route
+      ansible.builtin.set_fact:
+        svc_keycloak_url: "https://{{ kc_route.resources[0].spec.host }}"
+      when: kc_route.resources | length > 0
+
+    - name: Fallback to configured Keycloak URL
+      ansible.builtin.set_fact:
+        svc_keycloak_url: >-
+          {{ lookup('env', 'KEYCLOAK_EXTERNAL_URL')
+             | default(plugin_rbac_keycloak_url_default, true) }}
+      when: kc_route.resources | length == 0
+
+    - name: Use Keycloak Route FQDN directly (no IP pin)
+      ansible.builtin.set_fact:
+        svc_keycloak_url_http_headers: {}
+
+    - name: Load Keycloak admin credentials
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
+      vars:
+        keycloak_vault_path: "{{ rbac_cfg_spec.secret | default('rhbk-services-admin') }}"
+
+    - name: Obtain Keycloak admin access token
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+      vars:
+        keycloak_url: "{{ svc_keycloak_url }}"
+        keycloak_url_http_headers: "{{ svc_keycloak_url_http_headers | default({}) }}"
+        keycloak_token_output_fact: svc_access_token
+
+    - name: Refresh Keycloak admin token before group lookups
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+      vars:
+        keycloak_url: "{{ svc_keycloak_url }}"
+        keycloak_url_http_headers: "{{ svc_keycloak_url_http_headers | default({}) }}"
+        keycloak_token_output_fact: svc_access_token
+
+    - name: Build Keycloak group path segments
+      ansible.builtin.set_fact:
+        rbac_group_path_display: "{{ entity_name }}/{{ rbac_cr_name }}"
+        kc_parent_path_query: "{{ '%2F' + entity_name }}"
+        kc_full_path_query: "{{ '%2F' + entity_name + '%2F' + rbac_cr_name }}"
+
+    - name: Look up parent entity group
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/group-by-path/{{ kc_parent_path_query }}"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200, 404]
+      register: parent_group_initial
+
+    - name: Create parent entity group when missing
+      when: parent_group_initial.status == 404
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/groups"
+        method: POST
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token, 'Content-Type': 'application/json'} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        body_format: json
+        body:
+          name: "{{ entity_name }}"
+        validate_certs: false
+        status_code: [201, 409]
+
+    - name: Refresh parent group representation
+      when: parent_group_initial.status == 404
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/group-by-path/{{ kc_parent_path_query }}"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: parent_group_refetch
+      retries: 12
+      delay: 3
+      until: parent_group_refetch.status | default(0) == 200
+
+    - name: Record parent group id
+      ansible.builtin.set_fact:
+        parent_group_id: >-
+          {{
+            parent_group_initial.json.id
+            if parent_group_initial.status == 200
+            else parent_group_refetch.json.id
+          }}
+
+    - name: Refresh Keycloak admin token before RBAC subgroup lookup
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+      vars:
+        keycloak_url: "{{ svc_keycloak_url }}"
+        keycloak_url_http_headers: "{{ svc_keycloak_url_http_headers | default({}) }}"
+        keycloak_token_output_fact: svc_access_token
+
+    - name: Look up fully-qualified RBAC subgroup
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/group-by-path/{{ kc_full_path_query }}"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200, 404]
+      register: child_group_initial
+
+    - name: Build group attributes map
+      ansible.builtin.set_fact:
+        rbac_group_attributes:
+          entity: ["{{ entity_name }}"]
+          billing-id: ["{{ entity_billing_id }}"]
+          creator: ["{{ rbac_creator }}"]
+          config: ["{{ rbac_spec.config }}"]
+          namespace: ["{{ rbac_cr_namespace }}"]
+
+    - name: Build group description
+      ansible.builtin.set_fact:
+        rbac_group_description: "{{ rbac_spec.description | default('RBAC group for ' + entity_name + '/' + rbac_cr_name) }}"
+
+    - name: Create RBAC subgroup under entity group
+      when: child_group_initial.status == 404
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/groups/{{ parent_group_id }}/children"
+        method: POST
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token, 'Content-Type': 'application/json'} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        body_format: json
+        body:
+          name: "{{ rbac_cr_name }}"
+          attributes: "{{ rbac_group_attributes }}"
+        validate_certs: false
+        status_code: [201, 204, 409]
+
+    - name: Verify RBAC subgroup now exists
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/group-by-path/{{ kc_full_path_query }}"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: child_group_verify
+      retries: 12
+      delay: 3
+      until: child_group_verify.status | default(0) == 200
+
+    - name: Update group attributes and description
+      ansible.builtin.uri:
+        url: "{{ svc_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/groups/{{ child_group_verify.json.id }}"
+        method: PUT
+        headers: "{{ {'Authorization': 'Bearer ' + svc_access_token, 'Content-Type': 'application/json'} | combine(svc_keycloak_url_http_headers | default({})) }}"
+        body_format: json
+        body:
+          id: "{{ child_group_verify.json.id }}"
+          name: "{{ rbac_cr_name }}"
+          attributes: "{{ rbac_group_attributes }}"
+        validate_certs: false
+        status_code: [200, 204]
+      retries: 3
+      delay: 5
+
+    - name: Set reconciliation timestamp
+      ansible.builtin.set_fact:
+        rbac_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update Rbac status as ready on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacs
+        cr_name: "{{ rbac_cr_name }}"
+        cr_namespace: "{{ rbac_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          group: "{{ rbac_group_path_display }}"
+          groupId: "{{ child_group_verify.json.id }}"
+          ready: true
+          observedGeneration: "{{ rbac_generation }}"
+          lastReconciledAt: "{{ rbac_status_transition_time }}"
+          entity: "{{ entity_name }}"
+          billingId: "{{ entity_billing_id }}"
+          creator: "{{ rbac_creator }}"
+          description: "{{ rbac_group_description }}"
+          realm: "{{ plugin_rbac_keycloak_realm }}"
+          attributes: "{{ rbac_group_attributes }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ rbac_status_transition_time }}"
+              reason: EDASucceeded
+              message: >-
+                Keycloak subgroup {{ rbac_group_path_display }} is present in realm {{ plugin_rbac_keycloak_realm }}.
+
+  rescue:
+    - name: Mark Rbac as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacs
+        cr_name: "{{ rbac_cr_name }}"
+        cr_namespace: "{{ rbac_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "Rbac {{ rbac_cr_name | default('unknown') }} EDA provisioning failed"

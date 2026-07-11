@@ -1,0 +1,146 @@
+---
+- name: Render install-config YAML
+  ansible.builtin.set_fact:
+    cb_install_config: "{{ lookup('template', 'install-config.yaml.j2') }}"
+  no_log: true
+
+- name: Read Vault root token for write access
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ vault_init_secret_name }}"
+    namespace: "{{ vault_init_secret_namespace }}"
+  register: vault_init_secret_info
+
+- name: Set Vault root token
+  ansible.builtin.set_fact:
+    vault_root_token: "{{ vault_init_secret_info.resources[0].data.root_token | b64decode }}"
+  no_log: true
+
+- name: Write install-config to Vault
+  ansible.builtin.uri:
+    url: "{{ vault_init_addr }}/v1/central/data/{{ cb_install_config_vault }}"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      data:
+        install-config.yaml: "{{ cb_install_config }}"
+    status_code: [200, 204]
+    validate_certs: false
+  no_log: true
+
+- name: Render build-values YAML to tempfile
+  ansible.builtin.copy:
+    content: "{{ lookup('template', 'build-values.yaml.j2') }}"
+    dest: "/tmp/{{ cb_app_name }}-build-values.yaml"
+    mode: '0600'
+  changed_when: false
+
+- name: Write central cluster kubeconfig for Helm
+  ansible.builtin.include_tasks: write_central_helm_kubeconfig.yml
+
+- name: Check existing Helm release
+  ansible.builtin.command:
+    argv:
+      - helm
+      - status
+      - "{{ cb_app_name }}"
+      - --namespace
+      - "{{ cb_cluster_name }}"
+      - --output
+      - json
+      - --kubeconfig
+      - "/tmp/{{ cb_app_name }}-kubeconfig"
+  register: helm_release_status
+  failed_when: false
+  changed_when: false
+
+- name: Set helm release exists flag
+  ansible.builtin.set_fact:
+    cb_helm_release_exists: "{{ helm_release_status.rc == 0 }}"
+
+- name: Set helm release failed flag
+  ansible.builtin.set_fact:
+    cb_helm_release_failed: >-
+      {{ cb_helm_release_exists | bool and
+         (helm_release_status.stdout | from_json).info.status | default('') == 'failed' }}
+  when: cb_helm_release_exists | bool
+
+- name: Set helm release failed flag (when release does not exist)
+  ansible.builtin.set_fact:
+    cb_helm_release_failed: false
+  when: not (cb_helm_release_exists | bool)
+
+- name: Get current Helm values for idempotency check
+  ansible.builtin.command:
+    argv:
+      - helm
+      - get
+      - values
+      - "{{ cb_app_name }}"
+      - --namespace
+      - "{{ cb_cluster_name }}"
+      - --output
+      - yaml
+      - --kubeconfig
+      - "/tmp/{{ cb_app_name }}-kubeconfig"
+  register: helm_current_values
+  failed_when: false
+  changed_when: false
+  when: cb_helm_release_exists | bool
+
+- name: Determine if Helm upgrade is needed
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import sys, yaml
+        new = yaml.safe_load(open('/tmp/{{ cb_app_name }}-build-values.yaml').read()) or {}
+        cur_raw = """{{ helm_current_values.stdout | default('null') }}"""
+        cur = yaml.safe_load(cur_raw) or {}
+        print("true" if new != cur else "false")
+  register: values_diff_result
+  changed_when: false
+  when: cb_helm_release_exists | bool
+
+- name: Set values changed flag
+  ansible.builtin.set_fact:
+    cb_values_changed: >-
+      {{ not (cb_helm_release_exists | bool) or
+         (cb_helm_release_failed | bool) or
+         (values_diff_result.stdout | default('true') | trim == 'true') }}
+
+- name: Deploy mce-cluster-build chart
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - "{{ cb_app_name }}"
+      - "oci://quay.example.com/hybrid-sovereign/mce-cluster-build"
+      - --version
+      - "{{ mce_cluster_build_chart_version }}"
+      - --install
+      - --namespace
+      - "{{ cb_cluster_name }}"
+      - --create-namespace
+      - --values
+      - "/tmp/{{ cb_app_name }}-build-values.yaml"
+      - --history-max
+      - "2"
+      - --wait
+      - --timeout
+      - "10m"
+      - --kubeconfig
+      - "/tmp/{{ cb_app_name }}-kubeconfig"
+  register: helm_deploy_result
+  when: cb_values_changed | bool
+  changed_when: "'has been upgraded' in helm_deploy_result.stdout or 'Installing it now' in helm_deploy_result.stdout"
+
+- name: Clean up temp values file
+  ansible.builtin.file:
+    path: "/tmp/{{ cb_app_name }}-build-values.yaml"
+    state: absent
+  changed_when: false

@@ -1,0 +1,101 @@
+---
+- name: Wait for Vault pods to be Running
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: "{{ vault_namespace }}"
+    label_selectors: "{{ vault_pod_label_selectors }}"
+  register: vault_pods
+  retries: 30
+  delay: 10
+  until:
+    - vault_pods.resources | length > 0
+    - vault_pods.resources | map(attribute='status.phase') | select('equalto', 'Running') | list | length == vault_pods.resources | length
+
+- name: Set leader pod name
+  ansible.builtin.set_fact:
+    vault_leader_pod: "{{ vault_pods.resources | sort(attribute='metadata.name') | first | json_query('metadata.name') }}"
+    vault_all_pods: "{{ vault_pods.resources | map(attribute='metadata.name') | sort | list }}"
+
+- name: Check Vault initialization status via exec
+  kubernetes.core.k8s_exec:
+    namespace: "{{ vault_namespace }}"
+    pod: "{{ vault_leader_pod }}"
+    container: vault
+    command: vault status -format=json
+  register: vault_status_raw
+  retries: 10
+  delay: 10
+  until: vault_status_raw.rc is defined
+  ignore_errors: true
+
+- name: Parse vault status
+  ansible.builtin.set_fact:
+    vault_initialized: >-
+      {{ (vault_status_raw.stdout | from_json).initialized | default(false)
+         if (vault_status_raw.stdout is defined and vault_status_raw.stdout | length > 0)
+         else false }}
+  ignore_errors: true
+
+- name: Initialize Vault when not initialized
+  when: not vault_initialized
+  block:
+    - name: Run vault operator init on leader pod
+      kubernetes.core.k8s_exec:
+        namespace: "{{ vault_namespace }}"
+        pod: "{{ vault_leader_pod }}"
+        container: vault
+        command: >-
+          vault operator init
+          -key-shares={{ vault_key_shares }}
+          -key-threshold={{ vault_key_threshold }}
+          -format=json
+      register: vault_init_result
+      retries: 5
+      delay: 10
+      until: vault_init_result.rc is defined and vault_init_result.rc == 0
+
+    - name: Parse init response
+      ansible.builtin.set_fact:
+        vault_root_token: "{{ (vault_init_result.stdout | from_json).root_token }}"
+        vault_unseal_keys: "{{ (vault_init_result.stdout | from_json).unseal_keys_b64 }}"
+
+    - name: Store init secrets as Kubernetes Secret
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ vault_secret_name }}"
+            namespace: "{{ vault_namespace }}"
+          type: Opaque
+          stringData:
+            root_token: "{{ vault_root_token }}"
+            unseal_keys: "{{ vault_unseal_keys | to_json }}"
+            unseal_keys_base64: "{{ vault_unseal_keys | to_json }}"
+      retries: 3
+      delay: 5
+
+- name: Load existing credentials when already initialized
+  when: vault_initialized
+  block:
+    - name: Retrieve existing secrets
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: "{{ vault_secret_name }}"
+        namespace: "{{ vault_namespace }}"
+      register: existing_secret
+      retries: 5
+      delay: 5
+      until: existing_secret.resources | length > 0
+
+    - name: Load credentials from secret
+      ansible.builtin.set_fact:
+        vault_root_token: "{{ (existing_secret.resources[0].data.root_token | b64decode) }}"
+        vault_unseal_keys: "{{ (existing_secret.resources[0].data.unseal_keys | b64decode) | from_json }}"
+
+- name: Unseal each Vault pod
+  ansible.builtin.include_tasks: unseal-pod.yml
+  loop: "{{ vault_all_pods }}"
+  loop_control:
+    loop_var: pod_name

@@ -1,0 +1,24 @@
+{
+  "name": "@hybridsovereign/ui",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PatternFly 5 UI monorepo for Hybrid Sovereign Cloud dashboards and console plugins",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:shared": "npm run build -w @hybridsovereign/shared",
+    "build:admin-dashboard": "npm run build -w @hybridsovereign/admin-dashboard",
+    "build:tenant-dashboard": "npm run build -w @hybridsovereign/tenant-dashboard",
+    "build:admin-console-plugin": "npm run build -w @hybridsovereign/admin-console-plugin",
+    "build:tenant-console-plugin": "npm run build -w @hybridsovereign/tenant-console-plugin",
+    "dev:admin": "npm run dev -w @hybridsovereign/admin-dashboard",
+    "dev:tenant": "npm run dev -w @hybridsovereign/tenant-dashboard",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

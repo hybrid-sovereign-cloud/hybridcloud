@@ -1,0 +1,110 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        vault_cr_name: "{{ event_payload.regarding.name }}"
+        vault_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        vault_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Read Vault CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Vault
+        name: "{{ vault_cr_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+      register: vault_cr_lookup
+
+    - name: Read entity Namespace
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ vault_cr_namespace }}"
+      register: vault_target_ns
+
+    - name: Set Vault provisioning facts
+      ansible.builtin.set_fact:
+        entity_name: "{{ vault_target_ns.resources[0].metadata.labels['hybridsovereign.redhat/entity'] }}"
+        vault_generation: "{{ vault_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+        vault_instance_name: "vault-{{ vault_cr_name }}"
+        vault_svc_name: "vault-{{ vault_cr_name }}"
+        vault_ha_enabled: "{{ vault_spec.ha | default(true) | bool }}"
+
+    - name: Deploy Vault Kubernetes resources
+      ansible.builtin.include_tasks: deploy_resources.yml
+
+    - name: Initialize and unseal Vault
+      ansible.builtin.include_tasks: init_unseal.yml
+
+    - name: Wait for Vault Route to become reachable after init
+      ansible.builtin.uri:
+        url: "{{ vault_api_url }}/v1/sys/health"
+        method: GET
+        validate_certs: false
+        status_code: [200, 429, 472, 473, 501, 503]
+      register: vault_health_check
+      retries: 30
+      delay: 5
+      until: vault_health_check.status | default(0) in [200, 429]
+
+    - name: Configure Vault OIDC authentication
+      ansible.builtin.include_tasks: configure_oidc.yml
+
+    - name: Set reconciliation timestamp
+      ansible.builtin.set_fact:
+        vault_status_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update Vault CR status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaults
+        cr_name: "{{ vault_cr_name }}"
+        cr_namespace: "{{ vault_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          lastReconciledAt: "{{ vault_status_time }}"
+          ready: true
+          observedGeneration: "{{ vault_generation }}"
+          vaultUrl: "{{ vault_external_url }}"
+          vaultInternalUrl: "{{ vault_internal_url }}"
+          adminSecretName: "{{ vault_instance_name }}-init"
+          adminSecretNamespace: "{{ vault_cr_namespace }}"
+          oidcClientId: "{{ vault_oidc_client_id }}"
+          entity: "{{ entity_name }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ vault_status_time }}"
+              reason: EDASucceeded
+              message: >-
+                Vault {{ vault_cr_name }} is running at {{ vault_external_url }}.
+                OIDC client: {{ vault_oidc_client_id }}.
+
+  rescue:
+    - name: Mark Vault as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: vaults
+        cr_name: "{{ vault_cr_name }}"
+        cr_namespace: "{{ vault_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "Vault {{ vault_cr_name | default('unknown') }} EDA provisioning failed"

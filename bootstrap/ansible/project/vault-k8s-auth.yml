@@ -1,0 +1,80 @@
+---
+- name: Configure Vault Kubernetes Authentication
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://vault-active.vault.svc:8200', true) }}"
+    vault_namespace: "{{ lookup('env', 'VAULT_SECRET_NAMESPACE') | default('vault', true) }}"
+    vault_secret_name: "{{ lookup('env', 'VAULT_SECRET_NAME') | default('vault-init-secrets', true) }}"
+    vault_services_addr: "{{ lookup('env', 'VAULT_SERVICES_ADDR') | default('', true) }}"
+    ocp_services_server: "{{ lookup('env', 'OCP_SERVICES_SERVER') | default('', true) }}"
+
+  pre_tasks:
+    - name: Retrieve Vault root token from secret
+      kubernetes.core.k8s_info:
+        kind: Secret
+        name: "{{ vault_secret_name }}"
+        namespace: "{{ vault_namespace }}"
+      register: vault_secret
+      retries: 10
+      delay: 10
+      until: vault_secret.resources | length > 0
+
+    - name: Set root token fact
+      ansible.builtin.set_fact:
+        vault_root_token: "{{ vault_secret.resources[0].data.root_token | b64decode }}"
+
+    # Read the ArgoCD services cluster secret here so services_bearer_token is available
+    # for both the services-cluster vault-services-init-secrets query and the role tasks.
+    - name: Read ArgoCD cluster secret for services bearer token
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: argocd-cluster-services
+        namespace: openshift-gitops
+      register: argocd_cluster_secret
+      retries: 5
+      delay: 10
+      until: argocd_cluster_secret.resources | length > 0
+      when: vault_services_addr | length > 0
+
+    - name: Extract services cluster bearer token
+      ansible.builtin.set_fact:
+        services_bearer_token: >-
+          {{ (argocd_cluster_secret.resources[0].data.config | b64decode | from_json).bearerToken }}
+      when: vault_services_addr | length > 0 and argocd_cluster_secret.resources | length > 0
+
+    # vault-services-init-secrets lives in the vault namespace on the SERVICES cluster.
+    # Retrieve it via the services-cluster Kubernetes API using the ArgoCD bearer token.
+    - name: Retrieve services vault init secrets via services cluster API
+      ansible.builtin.uri:
+        url: "{{ ocp_services_server }}/api/v1/namespaces/vault/secrets/vault-services-init-secrets"
+        method: GET
+        validate_certs: false
+        headers:
+          Authorization: "Bearer {{ services_bearer_token }}"
+        status_code: [200]
+      register: vault_services_secret_resp
+      when: vault_services_addr | length > 0 and services_bearer_token is defined
+      retries: 5
+      delay: 5
+      until: vault_services_secret_resp.status == 200
+      ignore_errors: true
+
+    - name: Set services vault root token fact
+      ansible.builtin.set_fact:
+        vault_services_root_token: >-
+          {{ vault_services_secret_resp.json.data.root_token | b64decode
+             if (vault_services_secret_resp.status is defined and vault_services_secret_resp.status == 200)
+             else '' }}
+      when: vault_services_addr | length > 0
+
+  roles:
+    # No variables passed explicitly: play-scope vars (vault_root_token, vault_services_addr,
+    # vault_services_root_token, services_bearer_token, ocp_services_server) set via vars/set_fact
+    # are accessible to role tasks without explicit passing.
+    # Passing them explicitly as "{{ var }}" triggers Ansible self-referencing recursion
+    # when a same-named role default exists.
+    - role: vault-k8s-auth

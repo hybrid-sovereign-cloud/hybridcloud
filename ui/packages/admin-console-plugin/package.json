@@ -1,0 +1,42 @@
+{
+  "name": "@hybridsovereign/admin-console-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenShift Console dynamic plugin for Hybrid Sovereign admin views",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "typecheck": "tsc --noEmit"
+  },
+  "consolePlugin": {
+    "name": "hybridsovereign-admin",
+    "version": "0.1.0",
+    "displayName": "Hybrid Sovereign Admin",
+    "description": "Admin console plugin for Hybrid Sovereign Cloud CRDs",
+    "exposedModules": {
+      "AdminOverviewPage": "./src/components/AdminOverviewPage.tsx",
+      "AdminEntitiesPage": "./src/components/AdminEntitiesPage.tsx"
+    }
+  },
+  "dependencies": {
+    "@hybridsovereign/shared": "*",
+    "@openshift-console/dynamic-plugin-sdk": "^1.8.0",
+    "@patternfly/react-core": "^5.4.1",
+    "@patternfly/react-icons": "^5.4.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-router-dom": "^5.3.4"
+  },
+  "devDependencies": {
+    "@openshift-console/dynamic-plugin-sdk-webpack": "^1.2.0",
+    "@types/react": "^17.0.80",
+    "@types/react-dom": "^17.0.25",
+    "css-loader": "^7.1.2",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.6.3",
+    "webpack": "^5.96.1",
+    "webpack-cli": "^5.1.4"
+  }
+}

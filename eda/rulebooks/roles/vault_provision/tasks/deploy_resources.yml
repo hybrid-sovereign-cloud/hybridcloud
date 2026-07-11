@@ -1,0 +1,301 @@
+---
+- name: Create Vault ServiceAccount
+  kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+
+- name: Deploy Vault StatefulSet (single replica)
+  kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+          app.kubernetes.io/managed-by: plugin-vault
+      spec:
+        serviceName: "{{ vault_svc_name }}-internal"
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: "{{ vault_instance_name }}"
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: "{{ vault_instance_name }}"
+          spec:
+            serviceAccountName: "{{ vault_instance_name }}"
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: vault
+                image: "{{ plugin_vault_image }}"
+                args: ["server"]
+                env:
+                  - name: VAULT_LOCAL_CONFIG
+                    value: |
+                      disable_mlock = true
+                      ui = true
+                      listener "tcp" {
+                        tls_disable = 1
+                        address = "[::]:8200"
+                        cluster_address = "[::]:8201"
+                      }
+                      storage "file" {
+                        path = "/vault/data"
+                      }
+                  - name: VAULT_API_ADDR
+                    value: "http://$(POD_IP):8200"
+                  - name: SKIP_SETCAP
+                    value: "true"
+                  - name: SKIP_CHOWN
+                    value: "true"
+                  - name: POD_IP
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: status.podIP
+                ports:
+                  - containerPort: 8200
+                    name: http
+                  - containerPort: 8201
+                    name: cluster
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop: [ALL]
+                readinessProbe:
+                  httpGet:
+                    path: /v1/sys/health?standbyok=true
+                    port: 8200
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                volumeMounts:
+                  - name: data
+                    mountPath: /vault/data
+                  - name: config
+                    mountPath: /vault/config
+            volumes:
+              - name: config
+                emptyDir: {}
+        volumeClaimTemplates:
+          - metadata:
+              name: data
+            spec:
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 1Gi
+  when: not vault_ha_enabled
+
+- name: Deploy Vault StatefulSet (HA - 3 replicas)
+  kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+          app.kubernetes.io/managed-by: plugin-vault
+      spec:
+        serviceName: "{{ vault_svc_name }}-internal"
+        replicas: 3
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: "{{ vault_instance_name }}"
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: "{{ vault_instance_name }}"
+          spec:
+            serviceAccountName: "{{ vault_instance_name }}"
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: vault
+                image: "{{ plugin_vault_image }}"
+                args: ["server"]
+                env:
+                  - name: VAULT_LOCAL_CONFIG
+                    value: |
+                      disable_mlock = true
+                      ui = true
+                      listener "tcp" {
+                        tls_disable = 1
+                        address = "[::]:8200"
+                        cluster_address = "[::]:8201"
+                      }
+                      storage "file" {
+                        path = "/vault/data"
+                      }
+                  - name: VAULT_API_ADDR
+                    value: "http://$(POD_IP):8200"
+                  - name: SKIP_SETCAP
+                    value: "true"
+                  - name: SKIP_CHOWN
+                    value: "true"
+                  - name: POD_IP
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: status.podIP
+                ports:
+                  - containerPort: 8200
+                    name: http
+                  - containerPort: 8201
+                    name: cluster
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop: [ALL]
+                readinessProbe:
+                  httpGet:
+                    path: /v1/sys/health?standbyok=true
+                    port: 8200
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                volumeMounts:
+                  - name: data
+                    mountPath: /vault/data
+                  - name: config
+                    mountPath: /vault/config
+            volumes:
+              - name: config
+                emptyDir: {}
+        volumeClaimTemplates:
+          - metadata:
+              name: data
+            spec:
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 1Gi
+  when: vault_ha_enabled
+
+- name: Create Vault headless Service
+  kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ vault_svc_name }}-internal"
+        namespace: "{{ vault_cr_namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+      spec:
+        clusterIP: None
+        selector:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+        ports:
+          - name: http
+            port: 8200
+          - name: cluster
+            port: 8201
+
+- name: Create Vault active Service
+  kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ vault_svc_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+      spec:
+        selector:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+        ports:
+          - name: http
+            port: 8200
+            targetPort: 8200
+
+- name: Create Vault Route
+  kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    state: present
+    definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ vault_instance_name }}"
+        namespace: "{{ vault_cr_namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ vault_instance_name }}"
+      spec:
+        to:
+          kind: Service
+          name: "{{ vault_svc_name }}"
+        port:
+          targetPort: http
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+
+- name: Wait for Vault pod readiness
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: v1
+    kind: Pod
+    namespace: "{{ vault_cr_namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/name={{ vault_instance_name }}"
+    field_selectors:
+      - status.phase=Running
+  register: vault_pods
+  retries: 30
+  delay: 10
+  until: vault_pods.resources | length > 0
+
+- name: Get Vault Route host
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: route.openshift.io/v1
+    kind: Route
+    name: "{{ vault_instance_name }}"
+    namespace: "{{ vault_cr_namespace }}"
+  register: vault_route
+
+- name: Set Vault URLs
+  ansible.builtin.set_fact:
+    vault_internal_url: "http://{{ vault_svc_name }}.{{ vault_cr_namespace }}.svc:8200"
+    vault_external_url: "https://{{ vault_route.resources[0].spec.host }}"
+    vault_api_url: "https://{{ vault_route.resources[0].spec.host }}"

@@ -1,0 +1,98 @@
+{{- if and .Values.gitopsOperator.enabled (include "sovereign-init.bootstrapSecrets" .) }}
+# Declarative Argo CD instance tuning (cmdParams + optional per-component resource overrides).
+# Default resource stripping runs via configure-argocd-instance.sh during bootstrap.
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: {{ .Values.gitopsOperator.argocdInstanceName }}
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-init.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.gitopsOperator.cmdParams }}
+  cmdParams:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+  # Enable server-side diff globally — this makes ArgoCD use the API server for diff
+  # calculation and prevents the MCE ocm-proxyserver's broken OpenAPI v2 $ref
+  # (github.com~1stolostron~1...) from failing the entire cluster cache sync.
+  extraConfig:
+    resource.compareoptions: |
+      serverSideDiff: true
+    # Custom health check: Vault StatefulSets are "Healthy" when pods are Running,
+    # even if not Ready. Vault pods are never Ready before initialization, so without
+    # this check ArgoCD deadlocks: vault-init (wave 23) can't run until vault is
+    # Healthy (wave 15), but vault can't be Healthy until vault-init runs.
+    resource.customizations.health.apps_StatefulSet: |
+      hs = {}
+      local isVault = false
+      if obj.metadata and obj.metadata.labels then
+        if obj.metadata.labels["app.kubernetes.io/name"] == "vault" or
+           obj.metadata.labels["app.kubernetes.io/instance"] == "vault" or
+           obj.metadata.labels["app.kubernetes.io/instance"] == "vault-services" then
+          isVault = true
+        end
+      end
+      if isVault then
+        if obj.status ~= nil then
+          if obj.status.currentReplicas ~= nil and obj.status.currentReplicas >= 1 then
+            hs.status = "Healthy"
+            hs.message = "Vault StatefulSet has running pods (initialization pending)"
+            return hs
+          end
+          if obj.status.replicas ~= nil and obj.status.replicas >= 1 then
+            hs.status = "Healthy"
+            hs.message = "Vault StatefulSet replicas provisioned"
+            return hs
+          end
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for Vault pods to start"
+        return hs
+      end
+      if obj.status ~= nil then
+        if obj.status.updateStrategy ~= nil then
+          if obj.status.updatedReplicas ~= nil and obj.spec ~= nil then
+            if obj.status.updatedReplicas < obj.spec.replicas then
+              hs.status = "Progressing"
+              hs.message = "Waiting for StatefulSet rollout"
+              return hs
+            end
+          end
+        end
+        if obj.status.readyReplicas ~= nil and obj.spec ~= nil and obj.spec.replicas ~= nil then
+          if obj.status.readyReplicas >= obj.spec.replicas then
+            hs.status = "Healthy"
+            return hs
+          end
+        end
+      end
+      hs.status = "Progressing"
+      hs.message = "Waiting for ready replicas"
+      return hs
+  # Exclude RHACM clusterview CRDs — their broken OpenAPI schema corrupts ArgoCD's cache.
+  resourceExclusions: |
+    - apiGroups:
+      - "clusterview.open-cluster-management.io"
+      kinds:
+      - "*"
+      clusters:
+      - "*"
+  {{- $overrides := .Values.gitopsOperator.resourceOverrides | default dict }}
+  {{- range $component := list "controller" "server" "repo" "applicationSet" "dex" "redis" }}
+  {{- with index $overrides $component }}
+  {{ $component }}:
+    resources:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+  {{- end }}
+  # ArgoCD controller memory: increased from default 2Gi to handle 47+ concurrent apps
+  controller:
+    resources:
+      limits:
+        memory: 8Gi
+      requests:
+        memory: 2Gi
+{{- end }}

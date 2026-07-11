@@ -1,0 +1,163 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        entity_cr_name: "{{ event_payload.regarding.name }}"
+        entity_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        entity_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: entities
+        cr_name: "{{ entity_cr_name }}"
+        cr_namespace: "{{ entity_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read Entity CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Entity
+        name: "{{ entity_cr_name }}"
+        namespace: "{{ entity_cr_namespace }}"
+      register: entity_cr_lookup
+
+    - name: Fail if Entity CR is missing on services cluster
+      ansible.builtin.fail:
+        msg: Entity CR {{ entity_cr_name }} not found in {{ entity_cr_namespace }}
+      when: entity_cr_lookup.resources | length == 0
+
+    - name: Set derived facts from CR spec
+      ansible.builtin.set_fact:
+        entity_namespace: "entity-{{ entity_cr_name }}"
+        entity_generation: "{{ entity_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+        entity_spec: "{{ entity_cr_lookup.resources[0].spec | default({}) }}"
+        entity_description: "{{ entity_cr_lookup.resources[0].spec.description | default('') }}"
+        entity_billing_id: "{{ entity_cr_lookup.resources[0].spec.billingID | default('') }}"
+        entity_website_link: "{{ entity_cr_lookup.resources[0].spec.websiteLink | default('') }}"
+
+    - name: Discover OpenShift console URL on services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: config.openshift.io/v1
+        kind: Console
+        name: cluster
+      register: console_lookup
+      ignore_errors: true
+
+    - name: Set console base URL
+      ansible.builtin.set_fact:
+        console_base_url: >-
+          {{ (console_lookup.resources | default([{}]))[0]
+             .get('status', {}).get('consoleURL', 'https://console-openshift-console.apps.cluster.local') }}
+
+    - name: Build namespace console URL
+      ansible.builtin.set_fact:
+        entity_console_url: "{{ console_base_url | trim }}/k8s/cluster/projects/{{ entity_namespace }}"
+
+    - name: Sanitize label values for Kubernetes compliance
+      ansible.builtin.set_fact:
+        label_billing_id: "{{ entity_billing_id | regex_replace('[^A-Za-z0-9._-]', '-') | truncate(63, true, '') }}"
+
+    - name: Create entity namespace with labels
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ entity_namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: entity-operator
+              hybridsovereign.redhat/entity: "{{ entity_cr_name }}"
+              hybridsovereign.redhat/billing-id: "{{ label_billing_id }}"
+
+    - name: Apply annotations to entity namespace
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: patched
+        kind: Namespace
+        name: "{{ entity_namespace }}"
+        definition:
+          metadata:
+            annotations:
+              hybridsovereign.redhat/description: "{{ entity_description }}"
+              hybridsovereign.redhat/website-link: "{{ entity_website_link }}"
+              hybridsovereign.redhat/console-url: "{{ entity_console_url }}"
+
+    - name: Generate namespace Roles and RoleBindings for named RBAC roles
+      ansible.builtin.include_tasks: namespace_roles.yml
+      when: entity_spec.namespaceRbac is defined
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        entity_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update Entity status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: entities
+        cr_name: "{{ entity_cr_name }}"
+        cr_namespace: "{{ entity_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ entity_generation }}"
+          lastReconciledAt: "{{ entity_status_transition_time }}"
+          entity: "{{ entity_namespace }}"
+          description: "{{ entity_description }}"
+          openshiftConsoleURL: "{{ entity_console_url }}"
+          billingID: "{{ entity_billing_id }}"
+          websiteLink: "{{ entity_website_link }}"
+          message: Entity {{ entity_cr_name }} provisioned by EDA
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ entity_status_transition_time }}"
+              reason: EDASucceeded
+              message: Entity {{ entity_cr_name }} provisioned by EDA
+
+  rescue:
+    - name: Mark Entity as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: entities
+        cr_name: "{{ entity_cr_name }}"
+        cr_namespace: "{{ entity_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "Entity {{ entity_cr_name | default('unknown') }} EDA provisioning failed"

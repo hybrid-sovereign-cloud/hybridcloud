@@ -1,0 +1,29 @@
+image:
+  repository: quay.example.com/hybrid-sovereign/event-forwarder
+  tag: "0.2.0"
+  pullPolicy: Always
+
+replicas: 1
+
+eventStream:
+  url: ""
+  tokenSecretName: event-forwarder-token
+  tokenSecretKey: token
+
+kafka:
+  enabled: true
+  bootstrapServers: "hybridsovereign-kafka-kafka-bootstrap.amq-streams.svc:9092"
+  topic: hybridsovereign-events
+
+vaultSecretPath: "central/event-forwarder"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+serviceAccount:
+  name: event-forwarder

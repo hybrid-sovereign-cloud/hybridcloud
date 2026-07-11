@@ -1,0 +1,30 @@
+namespace: aap
+
+name: sovereign-aap
+
+operator:
+  channel: stable-2.6
+  installPlanApproval: Automatic
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  name: ansible-automation-platform-operator
+
+controller:
+  enabled: true
+  replicas: 1
+
+eda:
+  enabled: true
+  replicas: 1
+  rbac:
+    enabled: true
+
+hub:
+  enabled: false
+
+postgres:
+  enabled: false
+  name: aap-pgcluster
+  instances: 2
+  storage: 10Gi
+  backupStorage: 10Gi

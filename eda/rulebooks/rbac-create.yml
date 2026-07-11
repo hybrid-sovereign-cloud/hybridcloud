@@ -1,0 +1,16 @@
+- name: Rbac Create Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Rbac Create
+    condition: event.payload.reason in ["RbacCreateRequested", "RbacReconcileRequested"] and event.payload.regarding.kind
+      == "Rbac"
+    action:
+      run_job_template:
+        name: rbac-provision
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

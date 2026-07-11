@@ -1,0 +1,76 @@
+cluster:
+  name: ocp
+  baseDomain: ""
+  importToHub: true
+  createGitopsManifestWorks: false
+  createGitopsSyncSet: false
+  useACM: true
+  type: ocp
+  clusterImageSet: img4.21.9-x86-64-appsub
+  releaseImage: null
+  controlPlaneCount: 3
+  workerCount: 2
+  infraCount: 0
+  apiVIP: ""
+  ingressVIP: ""
+  # Vault paths (relative to ClusterSecretStore backend — vault-backend)
+  pullSecretVault: ""
+  sshKeyVault: ""
+  trustedCAs: ""
+  sshPubKey: ""
+  dnsServers: []
+
+provider:
+  # Vault path for provider credentials ExternalSecret
+  providerCredsVault: ""
+  providerCAs: ""
+  # Can be AWS, OpenStack, Agent, or vSphere
+  type: AWS
+  aws:
+    region: us-east-1
+    controllerFlavor: m5.xlarge
+    workerFlavor: m5.large
+    # credentialsMode: Mint — uses direct access key in providerCredsVault secret
+    # credentialsMode: Manual — uses STS assumeRole (requires ccoctl setup)
+    credentialsMode: Mint
+    publishMode: External
+    # Keys used to map Vault secret fields to Hive-expected secret keys.
+    # Override if your Vault secret uses different key names.
+    credentialsKeyAccessKeyId: aws_access_key_id
+    credentialsKeySecretAccessKey: aws_secret_access_key
+    assumeRole:
+      roleARN: ""
+      externalID: ""
+    serviceAccountSignerSecret: ""
+    extraManifestsSecret: ""
+  vsphere:
+    datacenter: ""
+    cluster: ""
+    defaultDatastore: ""
+    network: ""
+    folder: null
+    vcenterHost: ""
+  openstack:
+    existingImage: null
+    externalNetwork: ""
+    computeAZs: []
+    volumeAZs: []
+    rootVolumeSize: null
+    rootVolumeTypes: []
+    controlPlaneFlavor: m1.xlarge
+    workerFlavor: m1.large
+  agent:
+    infraEnvType: shared
+    infraEnvSettings:
+      networkType: static
+      hostNetworkConfigs: {}
+      ntpServers: []
+    sharedInfraEnv:
+      namespace: metal-infra-env
+      name: metal-infra-env
+    platformType: null
+    useExternalLB: true
+    machineCIDR: ""
+
+# ClusterSecretStore name (sovereign cloud uses vault-backend, not vault)
+secretStoreName: vault-backend

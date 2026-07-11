@@ -1,0 +1,300 @@
+---
+# Controller job templates for sovereign operator playbooks
+controller_templates:
+  - name: entity-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/entity-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-entity
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: entity-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/entity-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-entity
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: team-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/team-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-team
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: team-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/team-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-team
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: project-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/project-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-project
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: project-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/project-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-project
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: persona-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/persona-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-persona
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: persona-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/persona-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-persona
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: assignment-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/assignment-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-assignment
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: assignment-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/assignment-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-assignment
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: cloudaws-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/cloudaws-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-cloudaws
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: cloudaws-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/cloudaws-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-cloudaws
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: cloudoso-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/cloudoso-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-cloudoso
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: cloudoso-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/cloudoso-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-cloudoso
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: platformopenshift-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/platformopenshift-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-platformopenshift
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: platformopenshift-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/platformopenshift-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-platformopenshift
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: rbacconfig-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/rbacconfig-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-rbac
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: rbacconfig-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/rbacconfig-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-rbac
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: rbac-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/rbac-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-rbac
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: rbac-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/rbac-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-rbac
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: vault-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/vault-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-vault
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: vault-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/vault-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-vault
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: vaultkv-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/vaultkv-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-vault
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: vaultkv-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/vaultkv-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-vault
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: aapconfig-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/aapconfig-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-aap
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: aapconfig-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/aapconfig-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-aap
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: aaporg-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/aaporg-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-aap
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: aaporg-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/aaporg-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-aap
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: quayconfig-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/quayconfig-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-quay
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: quayconfig-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/quayconfig-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-quay
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: quayorg-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/quayorg-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-quay
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: quayorg-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/quayorg-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-plugin-quay
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: openstack-migration-dummy
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/openstack-migration-dummy-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-openstack-migration
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential

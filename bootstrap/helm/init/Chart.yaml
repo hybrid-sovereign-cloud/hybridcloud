@@ -1,0 +1,17 @@
+apiVersion: v2
+name: sovereign-init
+description: >
+  Bootstrap entry-point chart. Three cumulative layers controlled by bootstrap.* values:
+  operator (GitOps operator), secrets (repo/cluster/OCI/pull), applicationset (app-of-apps).
+  Invoked via make init-central-argo, make init-central-secrets, make init-central-applicationset.
+type: application
+version: 0.3.4
+appVersion: "1.0.0"
+keywords:
+  - argocd
+  - bootstrap
+  - gitops
+  - applicationset
+home: https://github.com/hybrid-sovereign/bootstrap
+maintainers:
+  - name: platform-team

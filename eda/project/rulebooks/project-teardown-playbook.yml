@@ -1,0 +1,7 @@
+---
+- name: Project Teardown Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - project_teardown

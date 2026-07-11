@@ -1,0 +1,266 @@
+---
+- name: Create admin team via gateway API
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/gateway/v1/teams/"
+    method: POST
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ org_name }}-admins"
+      organization: "{{ gw_org_id }}"
+      description: Admin team mapped from Keycloak RBAC groups
+    validate_certs: false
+    status_code: [200, 201, 400]
+  register: _admin_team
+  ignore_errors: true
+  when: gw_org_id | int > 0
+
+- name: Create executor team via gateway API
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/gateway/v1/teams/"
+    method: POST
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ org_name }}-executors"
+      organization: "{{ gw_org_id }}"
+      description: Job executor team mapped from Keycloak RBAC groups
+    validate_certs: false
+    status_code: [200, 201, 400]
+  register: _exec_team
+  ignore_errors: true
+  when: gw_org_id | int > 0
+
+- name: Create viewer team via gateway API
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/gateway/v1/teams/"
+    method: POST
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ org_name }}-viewers"
+      organization: "{{ gw_org_id }}"
+      description: Read-only viewer team mapped from Keycloak RBAC groups
+    validate_certs: false
+    status_code: [200, 201, 400]
+  register: _viewer_team
+  ignore_errors: true
+  when: gw_org_id | int > 0 and viewer_groups | length > 0
+
+- name: Configure authenticator map for admin groups
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticator_maps/"
+    method: POST
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ org_name }}-admin-map-{{ item }}"
+      authenticator: "{{ aap_auth_id }}"
+      map_type: team
+      triggers:
+        groups:
+          has_or: ["{{ item }}"]
+      organization: "{{ org_name }}"
+      team: "{{ org_name }}-admins"
+      order: 1
+      revoke: true
+    validate_certs: false
+    status_code: [200, 201, 400]
+  loop: "{{ admin_groups }}"
+  when: aap_auth_id | length > 0 and admin_groups | length > 0
+  ignore_errors: true
+
+- name: Configure authenticator map for executor groups
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticator_maps/"
+    method: POST
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ org_name }}-executor-map-{{ item }}"
+      authenticator: "{{ aap_auth_id }}"
+      map_type: team
+      triggers:
+        groups:
+          has_or: ["{{ item }}"]
+      organization: "{{ org_name }}"
+      team: "{{ org_name }}-executors"
+      order: 2
+      revoke: true
+    validate_certs: false
+    status_code: [200, 201, 400]
+  loop: "{{ executor_groups }}"
+  when: aap_auth_id | length > 0 and executor_groups | length > 0
+  ignore_errors: true
+
+- name: Configure authenticator map for viewer groups
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticator_maps/"
+    method: POST
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      name: "{{ org_name }}-viewer-map-{{ item }}"
+      authenticator: "{{ aap_auth_id }}"
+      map_type: team
+      triggers:
+        groups:
+          has_or: ["{{ item }}"]
+      organization: "{{ org_name }}"
+      team: "{{ org_name }}-viewers"
+      order: 3
+      revoke: true
+    validate_certs: false
+    status_code: [200, 201, 400]
+  loop: "{{ viewer_groups }}"
+  when: aap_auth_id | length > 0 and viewer_groups | length > 0
+  ignore_errors: true
+
+- name: Fetch org object roles
+  ansible.builtin.uri:
+    url: "{{ aap_gateway_internal_url }}/api/controller/v2/organizations/{{ aap_org_id }}/object_roles/"
+    method: GET
+    user: "{{ aap_username }}"
+    password: "{{ aap_password }}"
+    force_basic_auth: true
+    validate_certs: false
+    status_code: [200]
+  register: _org_roles
+  when: aap_org_id | int > 0
+
+- name: Build list of operational admin role IDs
+  ansible.builtin.set_fact:
+    admin_role_ids: >-
+      {{ _org_roles.json.results
+         | selectattr('name', 'in', ['Project Admin', 'Inventory Admin',
+            'Credential Admin', 'Workflow Admin', 'Notification Admin',
+            'Job Template Admin', 'Execution Environment Admin', 'Execute', 'Auditor'])
+         | map(attribute='id')
+         | list }}
+  when: aap_org_id | int > 0
+
+- name: Build execute role ID list
+  ansible.builtin.set_fact:
+    execute_role_ids: >-
+      {{ _org_roles.json.results
+         | selectattr('name', 'equalto', 'Execute')
+         | map(attribute='id')
+         | list }}
+  when: aap_org_id | int > 0
+
+- name: Build auditor role ID list
+  ansible.builtin.set_fact:
+    auditor_role_ids: >-
+      {{ _org_roles.json.results
+         | selectattr('name', 'equalto', 'Auditor')
+         | map(attribute='id')
+         | list }}
+  when: aap_org_id | int > 0
+
+- name: Grant operational admin roles to admin team
+  block:
+    - name: Fetch admin team ID from controller
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/teams/?name={{ org_name }}-admins&organization={{ aap_org_id }}"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: _admin_team_info
+      retries: 3
+      delay: 3
+      until: _admin_team_info.json.count | default(0) > 0
+
+    - name: Assign operational roles to admin team
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/teams/{{ _admin_team_info.json.results[0].id }}/roles/"
+        method: POST
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ {'id': item | int} }}"
+        validate_certs: false
+        status_code: [200, 204, 400, 409]
+      loop: "{{ admin_role_ids }}"
+      when: _admin_team_info.json.results | length > 0
+  when: aap_org_id | int > 0
+  ignore_errors: true
+
+- name: Grant execute role to executor team
+  block:
+    - name: Fetch executor team ID from controller
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/teams/?name={{ org_name }}-executors&organization={{ aap_org_id }}"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: _exec_team_info
+      retries: 3
+      delay: 3
+      until: _exec_team_info.json.count | default(0) > 0
+
+    - name: Assign execute role to executor team
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/teams/{{ _exec_team_info.json.results[0].id }}/roles/"
+        method: POST
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ {'id': item | int} }}"
+        validate_certs: false
+        status_code: [200, 204, 400, 409]
+      loop: "{{ execute_role_ids }}"
+      when: _exec_team_info.json.results | length > 0
+  when: aap_org_id | int > 0
+  ignore_errors: true
+
+- name: Grant auditor role to viewer team
+  block:
+    - name: Fetch viewer team ID from controller
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/teams/?name={{ org_name }}-viewers&organization={{ aap_org_id }}"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: _viewer_team_info
+      retries: 3
+      delay: 3
+      until: _viewer_team_info.json.count | default(0) > 0
+
+    - name: Assign auditor role to viewer team
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/controller/v2/teams/{{ _viewer_team_info.json.results[0].id }}/roles/"
+        method: POST
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: "{{ {'id': item | int} }}"
+        validate_certs: false
+        status_code: [200, 204, 400, 409]
+      loop: "{{ auditor_role_ids | default([]) }}"
+      when: _viewer_team_info.json.results | length > 0
+  when: aap_org_id | int > 0 and viewer_groups | length > 0
+  ignore_errors: true

@@ -1,0 +1,4 @@
+{{- if and (eq .Values.provider.type "AWS") (eq .Values.provider.aws.credentialsMode "Mint") -}}
+{{- /* AWS Mint mode: Hive generates install-config automatically from ClusterDeployment spec */}}
+{{- /* No install-config secret needed — Hive creates it from the ClusterDeployment platform config */}}
+{{- end -}}

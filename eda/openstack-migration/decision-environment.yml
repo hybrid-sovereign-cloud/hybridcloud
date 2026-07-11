@@ -1,0 +1,30 @@
+---
+version: 3
+images:
+  base_image:
+    name: "registry.redhat.io/ansible-automation-platform-25/de-supported-rhel9:latest"
+dependencies:
+  galaxy:
+    collections:
+      - name: kubernetes.core
+        version: ">=3.0.0"
+      - name: openstack.cloud
+        version: ">=2.5.0"
+      - name: https://github.com/os-migrate/vmware-migration-kit
+        type: git
+        version: "v2.2.7"
+      - name: https://github.com/os-migrate/os-migrate
+        type: git
+        version: "v1.0.5"
+      - name: vmware.vmware
+        version: ">=2.4.0"
+      - name: vmware.vmware_rest
+        version: ">=4.9.0"
+  python:
+    - kubernetes>=28.1.0
+    - requests>=2.31.0
+    - openstacksdk>=2.0.0
+    - PyYAML>=6.0.0
+  system: []
+options:
+  package_manager_path: /usr/bin/microdnf

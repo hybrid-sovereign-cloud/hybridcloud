@@ -1,0 +1,7 @@
+---
+- name: VaultKV Provision Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - vaultkv_provision

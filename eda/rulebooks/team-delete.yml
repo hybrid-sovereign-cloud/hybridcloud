@@ -1,0 +1,16 @@
+- name: Team Delete Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Team Delete
+    condition: event.payload.reason == "TeamDeleteRequested" and event.payload.regarding.kind
+      == "Team"
+    action:
+      run_job_template:
+        name: team-teardown
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

@@ -1,0 +1,22 @@
+# Sovereign Cloud Operator Rules — charts
+
+## Non-Negotiable Constraints
+
+- **No secrets in Git.** Never commit credentials, tokens, keys, or other sensitive material. All secret delivery uses ExternalSecret (pull from Vault) or PushSecret (push to Vault).
+- **Never delete `sovereign-*` namespaces.** Only add resources to existing sovereign namespaces.
+- **No `oc apply` / `kubectl apply`.** All changes go through ArgoCD. Never apply resources directly.
+- **Deploy after every phase.** Commit and push, wait for ArgoCD sync, verify health before proceeding.
+- **Public OCI visibility.** ocp-base and mce-cluster-build charts must always be pushed with `visibility: public` in Quay.
+- **Enable/disable flags.** All sample CRs must have an enable/disable flag in the corresponding chart values.
+
+## Operator Coding Standards
+
+- All Helm deployments use `--history-max 2` and `--kubeconfig` to bypass the proxy.
+- Idempotency: compare values with `helm get values` before running `helm upgrade`.
+- Use `ansible.builtin.command` for `helm` calls, never `kubernetes.core.helm` for install/upgrade/uninstall (proxy incompatibility).
+- Vault writes use root token from `vault-init-secrets` secret, always `no_log: true`.
+
+## Gitea / ArgoCD Cluster-Builds
+
+- This operator NO LONGER interacts with Gitea or ArgoCD for cluster builds.
+- Remove any `gitea_credentials_*` or `gitea_argocd_namespace` references.

@@ -1,0 +1,51 @@
+{{- if include "sovereign-init.bootstrapApplicationSet" . }}
+---
+# ApplicationSet generates the central app-of-apps only.
+# All Applications (including those targeting the services cluster) live in helm/central.
+# Central ArgoCD manages both clusters via destination.server.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ .Values.applicationSet.name }}
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- include "sovereign-init.labels" . | nindent 4 }}
+  annotations:
+    managed-by: sovereign-init-chart
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: central
+            chartPath: helm/central
+  template:
+    metadata:
+      name: "sovereign-{{`{{cluster}}`}}-apps"
+      labels:
+        app.kubernetes.io/part-of: sovereign-bootstrap
+    spec:
+      project: default
+      source:
+        repoURL: {{ .Values.gitops.repoURL | quote }}
+        targetRevision: {{ .Values.gitops.targetRevision | quote }}
+        path: "{{`{{chartPath}}`}}"
+        helm:
+          releaseName: "sovereign-{{`{{cluster}}`}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: {{ .Values.applicationSet.destinationNamespace }}
+      syncPolicy:
+        automated:
+          prune: {{ .Values.applicationSet.syncPolicy.automated.prune }}
+          selfHeal: {{ .Values.applicationSet.syncPolicy.automated.selfHeal }}
+        syncOptions:
+          {{- range .Values.applicationSet.syncPolicy.syncOptions }}
+          - {{ . }}
+          {{- end }}
+        retry:
+          limit: {{ .Values.argocdSyncPolicy.retry.limit }}
+          backoff:
+            duration: {{ .Values.argocdSyncPolicy.retry.backoff.duration }}
+            factor: {{ .Values.argocdSyncPolicy.retry.backoff.factor }}
+            maxDuration: {{ .Values.argocdSyncPolicy.retry.backoff.maxDuration }}
+{{- end }}

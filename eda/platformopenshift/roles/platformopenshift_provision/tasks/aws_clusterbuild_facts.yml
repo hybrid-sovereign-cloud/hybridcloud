@@ -1,0 +1,18 @@
+---
+- name: Derive cluster identifiers
+  ansible.builtin.set_fact:
+    cb_app_name: "{{ ansible_operator_meta.name }}"
+    cb_cluster_name: "{{ ansible_operator_meta.name }}"
+    cb_cluster_domain: "{{ ansible_operator_meta.name }}.{{ aws_slug }}.{{ aws_base_domain }}"
+    cb_install_base_domain: "{{ aws_slug }}.{{ aws_base_domain }}"
+    cb_region: "{{ aws_region }}"
+    cb_image_set: "{{ platform_spec.aws.ocpImageSet | default(default_ocp_image_set) }}"
+    cb_controller_flavor: "{{ aws_controller_flavor }}"
+    cb_worker_flavor: "{{ aws_worker_flavor }}"
+    cb_control_plane_count: "{{ aws_control_plane_count }}"
+    cb_worker_count: "{{ aws_worker_count }}"
+    cb_pull_secret_vault: "{{ platform_spec.aws.pullSecretVaultPath | default(default_pull_secret_vault_path) }}"
+    cb_ssh_key_vault: "{{ platform_spec.aws.sshKeyVaultPath | default(default_ssh_key_vault_path) }}"
+    cb_install_config_vault: "aws/accounts/{{ aws_account }}/{{ aws_slug }}/{{ ansible_operator_meta.name }}/install-config"
+    cb_provider_creds_vault: "{{ aws_vault_path }}"
+    cb_type: "{{ aws_cluster_type }}"

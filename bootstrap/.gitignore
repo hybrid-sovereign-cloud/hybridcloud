@@ -1,0 +1,17 @@
+# Local cluster credentials (never commit)
+.env
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*secret*
+*credential*
+*token*
+!**/templates/*secret*
+!**/templates/*token*
+# Helm dependencies (downloaded by helm dependency build)
+helm/charts/*/charts/*.tgz

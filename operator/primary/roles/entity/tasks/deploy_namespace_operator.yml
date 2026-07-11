@@ -1,0 +1,121 @@
+---
+- name: Derive entity tenant namespace name
+  ansible.builtin.set_fact:
+    entity_tenant_namespace: "entity-{{ ansible_operator_meta.name }}"
+
+- name: Ensure entity tenant namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ entity_tenant_namespace }}"
+        labels:
+          hybridsovereign.redhat/entity: "{{ ansible_operator_meta.name }}"
+          app.kubernetes.io/managed-by: hybridsovereign-primary-operator
+          app.kubernetes.io/part-of: hybridsovereign
+
+- name: Deploy namespace operator ServiceAccount
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: hybridsovereign-namespace-operator
+        namespace: "{{ entity_tenant_namespace }}"
+        labels:
+          app.kubernetes.io/name: hybridsovereign-namespace-operator
+          app.kubernetes.io/managed-by: hybridsovereign-primary-operator
+
+- name: Deploy namespace operator Role
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: hybridsovereign-namespace-operator
+        namespace: "{{ entity_tenant_namespace }}"
+      rules:
+        - apiGroups: ["hybridsovereign.redhat"]
+          resources: ["*"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        - apiGroups: [""]
+          resources: ["events", "secrets", "configmaps"]
+          verbs: ["get", "list", "watch", "create", "update", "patch"]
+        - apiGroups: ["coordination.k8s.io"]
+          resources: ["leases"]
+          verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+- name: Deploy namespace operator RoleBinding
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: hybridsovereign-namespace-operator
+        namespace: "{{ entity_tenant_namespace }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: hybridsovereign-namespace-operator
+      subjects:
+        - kind: ServiceAccount
+          name: hybridsovereign-namespace-operator
+          namespace: "{{ entity_tenant_namespace }}"
+
+- name: Deploy namespace operator Deployment
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: hybridsovereign-namespace-operator
+        namespace: "{{ entity_tenant_namespace }}"
+        labels:
+          app.kubernetes.io/name: hybridsovereign-namespace-operator
+          hybridsovereign.redhat/entity: "{{ ansible_operator_meta.name }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: hybridsovereign-namespace-operator
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: hybridsovereign-namespace-operator
+          spec:
+            serviceAccountName: hybridsovereign-namespace-operator
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            containers:
+              - name: manager
+                image: "{{ lookup('env', 'NAMESPACE_OPERATOR_IMAGE') | default('quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator:0.1.0', true) }}"
+                imagePullPolicy: Always
+                args:
+                  - --leader-elect
+                  - --leader-election-id=hybridsovereign-namespace-operator-{{ ansible_operator_meta.name }}
+                  - --health-probe-bind-address=:6789
+                  - --watched-namespaces={{ entity_tenant_namespace }}
+                env:
+                  - name: WATCH_NAMESPACE
+                    value: "{{ entity_tenant_namespace }}"
+                  - name: ANSIBLE_GATHERING
+                    value: explicit
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop: [ALL]
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 256Mi
+                  limits:
+                    cpu: 500m
+                    memory: 1Gi

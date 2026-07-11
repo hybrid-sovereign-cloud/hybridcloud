@@ -1,0 +1,80 @@
+---
+# Controller SCM project and execution environments (quay.example.com/hybrid-sovereign)
+controller_projects:
+  - name: sovereign-eda-project
+    organization: sovereign
+    scm_type: git
+    scm_url: "{{ lookup('env', 'EDA_REPO_URL') }}"
+    credential: sovereign-github-credential
+    scm_clean: true
+    scm_delete_on_update: false
+    scm_update_on_launch: true
+    scm_branch: main
+    wait: true
+
+controller_execution_environments:
+  - name: de-entity
+    organization: sovereign
+    image: "{{ quay_registry }}/de-entity:0.1.7"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-team
+    organization: sovereign
+    image: "{{ quay_registry }}/de-team:0.1.2"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-assignment
+    organization: sovereign
+    image: "{{ quay_registry }}/de-assignment:0.1.5"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-project
+    organization: sovereign
+    image: "{{ quay_registry }}/de-project:0.1.0"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-platformopenshift
+    organization: sovereign
+    image: "{{ quay_registry }}/de-platformopenshift:0.1.5"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-cloudoso
+    organization: sovereign
+    image: "{{ quay_registry }}/de-cloudoso:0.1.7"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-openstack-migration
+    organization: sovereign
+    image: "{{ quay_registry }}/de-openstack-migration:0.1.0"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-cloudaws
+    organization: sovereign
+    image: "{{ quay_registry }}/de-cloudaws:0.1.4"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-persona
+    organization: sovereign
+    image: "{{ quay_registry }}/de-persona:0.1.2"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-plugin-rbac
+    organization: sovereign
+    image: "{{ quay_registry }}/de-plugin-rbac:0.1.3"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-plugin-vault
+    organization: sovereign
+    image: "{{ quay_registry }}/de-plugin-vault:0.1.2"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-plugin-aap
+    organization: sovereign
+    image: "{{ quay_registry }}/de-plugin-aap:0.1.3"
+    pull: missing
+    credential: quay-robot-credential
+  - name: de-plugin-quay
+    organization: sovereign
+    image: "{{ quay_registry }}/de-plugin-quay:0.1.2"
+    pull: missing
+    credential: quay-robot-credential

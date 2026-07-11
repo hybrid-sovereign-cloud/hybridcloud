@@ -1,0 +1,14 @@
+---
+- name: AAPConfig Create Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.event_stream:
+        event_stream_name: sovereign-operator-events
+  rules:
+    - name: Handle AAPConfig Create
+      condition: event.payload.reason in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.payload.regarding.kind == "AAPConfig"
+      action:
+        run_playbook:
+          name: aapconfig-provision-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"

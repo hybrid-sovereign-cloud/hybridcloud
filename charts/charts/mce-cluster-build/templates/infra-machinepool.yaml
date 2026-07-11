@@ -1,0 +1,32 @@
+{{- if and (has .Values.provider.type (list "OpenStack" "AWS")) (gt (int .Values.cluster.infraCount) 0) -}}
+apiVersion: hive.openshift.io/v1
+kind: MachinePool
+metadata:
+  name: {{ .Values.cluster.name }}-infra
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: '1'
+spec:
+  clusterDeploymentRef:
+    name: {{ .Values.cluster.name }}
+  name: infra
+  platform:
+{{- if eq .Values.provider.type "AWS" }}
+    aws:
+      type: {{ .Values.provider.aws.workerFlavor }}
+      rootVolume:
+        iops: 2000
+        size: 120
+        type: io1
+{{- end }}
+{{- if eq .Values.provider.type "OpenStack" }}
+    openstack:
+      flavor: {{ .Values.provider.openstack.workerFlavor }}
+{{- end }}
+  labels:
+    node-role.kubernetes.io/infra: ''
+  taints:
+    - key: node-role.kubernetes.io/infra
+      effect: NoSchedule
+  replicas: {{ .Values.cluster.infraCount }}
+{{ end }}

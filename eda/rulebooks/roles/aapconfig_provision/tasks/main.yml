@@ -1,0 +1,291 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        aapconfig_cr_name: "{{ event_payload.regarding.name }}"
+        aapconfig_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        aapconfig_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Load AAP admin credentials from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_aap_admin_credentials.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aapconfigs
+        cr_name: "{{ aapconfig_cr_name }}"
+        cr_namespace: "{{ aapconfig_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read AAPConfig CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: AAPConfig
+        name: "{{ aapconfig_cr_name }}"
+        namespace: "{{ aapconfig_cr_namespace }}"
+      register: _cr
+
+    - name: Fail if AAPConfig CR is missing
+      ansible.builtin.fail:
+        msg: AAPConfig {{ aapconfig_cr_name }} not found in {{ aapconfig_cr_namespace }}
+      when: _cr.resources | length == 0
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        aapconfig_generation: "{{ _cr.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Read RbacConfig for Keycloak settings
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: RbacConfig
+        name: "{{ aapconfig_spec.rbacConfig }}"
+        namespace: "{{ aapconfig_cr_namespace }}"
+      register: _rbac_config
+
+    - name: Fail if RbacConfig not found
+      ansible.builtin.fail:
+        msg: "RbacConfig {{ aapconfig_spec.rbacConfig }} not found"
+      when: _rbac_config.resources | length == 0
+
+    - name: Set Keycloak client ID for this AAPConfig
+      ansible.builtin.set_fact:
+        aap_oidc_client_id: "aap-{{ aapconfig_cr_name }}"
+        keycloak_vault_path: "{{ _rbac_config.resources[0].spec.secret | default('rhbk-services-admin') }}"
+
+    - name: Load Keycloak admin credentials from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
+
+    - name: Set Keycloak credential facts for AAPConfig tasks
+      ansible.builtin.set_fact:
+        kc_admin_user: "{{ keycloak_admin_user }}"
+        kc_admin_pass: "{{ keycloak_admin_password }}"
+      no_log: true
+
+    - name: Discover Keycloak external URL from services cluster Route
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: services-rhbk
+        label_selectors:
+          - "app=keycloak"
+      register: kc_route
+
+    - name: Debug Keycloak route discovery
+      ansible.builtin.debug:
+        msg: "Found {{ kc_route.resources | length }} Keycloak route(s) in services-rhbk"
+
+    - name: Override keycloak_internal_url with discovered Route
+      ansible.builtin.set_fact:
+        keycloak_internal_url: "https://{{ kc_route.resources[0].spec.host }}"
+        keycloak_external_url: "https://{{ kc_route.resources[0].spec.host }}"
+      when: kc_route.resources | length > 0
+
+    - name: Discover AAP gateway Route from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        name: sovereign-aap
+        namespace: aap
+      register: aap_gw_route
+
+    - name: Override aap_gateway_internal_url with discovered Route
+      ansible.builtin.set_fact:
+        aap_gateway_internal_url: "https://{{ aap_gw_route.resources[0].spec.host }}"
+      when: aap_gw_route.resources | length > 0
+
+    - name: Get Keycloak admin token
+      ansible.builtin.uri:
+        url: "{{ keycloak_internal_url }}/realms/master/protocol/openid-connect/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          grant_type: password
+          client_id: admin-cli
+          username: "{{ kc_admin_user }}"
+          password: "{{ kc_admin_pass }}"
+        validate_certs: false
+        status_code: [200]
+      register: _kc_token
+      no_log: true
+      retries: 3
+      delay: 5
+
+    - name: Check if OIDC client already exists in Keycloak
+      ansible.builtin.uri:
+        url: "{{ keycloak_internal_url }}/admin/realms/{{ keycloak_realm }}/clients?clientId={{ aap_oidc_client_id }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _kc_token.json.access_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: _kc_existing_client
+
+    - name: Create OIDC client in Keycloak for AAP
+      ansible.builtin.uri:
+        url: "{{ keycloak_internal_url }}/admin/realms/{{ keycloak_realm }}/clients"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ _kc_token.json.access_token }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          clientId: "{{ aap_oidc_client_id }}"
+          name: "AAP OIDC - {{ aapconfig_cr_name }}"
+          protocol: openid-connect
+          publicClient: false
+          directAccessGrantsEnabled: true
+          standardFlowEnabled: true
+          serviceAccountsEnabled: false
+          rootUrl: "{{ aap_controller_url }}"
+          redirectUris:
+            - "{{ aap_controller_url }}/*"
+          webOrigins:
+            - "{{ aap_controller_url }}"
+          attributes:
+            "access.token.lifespan": "3600"
+        validate_certs: false
+        status_code: [201, 409]
+      when: _kc_existing_client.json | length == 0
+      register: _kc_client_create
+
+    - name: Retrieve client UUID
+      ansible.builtin.uri:
+        url: "{{ keycloak_internal_url }}/admin/realms/{{ keycloak_realm }}/clients?clientId={{ aap_oidc_client_id }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _kc_token.json.access_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: _kc_client_info
+
+    - name: Get client secret from Keycloak
+      ansible.builtin.uri:
+        url: "{{ keycloak_internal_url }}/admin/realms/{{ keycloak_realm }}/clients/{{ _kc_client_info.json[0].id }}/client-secret"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ _kc_token.json.access_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: _kc_client_secret
+      no_log: true
+
+    - name: Configure OIDC authenticator via AAP gateway
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticators/"
+        method: POST
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          name: "OIDC-{{ aapconfig_cr_name }}"
+          type: "ansible_base.authentication.authenticator_plugins.oidc"
+          enabled: true
+          create_objects: true
+          remove_users: false
+          configuration:
+            OIDC_ENDPOINT: "{{ keycloak_external_url }}/realms/{{ keycloak_realm }}"
+            KEY: "{{ aap_oidc_client_id }}"
+            SECRET: "{{ _kc_client_secret.json.value }}"
+          slug: "oidc-{{ aapconfig_cr_name | lower }}"
+        validate_certs: false
+        status_code: [200, 201]
+      register: _aap_auth
+      ignore_errors: true
+      no_log: true
+
+    - name: Handle existing authenticator — fetch by slug
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_internal_url }}/api/gateway/v1/authenticators/?slug=oidc-{{ aapconfig_cr_name | lower }}"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: _existing_auth
+      when: _aap_auth is failed or (_aap_auth.status | default(0) == 400)
+
+    - name: Set authenticator ID
+      ansible.builtin.set_fact:
+        aap_auth_id: >-
+          {{ _aap_auth.json.id | default(
+             (_existing_auth.json.results[0].id | default(''))
+             if (_existing_auth is defined and _existing_auth.json is defined and _existing_auth.json.results | default([]) | length > 0)
+             else ''
+          ) }}
+
+    - name: Get current timestamp for status
+      ansible.builtin.set_fact:
+        aapconfig_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update AAPConfig status as ready on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aapconfigs
+        cr_name: "{{ aapconfig_cr_name }}"
+        cr_namespace: "{{ aapconfig_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ aapconfig_generation }}"
+          lastReconciledAt: "{{ aapconfig_status_transition_time }}"
+          aapControllerUrl: "{{ aap_controller_url }}"
+          authMethodType: oidc
+          authMethodId: "{{ aap_auth_id }}"
+          keycloakClientId: "{{ aap_oidc_client_id }}"
+          realm: "{{ keycloak_realm }}"
+          message: OIDC authenticator configured successfully
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ aapconfig_status_transition_time }}"
+              reason: EDASucceeded
+              message: AAPConfig {{ aapconfig_cr_name }} provisioned by EDA
+
+  rescue:
+    - name: Mark AAPConfig as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: aapconfigs
+        cr_name: "{{ aapconfig_cr_name }}"
+        cr_namespace: "{{ aapconfig_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "AAPConfig {{ aapconfig_cr_name | default('unknown') }} EDA provisioning failed"

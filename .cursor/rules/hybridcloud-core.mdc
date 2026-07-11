@@ -1,0 +1,25 @@
+---
+description: Core operational rules for Hybridcloud monorepo
+alwaysApply: true
+---
+
+# Hybridcloud — Core Rules
+
+## Non-Negotiable Constraints
+
+- **No secrets in Git.** Use Vault + ExternalSecret/PushSecret only.
+- **Never delete `sovereign-*` namespaces.** Tenant-managed; add resources only.
+- **GitOps only after bootstrap.** After `make init-central-argo`, all changes via ArgoCD.
+- **`oc` is for investigation only.** No `oc apply` for configuration changes post-bootstrap.
+
+## Operator Architecture
+
+- **Primary operator** (`operator/primary/`): watches `sovereign-cloud` for Entity CRs and `sovereign-cloud-plugins` for plugin config CRs.
+- **Namespace operators** (`operator/namespace/`): one Deployment per `entity-*` namespace; watches tenant CRs only in that namespace.
+- **No global singleton** reconciling all entity namespaces.
+
+## Deployment
+
+- OCI charts: `oci://quay.example.com/hybrid-sovereign/<chart>`
+- Bump chart versions and update `bootstrap/helm/central/values.yaml` after every chart change.
+- Every feature must have a spec in `specs/`.

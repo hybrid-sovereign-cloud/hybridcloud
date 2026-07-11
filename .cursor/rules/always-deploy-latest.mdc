@@ -1,0 +1,23 @@
+---
+description: Ensure deployed artifacts are latest after changes
+alwaysApply: true
+---
+
+# Always Deploy Latest
+
+When any codebase in `hybridcloud/` changes:
+
+## Operator Charts
+1. Bump `helm/Chart.yaml` version
+2. Run `make upload-*-chart` in bootstrap or operator directory
+3. Update `bootstrap/helm/central/values.yaml`
+
+## Dashboard / UI Images
+1. Bump image tags in make targets
+2. Run build-push targets
+3. Update central values.yaml
+
+## EDA Decision Environments
+1. Rebuild affected DE images
+2. Push to Quay
+3. Recreate activations via `infra.aap_configuration`

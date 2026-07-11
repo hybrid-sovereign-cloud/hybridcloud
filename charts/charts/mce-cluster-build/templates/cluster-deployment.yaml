@@ -1,0 +1,93 @@
+apiVersion: hive.openshift.io/v1
+kind: ClusterDeployment
+metadata:
+  name: {{ .Values.cluster.name }}
+  namespace: {{ .Values.cluster.name }}
+  labels:
+    cloud: {{ .Values.provider.type }}
+    vendor: 'OpenShift'
+  annotations:
+    argocd.argoproj.io/sync-wave: '1'
+spec:
+{{ if eq .Values.provider.type "Agent" }}
+  clusterInstallRef:
+    group: extensions.hive.openshift.io
+    kind: AgentClusterInstall
+    name: {{ .Values.cluster.name }}
+    version: v1beta1
+{{ end }}
+{{ if .Values.provider.aws.serviceAccountSignerSecret }}
+  boundServiceAccountSigningKeySecretRef:
+    name: {{ .Values.cluster.name }}-svc-signer
+{{ end }}
+  manageDNS: false
+  baseDomain: {{ .Values.cluster.baseDomain }}
+  clusterName: {{ .Values.cluster.name }}
+  controlPlaneConfig:
+    servingCertificates: {}
+  installAttemptsLimit: 3
+  installed: false
+  platform:
+{{ if eq .Values.provider.type "Agent" }}
+    agentBareMetal:
+      agentSelector: {}
+{{ end }}
+{{ if eq .Values.provider.type "vSphere" }}
+    vsphere:
+      certificatesSecretRef:
+        name: {{ .Values.cluster.name }}-trust
+      cluster: {{ .Values.provider.vsphere.cluster }}
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-provider-creds
+      datacenter: {{ .Values.provider.vsphere.datacenter }}
+      defaultDatastore: {{ .Values.provider.vsphere.defaultDatastore }}
+      network: {{ .Values.provider.vsphere.network }}
+      vCenter: {{ .Values.provider.vsphere.vcenterHost }}
+{{ if .Values.provider.vsphere.folder }}
+      folder: {{ .Values.provider.vsphere.folder }}
+{{ end }}
+{{ end }}
+{{ if eq .Values.provider.type "AWS" }}
+    aws:
+      region: {{ .Values.provider.aws.region }}
+{{ if eq .Values.provider.aws.credentialsMode "Mint" }}
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-provider-creds
+{{ else }}
+      credentialsAssumeRole:
+        roleARN: {{ .Values.provider.aws.assumeRole.roleARN }}
+        externalID: {{ .Values.provider.aws.assumeRole.externalID }}
+{{ end }}
+{{ end }}
+{{ if eq .Values.provider.type "OpenStack" }}
+    openstack:
+{{ if .Values.provider.providerCAs }}
+      certificatesSecretRef:
+        name: {{ .Values.cluster.name }}-trust
+{{ end }}
+      credentialsSecretRef:
+        name: {{ .Values.cluster.name }}-provider-creds
+      cloud: openstack
+{{ end }}
+{{ if not (eq .Values.provider.type "Agent") }}
+  provisioning:
+{{ if .Values.installConfigVault }}
+    installConfigSecretRef:
+      name: {{ .Values.cluster.name }}-install-config
+{{ end }}
+    sshPrivateKeySecretRef:
+      name: {{ .Values.cluster.name }}-ssh-key
+{{ if .Values.provider.aws.extraManifestsSecret }}
+    manifestsSecretRef:
+      name: {{ .Values.cluster.name }}-manifests
+{{ end }}
+{{ if .Values.cluster.clusterImageSet }}
+    imageSetRef:
+      name: {{ .Values.cluster.clusterImageSet }}
+{{ end }}
+{{ if .Values.cluster.releaseImage }}
+    releaseImage: {{ .Values.cluster.releaseImage }}
+{{ end }}
+{{ end }}
+  pullSecretRef:
+    name: {{ .Values.cluster.name }}-pull-secret

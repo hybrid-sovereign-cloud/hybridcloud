@@ -1,0 +1,81 @@
+---
+# Generic helper: POST an ACM resource to central cluster; on 409 (already exists) merge spec via PUT.
+# Caller sets: acm_resource_url, acm_resource_body, acm_resource_name
+# validate_certs is false — SA ca.crt from Vault lacks the full API issuer chain in AAP EEs.
+
+- name: POST ACM resource — {{ acm_resource_name }}
+  ansible.builtin.uri:
+    url: "{{ acm_resource_url }}"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ acm_central_token }}"
+      Content-Type: application/json
+    body_format: json
+    body: "{{ acm_resource_body }}"
+    validate_certs: false
+    timeout: 120
+    status_code: [201, 409]
+  register: acm_post_result
+  no_log: true
+
+- name: Fail when ACM POST returned an unexpected status — {{ acm_resource_name }}
+  ansible.builtin.fail:
+    msg: >-
+      ACM POST for {{ acm_resource_name }} failed with HTTP {{ acm_post_result.status | default('unknown') }}:
+      {{ acm_post_result.msg | default(acm_post_result.json | default('')) }}
+  when: acm_post_result.status | default(0) not in [201, 409]
+
+- name: GET existing ACM resource for update — {{ acm_resource_name }}
+  ansible.builtin.uri:
+    url: "{{ acm_resource_url }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ acm_central_token }}"
+    validate_certs: false
+    timeout: 120
+    status_code: [200]
+  register: acm_get_result
+  no_log: true
+  when: acm_post_result.status | default(0) == 409
+
+- name: Build merged ACM resource body from live object — {{ acm_resource_name }}
+  ansible.builtin.set_fact:
+    acm_put_body: >-
+      {{ acm_get_result.json
+         | combine(acm_resource_body, recursive=True)
+         | combine({'metadata': acm_get_result.json.metadata}, recursive=True) }}
+  when: acm_post_result.status | default(0) == 409
+
+- name: PUT ACM resource on 409 (update existing) — {{ acm_resource_name }}
+  ansible.builtin.uri:
+    url: "{{ acm_resource_url }}"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ acm_central_token }}"
+      Content-Type: application/json
+    body_format: json
+    body: "{{ acm_put_body }}"
+    validate_certs: false
+    timeout: 120
+    status_code: [200]
+  register: acm_put_result
+  no_log: true
+  when: acm_post_result.status | default(0) == 409
+
+- name: Verify ACM resource exists after apply — {{ acm_resource_name }}
+  ansible.builtin.uri:
+    url: "{{ acm_resource_url }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ acm_central_token }}"
+    validate_certs: false
+    timeout: 120
+    status_code: [200]
+  register: acm_verify_result
+  no_log: true
+
+- name: Assert ACM resource verify GET succeeded — {{ acm_resource_name }}
+  ansible.builtin.assert:
+    that:
+      - acm_verify_result.status == 200
+    fail_msg: "ACM resource {{ acm_resource_name }} not found on central after apply"

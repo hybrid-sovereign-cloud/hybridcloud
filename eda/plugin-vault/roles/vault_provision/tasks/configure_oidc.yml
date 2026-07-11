@@ -1,0 +1,180 @@
+---
+- name: Load Keycloak admin credentials from Vault
+  ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
+  vars:
+    keycloak_vault_path: rhbk-services-admin
+
+- name: Get Keycloak external URL from Route
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: services-rhbk
+    label_selectors:
+      - "app=keycloak"
+  register: kc_route
+
+- name: Set Keycloak external URL
+  ansible.builtin.set_fact:
+    kc_external_url: >-
+      {{
+        ('https://' + kc_route.resources[0].spec.host)
+        if (kc_route.resources | length > 0)
+        else lookup('env', 'KEYCLOAK_EXTERNAL_URL') | default('https://rhbk-services.apps.cluster.local', true)
+      }}
+
+- name: Obtain Keycloak admin access token
+  ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+  vars:
+    keycloak_url: "{{ kc_external_url }}"
+    keycloak_token_output_fact: kc_access_token
+
+- name: Set OIDC client ID for this Vault
+  ansible.builtin.set_fact:
+    vault_oidc_client_id: "vault-{{ entity_name }}-{{ vault_cr_name }}"
+
+- name: Check if Keycloak OIDC client exists
+  ansible.builtin.uri:
+    url: "{{ kc_external_url }}/admin/realms/{{ plugin_vault_keycloak_realm }}/clients?clientId={{ vault_oidc_client_id | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ kc_access_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: kc_oidc_check
+
+- name: Refresh Keycloak admin token before client lookup
+  ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+  vars:
+    keycloak_url: "{{ kc_external_url }}"
+    keycloak_token_output_fact: kc_access_token
+
+- name: Create Keycloak OIDC client for Vault
+  when: kc_oidc_check.json | length == 0
+  ansible.builtin.uri:
+    url: "{{ kc_external_url }}/admin/realms/{{ plugin_vault_keycloak_realm }}/clients"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ kc_access_token }}"
+      Content-Type: application/json
+    body_format: json
+    body:
+      clientId: "{{ vault_oidc_client_id }}"
+      name: "Vault {{ entity_name }}/{{ vault_cr_name }}"
+      enabled: true
+      clientAuthenticatorType: client-secret
+      standardFlowEnabled: true
+      directAccessGrantsEnabled: true
+      publicClient: false
+      redirectUris:
+        - "{{ vault_external_url }}/*"
+        - "{{ vault_internal_url }}/*"
+        - "http://localhost:8250/oidc/callback"
+      webOrigins: ["+"]
+      protocol: openid-connect
+      defaultClientScopes: ["openid", "profile", "email"]
+    validate_certs: false
+    status_code: [201, 409]
+
+- name: Refresh OIDC client lookup
+  ansible.builtin.uri:
+    url: "{{ kc_external_url }}/admin/realms/{{ plugin_vault_keycloak_realm }}/clients?clientId={{ vault_oidc_client_id | urlencode }}"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ kc_access_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: kc_oidc_final
+  retries: 10
+  delay: 3
+  until: kc_oidc_final.json | length > 0
+
+- name: Refresh Keycloak admin token before client secret lookup
+  ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+  vars:
+    keycloak_url: "{{ kc_external_url }}"
+    keycloak_token_output_fact: kc_access_token
+
+- name: Get OIDC client secret
+  ansible.builtin.uri:
+    url: "{{ kc_external_url }}/admin/realms/{{ plugin_vault_keycloak_realm }}/clients/{{ kc_oidc_final.json[0].id }}/client-secret"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ kc_access_token }}"
+    validate_certs: false
+    status_code: [200]
+  register: kc_oidc_secret
+  no_log: true
+  retries: 3
+  delay: 5
+  until: kc_oidc_secret.status | default(0) == 200
+
+- name: Read OpenShift Ingress CA for TLS trust
+  kubernetes.core.k8s_info:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
+    api_version: v1
+    kind: ConfigMap
+    name: default-ingress-cert
+    namespace: openshift-config-managed
+  register: ingress_ca_cm
+
+- name: Set Ingress CA PEM
+  ansible.builtin.set_fact:
+    ingress_ca_pem: "{{ ingress_ca_cm.resources[0].data['ca-bundle.crt'] }}"
+  when: ingress_ca_cm.resources | length > 0
+
+- name: Configure OIDC auth method in Vault
+  ansible.builtin.uri:
+    url: "{{ vault_api_url }}/v1/sys/auth/oidc"
+    method: POST
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      type: oidc
+    validate_certs: false
+    status_code: [200, 204, 400]
+
+- name: Configure OIDC auth backend settings
+  ansible.builtin.uri:
+    url: "{{ vault_api_url }}/v1/auth/oidc/config"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      oidc_discovery_url: "{{ kc_external_url }}/realms/{{ plugin_vault_keycloak_realm }}"
+      oidc_client_id: "{{ vault_oidc_client_id }}"
+      oidc_client_secret: "{{ kc_oidc_secret.json.value }}"
+      oidc_discovery_ca_pem: "{{ ingress_ca_pem | default(omit) }}"
+      default_role: default
+    validate_certs: false
+    status_code: [200, 204]
+  retries: 3
+  delay: 10
+  register: oidc_config_result
+  until: oidc_config_result.status | default(0) in [200, 204]
+  no_log: true
+
+- name: Create OIDC default role in Vault
+  ansible.builtin.uri:
+    url: "{{ vault_api_url }}/v1/auth/oidc/role/default"
+    method: PUT
+    headers:
+      X-Vault-Token: "{{ vault_root_token }}"
+    body_format: json
+    body:
+      bound_audiences: ["{{ vault_oidc_client_id }}"]
+      allowed_redirect_uris:
+        - "{{ vault_external_url }}/ui/vault/auth/oidc/oidc/callback"
+        - "http://localhost:8250/oidc/callback"
+      user_claim: preferred_username
+      groups_claim: groups
+      token_policies: [default]
+      oidc_scopes: [openid, profile, email]
+    validate_certs: false
+    status_code: [200, 204]

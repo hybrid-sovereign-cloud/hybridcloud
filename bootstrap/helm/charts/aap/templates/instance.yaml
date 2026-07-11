@@ -1,0 +1,37 @@
+{{- if .Values.instance.enabled }}
+---
+apiVersion: aap.ansible.com/v1alpha1
+kind: AnsibleAutomationPlatform
+metadata:
+  name: {{ .Values.instance.name }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  api:
+    replicas: 1
+  {{- if .Values.controller.enabled }}
+  controller:
+    replicas: 1
+    {{- if .Values.postgres.enabled }}
+    database:
+      host: {{ .Values.postgres.name | default "aap-pgcluster" }}-primary.{{ .Values.namespace }}.svc
+      port: 5432
+      name: aap
+      sslmode: prefer
+      password_secret:
+        name: {{ .Values.postgres.name | default "aap-pgcluster" }}-pguser-aap
+        key: password
+      username_secret:
+        name: {{ .Values.postgres.name | default "aap-pgcluster" }}-pguser-aap
+        key: user
+    {{- end }}
+  {{- end }}
+  {{- if .Values.eda.enabled }}
+  eda:
+    replicas: 1
+  {{- end }}
+  hub:
+    disabled: true
+    replicas: 0
+{{- end }}

@@ -1,0 +1,32 @@
+---
+- name: Configure AAP organizations
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_organizations
+
+- name: Configure AAP credential types
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_credential_types
+
+- name: Configure AAP credentials
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_credentials
+
+- name: Configure AAP execution environments
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_execution_environments
+
+- name: Configure AAP projects
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_projects
+
+- name: Configure AAP inventories
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_inventories
+
+- name: Configure AAP hosts
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_hosts
+
+- name: Configure AAP job templates
+  ansible.builtin.import_role:
+    name: infra.aap_configuration.controller_job_templates

@@ -1,0 +1,8 @@
+---
+keycloak_central_url: ""
+keycloak_services_url: ""
+central_realm: "sovereign-central"
+services_realm: "sovereign-central"
+central_oauth_client_id: "openshift-central"
+services_oauth_client_id: "openshift-services"
+ocp_services_server: ""

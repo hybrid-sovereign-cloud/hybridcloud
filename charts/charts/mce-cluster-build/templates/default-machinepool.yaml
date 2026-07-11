@@ -1,0 +1,27 @@
+{{- if and (has .Values.provider.type (list "OpenStack" "AWS")) (not (eq .Values.provider.type "OpenStack")) -}}
+apiVersion: hive.openshift.io/v1
+kind: MachinePool
+metadata:
+  name: {{ .Values.cluster.name }}-worker
+  namespace: {{ .Values.cluster.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: '2'
+spec:
+  clusterDeploymentRef:
+    name: {{ .Values.cluster.name }}
+  name: worker
+  platform:
+{{- if eq .Values.provider.type "AWS" }}
+    aws:
+      type: {{ .Values.provider.aws.workerFlavor }}
+      rootVolume:
+        iops: 2000
+        size: 120
+        type: io1
+{{- end }}
+{{- if eq .Values.provider.type "OpenStack" }}
+    openstack:
+      flavor: {{ .Values.provider.openstack.workerFlavor }}
+{{- end }}
+  replicas: {{ .Values.cluster.workerCount }}
+{{ end }}

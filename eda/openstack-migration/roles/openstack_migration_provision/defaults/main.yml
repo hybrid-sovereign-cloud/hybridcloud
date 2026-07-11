@@ -1,0 +1,3 @@
+---
+migration_repo_root: "{{ role_path }}/../../../../migration"
+eda_dashboard_host: "https://sovereign-aap-aap.apps.central.lab.example.com"

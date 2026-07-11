@@ -1,0 +1,42 @@
+---
+- name: Create ClusterRoleBinding for sovereign-admin on central cluster
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: sovereign-admin-cluster-admin
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-admin
+      subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: Group
+          name: "{{ admin_group }}"
+  retries: 5
+  delay: 5
+
+- name: Create ClusterRoleBinding for sovereign-admin on services cluster
+  kubernetes.core.k8s:
+    state: present
+    host: "{{ ocp_services_server }}"
+    api_key: "{{ services_cluster_token }}"
+    validate_certs: false
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: sovereign-admin-cluster-admin
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-admin
+      subjects:
+        - apiGroup: rbac.authorization.k8s.io
+          kind: Group
+          name: "{{ admin_group }}"
+  retries: 5
+  delay: 5
+  when: ocp_services_server | length > 0

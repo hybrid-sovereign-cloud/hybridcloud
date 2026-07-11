@@ -1,0 +1,63 @@
+{{- if .Values.ansibleJob.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.ansibleJob.serviceAccount }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sovereign-ansible-runner-admin
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.ansibleJob.serviceAccount }}
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sovereign-keycloak-config
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: {{ .Values.ansibleJob.serviceAccount }}
+      restartPolicy: OnFailure
+      imagePullSecrets:
+        - name: quay-pull-secret
+      containers:
+        - name: ansible-runner
+          image: {{ .Values.ansibleJob.image | quote }}
+          command:
+            - ansible-runner
+            - run
+            - /runner
+            - -p
+            - configure-keycloak.yml
+          env:
+            - name: KEYCLOAK_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ansibleJob.adminSecretName | default "sovereign-keycloak-central-initial-admin" }}
+                  key: username
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.ansibleJob.adminSecretName | default "sovereign-keycloak-central-initial-admin" }}
+                  key: password
+            - name: KEYCLOAK_URL
+              value: {{ .Values.ansibleJob.keycloakUrl | default "http://sovereign-keycloak-central-service.rhbk.svc:8080" | quote }}
+{{- end }}

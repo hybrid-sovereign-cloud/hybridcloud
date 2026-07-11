@@ -1,0 +1,315 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        rbac_config_cr_name: "{{ event_payload.regarding.name }}"
+        rbac_config_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        rbac_config_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacconfigs
+        cr_name: "{{ rbac_config_cr_name }}"
+        cr_namespace: "{{ rbac_config_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read RbacConfig CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: RbacConfig
+        name: "{{ rbac_config_cr_name }}"
+        namespace: "{{ rbac_config_cr_namespace }}"
+      register: rbac_config_cr
+
+    - name: Fail if RbacConfig CR is missing
+      ansible.builtin.fail:
+        msg: RbacConfig {{ rbac_config_cr_name }} not found in {{ rbac_config_cr_namespace }}
+      when: rbac_config_cr.resources | length == 0
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        rbac_config_generation: "{{ rbac_config_cr.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Require Keycloak backend type
+      ansible.builtin.assert:
+        that:
+          - rbac_config_spec.type == 'keycloak'
+        fail_msg: spec.type must be 'keycloak'
+
+    - name: Discover Keycloak external URL from services cluster Route
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: services-rhbk
+        label_selectors:
+          - "app=keycloak"
+      register: kc_route
+
+    - name: Set Keycloak URL from Route
+      ansible.builtin.set_fact:
+        plugin_rbac_keycloak_url: "https://{{ kc_route.resources[0].spec.host }}"
+      when: kc_route.resources | length > 0
+
+    - name: Fallback to configured Keycloak URL
+      ansible.builtin.set_fact:
+        plugin_rbac_keycloak_url: >-
+          {{ lookup('env', 'KEYCLOAK_EXTERNAL_URL')
+             | default(plugin_rbac_keycloak_url_default, true) }}
+      when: kc_route.resources | length == 0
+
+    - name: Pin Keycloak URL hostname to reachable apps ingress IP
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_https_url.yml"
+      vars:
+        pin_url: "{{ plugin_rbac_keycloak_url }}"
+        pin_url_fact: plugin_rbac_keycloak_url
+
+    - name: Load Keycloak admin credentials
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
+      vars:
+        keycloak_vault_path: "{{ rbac_config_spec.secret | default('rhbk-services-admin') }}"
+
+    - name: Obtain Keycloak admin access token
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_token.yml"
+      vars:
+        keycloak_url: "{{ plugin_rbac_keycloak_url }}"
+        keycloak_url_http_headers: "{{ plugin_rbac_keycloak_url_http_headers | default({}) }}"
+
+    - name: Check if realm exists
+      ansible.builtin.uri:
+        url: "{{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200, 404]
+      register: realm_check
+
+    - name: Create realm when missing
+      when: realm_check.status == 404
+      ansible.builtin.uri:
+        url: "{{ plugin_rbac_keycloak_url }}/admin/realms"
+        method: POST
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token, 'Content-Type': 'application/json'} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        body_format: json
+        body:
+          realm: "{{ plugin_rbac_keycloak_realm }}"
+          enabled: true
+          displayName: "Sovereign Tenants"
+          registrationAllowed: false
+          loginWithEmailAllowed: true
+          duplicateEmailsAllowed: false
+          resetPasswordAllowed: true
+          editUsernameAllowed: false
+          bruteForceProtected: true
+        validate_certs: false
+        status_code: [201, 409]
+
+    - name: Look up Keycloak client by clientId
+      ansible.builtin.uri:
+        url: >-
+          {{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients?clientId={{ rbac_config_cr_name | urlencode }}
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: kc_client_pre
+      retries: 5
+      delay: 5
+
+    - name: Create Keycloak confidential OIDC client when absent
+      when: kc_client_pre.json | length == 0
+      ansible.builtin.uri:
+        url: "{{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients"
+        method: POST
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token, 'Content-Type': 'application/json'} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        body_format: json
+        body:
+          clientId: "{{ rbac_config_cr_name }}"
+          name: "{{ rbac_config_cr_name }}"
+          enabled: true
+          clientAuthenticatorType: client-secret
+          serviceAccountsEnabled: true
+          directAccessGrantsEnabled: true
+          standardFlowEnabled: false
+          publicClient: false
+        validate_certs: false
+        status_code: [201, 409]
+
+    - name: Resolve Keycloak client id
+      ansible.builtin.uri:
+        url: >-
+          {{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients?clientId={{ rbac_config_cr_name | urlencode }}
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: kc_client_lookup
+      retries: 10
+      delay: 3
+      until: kc_client_lookup.json | length > 0
+
+    - name: Record internal Keycloak client id
+      ansible.builtin.set_fact:
+        kc_client_internal_id: "{{ kc_client_lookup.json[0].id }}"
+
+    - name: Get service account user for client
+      ansible.builtin.uri:
+        url: "{{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients/{{ kc_client_internal_id }}/service-account-user"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: svc_acct_user
+      retries: 5
+      delay: 5
+
+    - name: Look up realm-management client
+      ansible.builtin.uri:
+        url: >-
+          {{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients?clientId=realm-management
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: realm_mgmt_client
+      retries: 3
+      delay: 5
+
+    - name: Get available realm-management roles
+      ansible.builtin.uri:
+        url: "{{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients/{{ realm_mgmt_client.json[0].id }}/roles"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: realm_mgmt_roles
+      retries: 3
+      delay: 5
+
+    - name: Filter to required roles
+      ansible.builtin.set_fact:
+        required_roles: >-
+          {{
+            realm_mgmt_roles.json
+            | selectattr('name', 'in', ['manage-users', 'manage-clients', 'manage-realm', 'view-users'])
+            | list
+          }}
+
+    - name: Assign realm-management roles to service account
+      ansible.builtin.uri:
+        url: >-
+          {{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/users/{{ svc_acct_user.json.id }}/role-mappings/clients/{{ realm_mgmt_client.json[0].id }}
+        method: POST
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token, 'Content-Type': 'application/json'} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        body_format: json
+        body: "{{ required_roles }}"
+        validate_certs: false
+        status_code: [200, 204]
+      retries: 3
+      delay: 5
+      when: required_roles | length > 0
+
+    - name: Retrieve client secret from Keycloak
+      ansible.builtin.uri:
+        url: "{{ plugin_rbac_keycloak_url }}/admin/realms/{{ plugin_rbac_keycloak_realm }}/clients/{{ kc_client_internal_id }}/client-secret"
+        method: GET
+        headers: "{{ {'Authorization': 'Bearer ' + keycloak_admin_token} | combine(plugin_rbac_keycloak_url_http_headers | default({})) }}"
+        validate_certs: false
+        status_code: [200]
+      register: kc_client_secret_result
+      retries: 5
+      delay: 5
+      no_log: true
+
+    - name: Set client credential facts
+      ansible.builtin.set_fact:
+        kc_client_secret_value: "{{ kc_client_secret_result.json.value }}"
+        plugin_generated_secret_name: "{{ rbac_config_cr_name }}-client"
+      no_log: true
+
+    - name: Create or update Keycloak client credentials Secret
+      kubernetes.core.k8s:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ plugin_generated_secret_name }}"
+            namespace: "{{ rbac_config_cr_namespace }}"
+            labels:
+              app.kubernetes.io/managed-by: plugin-rbac
+              hybridsovereign.redhat/rbacconfig: "{{ rbac_config_cr_name }}"
+            ownerReferences:
+              - apiVersion: hybridsovereign.redhat/v1alpha1
+                kind: RbacConfig
+                name: "{{ rbac_config_cr_name }}"
+                uid: "{{ rbac_config_cr.resources[0].metadata.uid }}"
+          type: Opaque
+          stringData:
+            client_id: "{{ rbac_config_cr_name }}"
+            client_secret: "{{ kc_client_secret_value }}"
+            keycloak_url: "{{ plugin_rbac_keycloak_url_external | default(plugin_rbac_keycloak_url) }}"
+      no_log: true
+
+    - name: Set reconciliation timestamp
+      ansible.builtin.set_fact:
+        rbac_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update RbacConfig status as ready on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacconfigs
+        cr_name: "{{ rbac_config_cr_name }}"
+        cr_namespace: "{{ rbac_config_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          clientId: "{{ rbac_config_cr_name }}"
+          clientSecretName: "{{ plugin_generated_secret_name }}"
+          ready: true
+          observedGeneration: "{{ rbac_config_generation }}"
+          lastReconciledAt: "{{ rbac_status_transition_time }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ rbac_status_transition_time }}"
+              reason: EDASucceeded
+              message: >-
+                Keycloak client ready. Credentials Secret {{ plugin_generated_secret_name }} ready.
+
+  rescue:
+    - name: Mark RbacConfig as failed on services cluster
+      ansible.builtin.include_tasks: "/opt/eda-project/common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: rbacconfigs
+        cr_name: "{{ rbac_config_cr_name }}"
+        cr_namespace: "{{ rbac_config_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "RbacConfig {{ rbac_config_cr_name | default('unknown') }} EDA provisioning failed"

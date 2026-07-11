@@ -1,0 +1,17 @@
+---
+- name: Persona Delete Automation
+  hosts: all
+  sources:
+    - ansible.eda.generic:
+        payload:
+          - persona_delete
+
+  rules:
+    - name: Handle Persona Delete
+      condition: event.payload.reason == "PersonaDeleteRequested" and event.payload.regarding.kind == "Persona"
+      action:
+        run_playbook:
+          name: playbooks/persona-teardown-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.payload }}"
+          set_facts: true

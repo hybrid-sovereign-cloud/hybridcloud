@@ -1,0 +1,46 @@
+---
+- name: Build os-migrate migration variable bundle
+  ansible.builtin.set_fact:
+    migration_vars_bundle:
+      runner_from_aee: true
+      skip_vddk_validation: "{{ migration_skip_vddk | bool }}"
+      skip_vddk_tests: "{{ migration_skip_vddk | bool }}"
+      os_migrate_vmw_data_dir: "{{ migration_work_dir }}"
+      os_migrate_clouds_path: "{{ os_migrate_clouds_path }}"
+      os_migrate_dst_cloud_name: "{{ os_migrate_dst_cloud_name }}"
+      vcenter_hostname: "{{ migration_plan.source.vcenterHost | default(vcenter_hostname) }}"
+      vcenter_username: "{{ vcenter_username }}"
+      vcenter_password: "{{ vcenter_password }}"
+      vcenter_datacenter: "{{ migration_plan.source.datacenter | default(vcenter_datacenter) }}"
+      vcenter_thumbprint: "{{ vcenter_thumbprint | default('') }}"
+      vms_list:
+        - "{{ migration_vm_name }}"
+      vm_name: "{{ migration_vm_name }}"
+      import_workloads_cbt_sync: "{{ migration_plan.cbt | default(false) | bool }}"
+      import_workloads_cutover: "{{ migration_plan.cbt | default(false) | bool }}"
+      use_existing_flavor: "{{ (migration_plan.flavorStrategy | default('auto')) == 'auto' }}"
+      used_mapped_networks: "{{ (migration_plan.networkMapping | default([])) | length > 0 }}"
+      os_migrate_mapped_networks: "{{ migration_plan.networkMapping | default([]) }}"
+      conversion_host_name: "{{ migration_plan.conversionHost.name | default('sovereign-conv-' ~ migration_cr_name) }}"
+      conversion_host_address: "{{ migration_plan.conversionHost.address | default('') }}"
+      conversion_host_flavor: "{{ migration_plan.conversionHost.flavor | default('') }}"
+      conversion_host_network: "{{ migration_plan.conversionHost.network | default('') }}"
+      conversion_host_external_network: "{{ migration_plan.conversionHost.externalNetwork | default(cloudoso_spec.externalNetwork | default('internet')) }}"
+      already_deploy_conversion_host: "{{ not (migration_plan.conversionHost.deploy | default(true) | bool) }}"
+      run_full_migration: "{{ migration_run_full_workload_import | bool }}"
+      fetch_vmware_metadata: true
+      convert_metadata: true
+      os_migrate_nbkit: "{{ (migration_plan.migrationMethod | default('nbdkit')) == 'nbdkit' }}"
+      os_migrate_virt_v2v: "{{ (migration_plan.migrationMethod | default('nbdkit')) == 'virtv2v' }}"
+  no_log: true
+
+- name: Persist migration vars for ansible-playbook
+  ansible.builtin.copy:
+    content: "{{ migration_vars_bundle | to_nice_yaml }}"
+    dest: "{{ migration_work_dir }}/vars.yml"
+    mode: "0600"
+  no_log: true
+
+- name: Record migration vars file path
+  ansible.builtin.set_fact:
+    migration_vars_file: "{{ migration_work_dir }}/vars.yml"

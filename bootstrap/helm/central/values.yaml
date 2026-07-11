@@ -1,0 +1,2591 @@
+# ─── Rebuild baseline (005-phased-env-rebuild) ───────────────────────────────
+# applicationsEnabled MUST stay true so sovereign-central-apps syncs.
+# Every Application-level *.enabled below MUST be false for phased rebuild.
+# Enable one component per commit — see specs/005-phased-env-rebuild/quickstart.md
+# Do NOT change nested chart sub-values (vault HA, keycloak instance, etc.) here.
+
+# ─── ArgoCD namespace ─────────────────────────────────────────────────────────
+argocd:
+  namespace: openshift-gitops
+  # Per-Application automated sync retry (after controller terminates sync at 10m).
+  syncPolicy:
+    retry:
+      limit: 10
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 10m
+
+# Master switch: when false, no Application CRs render at all. For phased rebuild
+# keep true and disable each component's enabled flag individually.
+applicationsEnabled: true
+
+# ─── Services cluster (managed by central ArgoCD) ────────────────────────────
+servicesCluster:
+  server: "https://api.services.lab.example.com:6443"
+
+# ─── OCI registry that stores platform Helm charts ───────────────────────────
+oci:
+  registry: "quay.example.com"
+  repositoryBase: "hybrid-sovereign"
+
+# ─── Sovereign Namespaces (central cluster) ──────────────────────────────────
+sovereignNamespaces:
+  enabled: true
+  chartVersion: "0.2.7"
+  syncWave: "1"
+  values:
+    namespaces:
+      - name: sovereign-cloud-jobs
+        enabled: true
+      - name: sovereign-cloud-helpers
+        enabled: true
+      - name: gitea
+        enabled: true
+      # central-vault, central-rhbk, central-quay, and aap are created by their
+      # respective charts. Do NOT add them here to avoid ArgoCD ownership conflicts.
+    oauth:
+      enabled: true
+      identityProviderName: "sovereign-central"
+      clientId: "openshift-central"
+      clientSecretName: "sovereign-central-oauth-secret"
+      issuer: "https://rhbk-central.apps.central.lab.example.com/realms/sovereign-central"
+      caConfigMap: "keycloak-central-ca"
+
+# ─── Sovereign Namespaces (services cluster) ────────────────────────────────
+sovereignNamespacesServices:
+  enabled: true
+  chartVersion: "0.2.7"
+  syncWave: "1"
+  values:
+    ociPullSecret:
+      enabled: true
+      vaultPath: "oci-credentials"
+      secretStoreName: "vault-backend"
+      secretStoreKind: "ClusterSecretStore"
+    namespaces:
+      - name: sovereign-cloud-jobs
+        enabled: true
+      - name: sovereign-cloud-helpers
+        enabled: true
+      - name: sovereign-cloud
+        enabled: true
+      - name: sovereign-cloud-plugins
+        enabled: true
+      - name: services-rhbk
+        enabled: true
+      - name: services-quay
+        enabled: true
+      # aap and services-vault namespaces are created by their respective charts
+      # (aap/templates/operator.yaml and vault/templates/namespace.yaml).
+      # Do NOT add them here to avoid ArgoCD ownership conflicts.
+    oauth:
+      enabled: true
+      identityProviderName: "sovereign-services"
+      clientId: "openshift-services"
+      clientSecretName: "sovereign-services-oauth-secret"
+      issuer: "https://rhbk-services.apps.services.lab.example.com/realms/sovereign-tenants"
+      caConfigMap: "keycloak-services-ca"
+
+# ─── RHBK Central (Keycloak) ─────────────────────────────────────────────────
+rhbk:
+  enabled: true
+  chartVersion: "0.10.2"
+  syncWave: "20"
+  destinationNamespace: central-rhbk
+  values:
+    namespace: central-rhbk
+    instanceName: rhbk-central
+    pushSecretToVault: true
+    vaultSecretPath: "central/data/rhbk-central-admin"
+    operator:
+      channel: stable-v26.4
+    keycloak:
+      enabled: true
+      instances: 2
+      hostname: "rhbk-central.apps.central.lab.example.com"
+      db:
+        enabled: true
+        vendor: postgres
+        host: "rhbk-pgcluster-primary.central-rhbk.svc"
+        database: keycloak
+        usernameSecret:
+          name: rhbk-pgcluster-pguser-keycloak
+          key: user
+        passwordSecret:
+          name: rhbk-pgcluster-pguser-keycloak
+          key: password
+        crunchy:
+          enabled: true
+          name: rhbk-pgcluster
+          instances: 2
+          storage: 10Gi
+          backupStorage: 10Gi
+      tls:
+        enabled: false
+
+# ─── RHBK Services (Keycloak) ────────────────────────────────────────────────
+rhbkServices:
+  enabled: true
+  chartVersion: "0.10.2"
+  syncWave: "20"
+  destinationNamespace: services-rhbk
+  values:
+    namespace: services-rhbk
+    instanceName: rhbk-services
+    pushSecretToVault: true
+    vaultSecretPath: "central/data/rhbk-services-admin"
+    operator:
+      channel: stable-v26.4
+    keycloak:
+      enabled: true
+      instances: 2
+      hostname: "rhbk-services.apps.services.lab.example.com"
+      db:
+        enabled: true
+        vendor: postgres
+        host: "rhbk-pgcluster-primary.services-rhbk.svc"
+        database: keycloak
+        usernameSecret:
+          name: rhbk-pgcluster-pguser-keycloak
+          key: user
+        passwordSecret:
+          name: rhbk-pgcluster-pguser-keycloak
+          key: password
+        crunchy:
+          enabled: true
+          name: rhbk-pgcluster
+          instances: 2
+          storage: 10Gi
+          backupStorage: 10Gi
+      tls:
+        enabled: false
+
+# ─── RHBK Config (DEPRECATED — replaced by sovereignJobs keycloak* jobs) ─────
+rhbkConfig:
+  enabled: false
+  chartVersion: "0.4.0"
+  syncWave: "30"
+  destinationNamespace: central-rhbk
+  values:
+    namespace: central-rhbk
+    ansibleJob:
+      enabled: false
+
+# ─── ACS (disabled) ──────────────────────────────────────────────────────────
+acs:
+  enabled: true
+  chartVersion: "0.2.0"
+  syncWave: "25"
+  destinationNamespace: rhacs-operator
+  values:
+    namespace: rhacs-operator
+    central:
+      enabled: true
+      namespace: stackrox
+      instanceName: stackrox-central-services
+    consolePlugin:
+      enabled: true
+
+acsServices:
+  enabled: false
+  chartVersion: "0.2.0"
+  syncWave: "25"
+  destinationNamespace: rhacs-operator
+  values:
+    namespace: rhacs-operator
+    central:
+      enabled: false
+    consolePlugin:
+      enabled: true
+
+# ─── Vault Central ───────────────────────────────────────────────────────────
+vault:
+  enabled: true
+  chartVersion: "0.6.11"
+  syncWave: "15"
+  destinationNamespace: central-vault
+  values:
+    namespace: central-vault
+    pushSecretToVault: false
+    vault:
+      global:
+        openshift: true
+        imagePullSecrets:
+          - name: quay-pull-secret
+      server:
+        standalone:
+          enabled: false
+        ha:
+          enabled: true
+          replicas: 3
+          raft:
+            enabled: true
+            config: |
+              ui = true
+              listener "tcp" {
+                tls_disable = 1
+                address = "[::]:8200"
+                cluster_address = "[::]:8201"
+              }
+              storage "raft" {
+                path = "/vault/data"
+              }
+              service_registration "kubernetes" {}
+        dataStorage:
+          enabled: true
+          size: 10Gi
+        route:
+          enabled: true
+          host: vault-central.apps.central.lab.example.com
+          tls:
+            termination: edge
+            insecureEdgeTerminationPolicy: Redirect
+        image:
+          repository: quay.example.com/hybrid-sovereign/vault
+          tag: "1.21.2"
+      ui:
+        enabled: true
+      injector:
+        enabled: true
+        image:
+          repository: quay.example.com/hybrid-sovereign/vault-k8s
+          tag: "1.5.0"
+
+# ─── Vault Services ─────────────────────────────────────────────────────────
+vaultServices:
+  enabled: true
+  chartVersion: "0.6.11"
+  syncWave: "15"
+  destinationNamespace: services-vault
+  values:
+    namespace: services-vault
+    pushSecretToVault: false
+    ociCredentials:
+      enabled: true
+      vaultPath: "oci-credentials"
+      secretStoreName: "vault-backend"
+      secretStoreKind: "ClusterSecretStore"
+    vault:
+      global:
+        openshift: true
+        imagePullSecrets:
+          - name: quay-pull-secret
+      server:
+        standalone:
+          enabled: false
+        ha:
+          enabled: true
+          replicas: 3
+          raft:
+            enabled: true
+            config: |
+              ui = true
+              listener "tcp" {
+                tls_disable = 1
+                address = "[::]:8200"
+                cluster_address = "[::]:8201"
+              }
+              storage "raft" {
+                path = "/vault/data"
+                retry_join {
+                  leader_api_addr = "http://vault-services-0.vault-services-internal.services-vault.svc:8200"
+                }
+                retry_join {
+                  leader_api_addr = "http://vault-services-1.vault-services-internal.services-vault.svc:8200"
+                }
+                retry_join {
+                  leader_api_addr = "http://vault-services-2.vault-services-internal.services-vault.svc:8200"
+                }
+              }
+              service_registration "kubernetes" {}
+        dataStorage:
+          enabled: true
+          size: 10Gi
+        route:
+          enabled: true
+          host: vault-services.apps.services.lab.example.com
+          tls:
+            termination: edge
+            insecureEdgeTerminationPolicy: Redirect
+        image:
+          repository: quay.example.com/hybrid-sovereign/vault
+          tag: "1.21.2"
+        readinessProbe:
+          enabled: true
+          path: "/v1/sys/health?standbyok=true&sealedcode=200&uninitcode=200"
+      ui:
+        enabled: true
+      injector:
+        enabled: true
+        image:
+          repository: quay.example.com/hybrid-sovereign/vault-k8s
+          tag: "1.5.0"
+
+# ─── Vault Services Init (separate App to avoid StatefulSet health deadlock) ─
+vaultServicesInit:
+  enabled: true
+  chartVersion: "0.2.3"
+  syncWave: "20"
+  values:
+    namespace: services-vault
+    serviceAccount: vault-init-runner
+    image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+    imagePullSecretName: "quay-pull-secret"
+    secretName: "vault-services-init-secrets"
+    vaultAddr: "http://vault-services-0.vault-services-internal.services-vault.svc:8200"
+    vaultNamespace: "services-vault"
+    activeDeadlineSeconds: 600
+    backoffLimit: 5
+    pushSecretToVaultCentral: true
+    pushSecretStoreName: "vault-backend"
+    vaultCentralPath: "vault-services-init"
+
+# ─── RHACM ───────────────────────────────────────────────────────────────────
+rhacm:
+  enabled: true
+  chartVersion: "0.5.0"
+  enableMultiClusterHub: true
+  destinationNamespace: open-cluster-management
+  syncWave: "10"
+  values:
+    operator:
+      channel: release-2.16
+      installPlanApproval: Automatic
+    multiClusterHub:
+      enabled: true
+      availabilityConfig: High
+      disableHubSelfManagement: false
+      components:
+        console: true
+        search: true
+        cluster-lifecycle: true
+        volsync: false
+        cluster-backup: false
+
+# ─── AAP (services cluster) ─────────────────────────────────────────────────
+aap:
+  enabled: true
+  chartVersion: "0.5.3"
+  syncWave: "30"
+  destinationNamespace: aap
+  values:
+    namespace: aap
+    instance:
+      enabled: true
+      name: sovereign-aap
+    controller:
+      enabled: true
+    eda:
+      enabled: false
+    hub:
+      enabled: false
+    postgres:
+      enabled: true
+      name: aap-pgcluster
+      instances: 2
+      storage: 10Gi
+      backupStorage: 10Gi
+
+# ─── AAP (central cluster — EDA controller) ────────────────────────────────
+aapCentral:
+  enabled: true
+  chartVersion: "0.3.1"
+  syncWave: "30"
+  destinationNamespace: aap
+  values:
+    namespace: aap
+    name: sovereign-aap
+    controller:
+      enabled: true
+      replicas: 1
+    eda:
+      enabled: true
+      replicas: 1
+    hub:
+      enabled: false
+    postgres:
+      enabled: true
+      name: aap-pgcluster
+      instances: 2
+      storage: 10Gi
+      backupStorage: 10Gi
+
+# ─── Plugin IaaC Operator (services cluster) — Go direct Gitea sync ─────────
+pluginIaac:
+  enabled: false
+  chartVersion: "0.2.1"
+  syncWave: "40"
+  destinationNamespace: sovereign-cloud-plugins
+  values:
+    namespace: sovereign-cloud-plugins
+    createNamespace: false
+    replicas: 2
+    leaderElection: true
+    metricsPort: 8443
+    image:
+      repository: quay.example.com/hybrid-sovereign/plugin-iaac
+      tag: "v0.2.0"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    gitea:
+      url: "https://gitea-gitea.apps.central.lab.example.com"
+      repoOwner: "gitea_admin"
+      repoName: "tenancy_repo"
+      secretName: "gitea-admin-token"
+      tokenSecretKey: "admin_token"
+      externalSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: gitea-admin
+    defaultIaac:
+      enabled: true
+      name: iaac
+
+# ─── Event Forwarder (services cluster) ─────────────────────────────────────
+eventForwarder:
+  enabled: true
+  chartVersion: "0.5.3"
+  syncWave: "32"
+  image:
+    repository: quay.example.com/hybrid-sovereign/event-forwarder
+    tag: "0.3.0"
+  eventStreamUrl: "https://sovereign-aap-aap.apps.central.lab.example.com/eda-event-streams/api/eda/v1/external_event_stream/4392c64b-2faf-4414-a6e6-5ff1bc8d5a75/post/"
+  vaultSecretPath: "central/event-forwarder"
+
+# ─── OpenShift Virtualization (CNV) — central cluster ───────────────────────
+cnv:
+  enabled: true
+  chartVersion: "0.1.0"
+  syncWave: "12"
+  destinationNamespace: openshift-cnv
+  values:
+    namespace: openshift-cnv
+    subscription:
+      channel: stable
+      installPlanApproval: Automatic
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+    hyperconverged:
+      enabled: true
+      name: kubevirt-hyperconverged
+      featureGates:
+        deployKubeSecondaryDNS: false
+        enableCommonBootImageImport: false
+      infra:
+        nodePlacement: {}
+      workloads:
+        nodePlacement: {}
+    pdb:
+      virtApi:
+        enabled: true
+        minAvailable: 1
+      virtController:
+        enabled: true
+        minAvailable: 1
+
+# ─── Migration Toolkit for Virtualization (MTV) — central cluster ────────────
+mtv:
+  enabled: true
+  chartVersion: "0.1.8"
+  syncWave: "28"
+  destinationNamespace: openshift-mtv
+  values:
+    namespace: openshift-mtv
+    subscription:
+      channel: release-v2.12
+      installPlanApproval: Automatic
+      source: redhat-operators
+      sourceNamespace: openshift-marketplace
+    forkliftController:
+      enabled: true
+      name: forklift-controller
+      controller:
+        replicas: 2
+      ui:
+        replicas: 2
+    vmwareProvider:
+      enabled: true
+      name: vmware-vcenter
+      type: vsphere
+      url: "https://172.18.0.77/sdk"
+      credentialsSecretName: vmware-vcenter-secret
+    externalSecret:
+      enabled: true
+      name: vmware-vcenter-es
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: vmware-credentials
+      refreshInterval: "1h"
+      targetSecretName: vmware-vcenter-secret
+    pdb:
+      mtvController:
+        enabled: true
+        minAvailable: 1
+
+# ─── ODF / Noobaa (central) ─────────────────────────────────────────────────
+odf:
+  enabled: true
+  chartVersion: "0.6.0"
+  syncWave: "12"
+  destinationNamespace: openshift-storage
+  values:
+    namespace: openshift-storage
+    noobaa:
+      enabled: true
+      name: noobaa
+
+# ─── ODF / Noobaa (services) ────────────────────────────────────────────────
+odfServices:
+  enabled: true
+  chartVersion: "0.6.0"
+  syncWave: "12"
+  destinationNamespace: openshift-storage
+  values:
+    namePrefix: "svc-"
+    skipNamespace: true
+    namespace: openshift-storage
+    noobaa:
+      enabled: true
+      name: noobaa
+    edaLogsObc:
+      enabled: true
+
+# ─── Quay (central) ─────────────────────────────────────────────────────────
+quay:
+  enabled: true
+  chartVersion: "0.6.3"
+  syncWave: "35"
+  destinationNamespace: central-quay
+  values:
+    namespace: central-quay
+    registry:
+      enabled: true
+      name: sovereign-registry
+      configBundle: |
+        SERVER_HOSTNAME: quay.example.com
+        FEATURE_USER_INITIALIZE: true
+        FEATURE_SUPERUSERS_FULL_ACCESS: true
+        SUPER_USERS:
+          - sovereign_admin
+        FEATURE_USER_CREATION: false
+        FEATURE_TEAM_SYNCING: true
+        TEAM_RESYNC_STALE_TIME: "60m"
+        FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: false
+      configBundleSecretName: sovereign-registry-config-bundle
+      components:
+        objectstorage:
+          managed: true
+        postgres:
+          managed: false
+        clair:
+          managed: true
+        redis:
+          managed: true
+        mirror:
+          managed: true
+        route:
+          managed: true
+        tls:
+          managed: true
+        monitoring:
+          managed: false
+        quay:
+          overrides:
+            resources:
+              requests:
+                cpu: "500m"
+                memory: "4Gi"
+              limits:
+                cpu: "2"
+                memory: "8Gi"
+        horizontalpodautoscaler:
+          managed: false
+    crunchy:
+      enabled: true
+      name: quay-pgcluster
+      instances: 2
+      storage: 20Gi
+      backupStorage: 20Gi
+
+# ─── Quay (services) ────────────────────────────────────────────────────────
+quayServices:
+  enabled: true
+  chartVersion: "0.6.3"
+  syncWave: "35"
+  destinationNamespace: services-quay
+  values:
+    namePrefix: "svc-"
+    skipNamespace: true
+    namespace: services-quay
+    registry:
+      enabled: true
+      name: svc-sovereign-registry
+      configBundle: |
+        SERVER_HOSTNAME: svc-sovereign-registry-quay-services-quay.apps.services.lab.example.com
+        FEATURE_USER_INITIALIZE: true
+        FEATURE_SUPERUSERS_FULL_ACCESS: true
+        SUPER_USERS:
+          - sovereign_admin
+        FEATURE_USER_CREATION: true
+        FEATURE_TEAM_SYNCING: true
+        TEAM_RESYNC_STALE_TIME: "60m"
+        FEATURE_NONSUPERUSER_TEAM_SYNCING_SETUP: false
+      configBundleSecretName: svc-sovereign-registry-config-bundle
+      components:
+        objectstorage:
+          managed: true
+        postgres:
+          managed: false
+        clair:
+          managed: false
+        redis:
+          managed: true
+        mirror:
+          managed: false
+        monitoring:
+          managed: false
+        horizontalpodautoscaler:
+          managed: true
+          overrides:
+            minReplicas: 1
+            maxReplicas: 2
+        clairpostgres:
+          managed: false
+        route:
+          managed: true
+        tls:
+          managed: true
+        quay:
+          overrides:
+            resources:
+              requests:
+                cpu: "250m"
+                memory: "4Gi"
+              limits:
+                cpu: "2"
+                memory: "8Gi"
+    crunchy:
+      enabled: true
+      name: svc-quay-pgcluster
+      instances: 2
+      storage: 20Gi
+      backupStorage: 20Gi
+
+# ─── Gitea (services cluster) ──────────────────────────────────────────────
+gitea:
+  enabled: false
+  chartVersion: "0.4.3"
+  syncWave: "18"
+  values:
+    gitea:
+      global:
+        security:
+          allowInsecureImages: true
+        imagePullSecrets:
+          - quay-pull-secret
+      replicaCount: 1
+      image:
+        registry: quay.example.com
+        repository: hybrid-sovereign/gitea
+        tag: "1.25.5"
+        rootless: true
+      gitea:
+        admin:
+          # Credentials sourced from k8s Secret 'gitea-admin-credentials' (created by init chart from env vars)
+          # DEVIATION: Gitea chart deploys at wave 18, before Vault is initialized (wave 23).
+          # A k8s Secret pre-created during 'make init-central-argo' is used as a bridge.
+          # Post-init, credentials are pushed to Vault via PushSecret in giteaInit job.
+          existingSecret: "gitea-admin-credentials"
+        config:
+          server:
+            DOMAIN: "gitea-gitea.apps.services.lab.example.com"
+            ROOT_URL: "https://gitea-gitea.apps.central.lab.example.com"
+          database:
+            DB_TYPE: postgres
+          session:
+            PROVIDER: memory
+          cache:
+            ADAPTER: memory
+          queue:
+            TYPE: level
+      postgresql:
+        enabled: true
+        image:
+          registry: quay.example.com
+          repository: hybrid-sovereign/postgresql
+          tag: "17.6.0-debian-12-r4"
+        volumePermissions:
+          image:
+            registry: quay.example.com
+            repository: hybrid-sovereign/os-shell
+            tag: "12-debian-12-r51"
+      postgresql-ha:
+        enabled: false
+      redis:
+        enabled: false
+      redis-cluster:
+        enabled: false
+      valkey-cluster:
+        enabled: true
+        image:
+          registry: quay.example.com
+          repository: hybrid-sovereign/valkey-cluster
+          tag: "8.1.3-debian-12-r3"
+        volumePermissions:
+          image:
+            registry: quay.example.com
+            repository: hybrid-sovereign/os-shell
+            tag: "12-debian-12-r51"
+        sysctlImage:
+          registry: quay.example.com
+          repository: hybrid-sovereign/os-shell
+          tag: "12-debian-12-r51"
+      persistence:
+        enabled: true
+        size: 10Gi
+      route:
+        enabled: true
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+    pullSecret:
+      # Disabled: quay-pull-secret is provisioned by the init chart via make init-central-argo.
+      # The OCI robot credentials must NEVER be committed to git.
+      enabled: false
+      dockerconfigjson: ""
+    giteaTokenExternalSecret:
+      enabled: true
+      targetNamespace: sovereign-cloud-plugins
+      targetSecretName: gitea-admin-token
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: gitea-admin
+      refreshInterval: "1h"
+    adminCredentialsExternalSecret:
+      enabled: true
+      namespace: gitea
+      secretName: gitea-admin-credentials
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: gitea-admin
+      refreshInterval: "1h"
+    pullSecretExternalSecret:
+      enabled: false
+      namespace: gitea
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: oci-credentials
+      refreshInterval: "1h"
+
+# ─── Gitea (central cluster instance) ───────────────────────────────────────
+# Manages the Gitea instance running on the central cluster itself.
+# This is separate from the services-cluster Gitea (managed by the 'gitea' app above).
+giteaCentral:
+  enabled: true
+  chartVersion: "0.4.6"
+  syncWave: "18"
+  values:
+    gitea:
+      global:
+        security:
+          allowInsecureImages: true
+        imagePullSecrets:
+          - quay-pull-secret
+      replicaCount: 1
+      strategy:
+        type: Recreate
+      image:
+        registry: quay.example.com
+        repository: hybrid-sovereign/gitea
+        tag: "1.25.5"
+        rootless: true
+      gitea:
+        admin:
+          existingSecret: "gitea-admin-credentials"
+        additionalConfigFromEnvs:
+          - name: GITEA__DATABASE__PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: gitea-pgcluster-pguser-gitea
+                key: password
+        config:
+          server:
+            DOMAIN: "gitea-gitea.apps.central.lab.example.com"
+            ROOT_URL: "https://gitea-gitea.apps.central.lab.example.com"
+          database:
+            DB_TYPE: postgres
+            HOST: "gitea-pgcluster-primary.gitea.svc:5432"
+            NAME: gitea
+            USER: gitea
+            SSL_MODE: require
+          session:
+            PROVIDER: memory
+          cache:
+            ADAPTER: memory
+          queue:
+            TYPE: level
+      postgresql:
+        enabled: false
+      postgresql-ha:
+        enabled: false
+      redis:
+        enabled: false
+      redis-cluster:
+        enabled: false
+      valkey-cluster:
+        enabled: true
+        image:
+          registry: quay.example.com
+          repository: hybrid-sovereign/valkey-cluster
+          tag: "8.1.3-debian-12-r3"
+        volumePermissions:
+          image:
+            registry: quay.example.com
+            repository: hybrid-sovereign/os-shell
+            tag: "12-debian-12-r51"
+        sysctlImage:
+          registry: quay.example.com
+          repository: hybrid-sovereign/os-shell
+          tag: "12-debian-12-r51"
+      persistence:
+        enabled: true
+        size: 10Gi
+      route:
+        enabled: true
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+    pullSecret:
+      enabled: false
+      dockerconfigjson: ""
+    giteaTokenExternalSecret:
+      enabled: false
+    adminCredentialsExternalSecret:
+      enabled: true
+      namespace: gitea
+      secretName: gitea-admin-credentials
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: gitea-admin
+      refreshInterval: "1h"
+    pullSecretExternalSecret:
+      enabled: false
+    crunchy:
+      enabled: true
+      name: gitea-pgcluster
+      namespace: gitea
+      instances: 2
+      storage: 10Gi
+      backupStorage: 10Gi
+
+# ─── Crunchy Postgres (central) ─────────────────────────────────────────────
+crunchyPostgres:
+  enabled: true
+  chartVersion: "0.5.0"
+  syncWave: "11"
+  destinationNamespace: postgres-operator
+  values:
+    namespace: postgres-operator
+
+# ─── Crunchy Postgres (services) ────────────────────────────────────────────
+crunchyPostgresServices:
+  enabled: true
+  chartVersion: "0.5.0"
+  syncWave: "11"
+  destinationNamespace: postgres-operator
+  values:
+    namePrefix: "svc-"
+    namespace: postgres-operator
+
+# ─── External Secrets Operator (central) ────────────────────────────────────
+externalSecrets:
+  enabled: true
+  chartVersion: "0.1.4"
+  syncWave: "5"
+
+  values:
+    operator:
+      channel: stable
+      installPlanApproval: Automatic
+      source: community-operators
+      sourceNamespace: openshift-marketplace
+    namespace: external-secrets
+
+# ─── DNS Forwarder (services) ────────────────────────────────────────────────
+# Adds lab.example.com → 127.0.0.1/127.0.0.1 forwarder to the services
+# cluster CoreDNS so pods can resolve internal lab hostnames (vCenter, ESXi, etc.)
+# without falling through to public DNS which has no knowledge of private hosts.
+dnsForwarderServices:
+  enabled: true
+  chartVersion: "0.1.0"
+  syncWave: "2"
+  values:
+    servers:
+      - name: lab-signal9-forwarder
+        zones:
+          - lab.example.com
+        policy: Sequential
+        upstreams:
+          - 127.0.0.1
+          - 127.0.0.1
+
+# ─── External Secrets Operator (services) ───────────────────────────────────
+externalSecretsServices:
+  enabled: true
+  chartVersion: "0.1.4"
+  syncWave: "5"
+  values:
+    operator:
+      channel: stable
+      installPlanApproval: Automatic
+      source: community-operators
+      sourceNamespace: openshift-marketplace
+    namespace: external-secrets
+
+# ─── Vault Central Namespace (backup copies of init secrets) ─────────────────
+vaultCentralNamespace:
+  enabled: true
+  chartVersion: "0.1.9"
+  syncWave: "27"
+  argocdChartsRepo: false
+  values:
+    namespace: vault-central
+    secretStore:
+      name: vault-backend
+      kind: ClusterSecretStore
+    vaultInitSecretsCopy:
+      enabled: true
+    vaultServicesInitSecretsCopy:
+      enabled: true
+    # Services vault init PushSecret disabled: services-vault namespace is on services cluster
+    vaultServicesInitPushSecret:
+      enabled: false
+    dashboardCentralReader:
+      enabled: true
+      namespace: sovereign-cloud-jobs
+      jobServiceAccount: sovereign-ansible-runner
+      image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+      imagePullSecrets:
+        - name: quay-pull-secret
+      vaultAddr: "http://vault-active.central-vault.svc:8200"
+      vaultPath: "central/data/dashboard-central-reader"
+      apiServer: "https://api.central.lab.example.com:6443"
+    edaS3Creds:
+      enabled: true
+      bucketName: "eda-job-logs"
+      endpoint: "https://s3-openshift-storage.apps.services.lab.example.com"
+    centralServiceAccounts:
+      # DEVIATION: awshelper-creator-sa disabled — HELPERAWS operator is obsolete (feature 009).
+      # WHY: User confirmed no active tenants; helper_CloudAWS operator will not be re-deployed.
+      # WHERE: vaultCentralNamespace.centralServiceAccounts.awshelper-creator-sa
+      # REMEDIATION: If CloudAWS helper is reintroduced, create a dedicated operator chart.
+      awshelper-creator-sa:
+        enabled: false
+        namespace: sovereign-cloud-jobs
+        clusterRoleRules:
+          - apiGroups: ["helper.hybridsovereign.redhat"]
+            resources: ["*"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["namespaces", "secrets", "configmaps"]
+            verbs: ["get", "list", "watch", "create", "update", "patch"]
+      # DEVIATION: osohelper-creator-sa disabled — HELPEROSO operator is obsolete (feature 009).
+      # WHY: User confirmed no active tenants; helper_CloudOSO operator will not be re-deployed.
+      # WHERE: vaultCentralNamespace.centralServiceAccounts.osohelper-creator-sa
+      # REMEDIATION: If CloudOSO helper is reintroduced, create a dedicated operator chart.
+      osohelper-creator-sa:
+        enabled: false
+        namespace: sovereign-cloud-jobs
+        clusterRoleRules:
+          - apiGroups: ["helper.hybridsovereign.redhat"]
+            resources: ["*"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["namespaces", "secrets", "configmaps"]
+            verbs: ["get", "list", "watch", "create", "update", "patch"]
+      aap-central-cluster-sa:
+        enabled: true
+        namespace: sovereign-cloud-jobs
+        clusterRoleRules:
+          - apiGroups: ["external-secrets.io"]
+            resources: ["externalsecrets"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+          - apiGroups: [""]
+            resources: ["secrets", "namespaces"]
+            verbs: ["get", "list", "watch"]
+
+# ─── ArgoCD Repo Secret: cluster_builds (Gitea → Vault → ESO) ────────────────
+argocdClusterBuildsRepo:
+  enabled: false  # Phase 5: direct Helm by operators replaces Gitea→ArgoCD cluster-build flow
+  giteaUrl: "https://gitea-gitea.apps.central.lab.example.com"
+  giteaUser: "gitea_admin"
+
+# ─── Vault ClusterSecretStore (central) — uses k8s auth ─────────────────────
+vaultSecretStore:
+  enabled: true
+  chartVersion: "0.3.3"
+  syncWave: "22"
+  values:
+    vault:
+      server: "http://vault-active.central-vault.svc:8200"
+      path: "central"
+    auth:
+      type: kubernetes
+      mountPath: "kubernetes-central"
+      role: "external-secrets"
+      serviceAccountName: "external-secrets-vault-sa"
+      serviceAccountNamespace: "external-secrets"
+
+# ─── Vault ClusterSecretStore (services → vault-central via external route) ─
+# Uses kubernetes-services auth mount on central vault (k8s auth, no root token)
+vaultSecretStoreServices:
+  enabled: true
+  chartVersion: "0.3.4"
+  syncWave: "22"
+  values:
+    vault:
+      server: "https://vault-central.apps.central.lab.example.com"
+      path: "central"
+      caBundle: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUZtakNDQTRLZ0F3SUJBZ0lVYXlmNFRwOHZiaWZFREVsVTRpdlhyR1BwNjVzd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1pqRUxNQWtHQTFVRUJoTUNWVk14RVRBUEJnTlZCQWdNQ0VGeWEyRnVjMkZ6TVE4d0RRWURWUVFIREFaUwpiMmRsY25NeEZUQVRCZ05WQkFvTURGTnBaMjVoYkRrZ1RHRmljekVjTUJvR0ExVUVBd3dUVTJsbmJtRnNPU0JTClUwRWdVbTl2ZENCWU1UQWVGdzB5TlRBeE1USXdOakUwTlRCYUZ3MHpOVEF4TVRBd05qRTBOVEJhTUdJeEN6QUoKQmdOVkJBWVRBbFZUTVJFd0R3WURWUVFJRXdoQmNtdGhibk5oY3pFUE1BMEdBMVVFQnhNR1VtOW5aWEp6TVJVdwpFd1lEVlFRS0V3eFRhV2R1WVd3NUlFeGhZbk14R0RBV0JnTlZCQU1URDFOcFoyNWhiRGtnUVVOTlJTQlNNekNDCkFTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBS0ZaK0w2RndrcXhPR2NOQ1JMMkhWOGoKR2c2Sy9QenYrdkpYQllzSFNnSmRKdG4vR21hRzR2UDVTcVhCdUtIbEd1bmRFVVYyanZISXZNS2tNUXhWOGw1OApzdXhwQjBaNWFzSE5Hdk9Vb2pFN0ExUDBYeVNrTTk4Qithbk4vVGFYTVE0OEdUUFJOZmNwY0t0UDFIbkhFbGsxCkFDV24xVFRJaGtyUGdMeUdoaGROUGVqK2kzeVJsRTBCbXV4WkRDUCtreFJhUjFnVUdtYUtSVnZXcnB1dHNFQVEKMW55RlFBMDZvM01WUmlnUVROZzVya1l6VHN2Q3dxL0VzdW4vSFhNcDJhOXhnREpERHBkYkg4RXFZVEpaY3BVOAphSkt5bVpFcHdqaklha0JmdnZFeDdMbTk5UkdaOWpwME5QM1hMb1FTaG93c1k0eXluODdFZ2JvNkdJeGhnTlVDCkF3RUFBYU9DQVVJd2dnRStNQjBHQTFVZERnUVdCQlQvdXFmdTBraytMUERFMml2OUVVbkhZN1JMVVRBZkJnTlYKSFNNRUdEQVdnQlJoQ0xOcVVuaXQ3QXRJcDJGWU4vditYc1NnVVRBU0JnTlZIUk1CQWY4RUNEQUdBUUgvQWdFQQpNQTRHQTFVZER3RUIvd1FFQXdJQmhqQWRCZ05WSFNVRUZqQVVCZ2dyQmdFRkJRY0RBUVlJS3dZQkJRVUhBd0l3ClB3WUlLd1lCQlFVSEFRRUVNekF4TUM4R0NDc0dBUVVGQnpBQ2hpTm9kSFJ3T2k4dmNHdHBMbk5wWjI1aGJEa3UKWjJjdmFYTnpkV1Z5TDNneExtTmxjakJGQmdOVkhTQUVQakE4TURvR0JtZUJEQUVDQVRBd01DNEdDQ3NHQVFVRgpCd0lCRmlKb2RIUndPaTh2Y0d0cExuTnBaMjVoYkRrdVoyY3ZaRzh0Ym05MExYUnlkWE4wTURFR0ExVWRId1FxCk1DZ3dKcUFrb0NLR0lHaDBkSEE2THk5d2Eya3VjMmxuYm1Gc09TNW5aeTlqY213dmVERXVZM0pzTUEwR0NTcUcKU0liM0RRRUJDd1VBQTRJQ0FRQS9VUG5pQzZadHBZTmNUL0JJMFA2NWNtQjdmZFlpWm1EM2dBaDlCSk1WWXg2dwpaK3dscE1Xc1lYTWFzUmhJOW14bE51UkU3MWhSSHlub3JoM3QrTEh3WFI3TFlFc1kxNnI4V1EyMXh1YWs2blM0Cmw2TThROGw1bEUwOEs5dC80RWJINmlaQVhON0ZGL0M2Rk14bEM0ZGhDRlV5QXhaZHZpRXEzZmhrNEVMYXN3VngKV0NSdzkzYUZ4M29HeHQvdlBtYTNBMlYybEE0aUgzcGllU3ZvcU83ZkZPdThqeUZ0QldtYXMrdmNxY3djZEJregpISUlUVTJ4UDlIZERVaCtkYitXMktjeThHS1dEQ2d5S3lTUTlvR0lUbStYNE0vWDMveC9MVzdZUVZwSCtoZUs3CjZwR2xMMnRkOEgyS3BpY0Q1TWFMcjk3Q2tYbUZXQWhBZnJxVjVReXVRbnZUcGozbm5vVkJUZFo0eGpFQ1NDZEIKdnpFRkdDdy90Q1ZsK3RRcU1GM0dFc1BKM25mVkdWZlRKY0l4US9PaGVRVjdNeXhTdldWMGdKSkxFWktwUTZaNApmRmQ0ZnozaXV0SXdKUG1QYVRDSE1jRkdVVDZLQmdUV1lTdExsQWhjQmlINVZINWZZS24wYzFNRW9VTjhSd2xqCkhGS3RlS0FENDQzVTRoY3FaeGFXeWVCQUdZbWRHU2dyVko5dXRXeHhibzgzc1UyMmsxVHEzZmVwUjZiNll2ODYKUjRRWmdzWld4bXB6bWhSRjl1TTVVM1lmbXp3ZzJqNU1ZUEpmcStodndCM1YyUDRKRGxvNlBENWJkdWNzeEV3OQoySCtUb3o1NzFwZ1hNL1ZHVklvbWRKNHg1V2JzRUNNcWpueVozMXZXNlJheUJibjUwZkRwRUNpYzZmd0NzZz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+    auth:
+      type: kubernetes
+      mountPath: "kubernetes-services"
+      role: "external-secrets"
+      serviceAccountName: "vault-eso-sa"
+      serviceAccountNamespace: "external-secrets"
+
+# ─── Sovereign Jobs RBAC ────────────────────────────────────────────────────
+sovereignJobsRbac:
+  enabled: true
+  chartVersion: "0.1.10"
+  syncWave: "3"
+  values:
+    namespace: sovereign-cloud-jobs
+    serviceAccount: sovereign-ansible-runner
+    imagePullSecrets:
+      - name: quay-pull-secret
+
+# ─── Sovereign Jobs (individual Ansible job Applications) ────────────────────
+sovereignJobs:
+  chartVersion: "0.1.7"
+  namespace: sovereign-cloud-jobs
+  serviceAccount: sovereign-ansible-runner
+  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  backoffLimit: 5
+  imagePullSecrets:
+    - name: quay-pull-secret
+  jobs:
+    vaultInit:
+      enabled: true
+      playbook: vault-init.yml
+      activeDeadlineSeconds: 600
+      syncWave: "23"
+      env:
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_SECRET_NAMESPACE
+          value: "central-vault"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+    vaultKv:
+      enabled: true
+      playbook: vault-kv.yml
+      activeDeadlineSeconds: 600
+      syncWave: "24"
+      env:
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+    openshiftVaultSeed:
+      enabled: true
+      playbook: openshift-vault-seed.yml
+      activeDeadlineSeconds: 300
+      syncWave: "24"
+      env:
+        - name: VAULT_ADDR
+          value: "http://vault-active.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+        - name: OCP_CENTRAL_SERVER
+          value: "https://api.central.lab.example.com:6443"
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+        - name: OCP_CENTRAL_KUBEADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openshift-kubeadmin-passwords
+              key: central_password
+              optional: true
+        - name: OCP_SERVICES_KUBEADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: openshift-kubeadmin-passwords
+              key: services_password
+              optional: true
+    vmwareInit:
+      enabled: true
+      playbook: vmware-init.yml
+      activeDeadlineSeconds: 300
+      syncWave: "24"
+      env:
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+      volumeMounts:
+        - name: vmware-creds
+          mountPath: /var/run/secrets/vmware
+          readOnly: true
+      volumes:
+        - name: vmware-creds
+          secret:
+            secretName: vmware-bootstrap-credentials
+    mtvCatalogSync:
+      enabled: true
+      playbook: mtv-catalog-sync.yml
+      activeDeadlineSeconds: 600
+      syncWave: "35"
+      env:
+        - name: RUN_ID
+          value: "3"
+        - name: OCP_CENTRAL_SERVER
+          value: "https://api.central.lab.example.com:6443"
+    deliverVaultToken:
+      enabled: false
+      playbook: deliver-vault-token.yml
+      activeDeadlineSeconds: 300
+      syncWave: "25"
+      env:
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+        - name: TARGET_NAMESPACE
+          value: "services-vault"
+        - name: TARGET_SECRET_NAME
+          value: "vault-central-token"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+    vaultK8sAuth:
+      enabled: true
+      playbook: vault-k8s-auth.yml
+      activeDeadlineSeconds: 600
+      syncWave: "26"
+      env:
+        - name: VAULT_ADDR
+          value: "http://vault-active.central-vault.svc:8200"
+        - name: VAULT_SERVICES_ADDR
+          value: "https://vault-services.apps.services.lab.example.com"
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+        - name: VAULT_SECRET_NAMESPACE
+          value: "central-vault"
+    keycloakRealms:
+      enabled: true
+      playbook: keycloak-realms.yml
+      activeDeadlineSeconds: 600
+      syncWave: "26"
+      env:
+        - name: KEYCLOAK_URL
+          value: "http://rhbk-central-service.central-rhbk.svc:8080"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-central-initial-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "central-rhbk"
+    keycloakGroups:
+      enabled: true
+      playbook: keycloak-groups.yml
+      activeDeadlineSeconds: 600
+      syncWave: "27"
+      env:
+        - name: KEYCLOAK_URL
+          value: "http://rhbk-central-service.central-rhbk.svc:8080"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-central-initial-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "central-rhbk"
+    keycloakClients:
+      enabled: true
+      playbook: keycloak-clients.yml
+      activeDeadlineSeconds: 600
+      syncWave: "27"
+      pushSecrets:
+        pushKeycloakClientSecrets:
+          enabled: false
+          secretName: keycloak-client-secrets
+          data:
+            - secretKey: quay-central
+              remoteKey: keycloak-clients
+              property: quay-central
+            - secretKey: vault
+              remoteKey: keycloak-clients
+              property: vault
+            - secretKey: gitea
+              remoteKey: keycloak-clients
+              property: gitea
+            - secretKey: openshift-central
+              remoteKey: keycloak-clients
+              property: openshift-central
+            - secretKey: aap
+              remoteKey: keycloak-clients
+              property: aap
+            - secretKey: acs
+              remoteKey: keycloak-clients
+              property: acs
+      env:
+        - name: KEYCLOAK_URL
+          value: "http://rhbk-central-service.central-rhbk.svc:8080"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-central-initial-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "central-rhbk"
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+        - name: KEYCLOAK_CLIENTS
+          value: '[{"realm":"sovereign-central","client_id":"quay-central","name":"Quay Central","redirect_uris":["*"]},{"realm":"sovereign-central","client_id":"vault","name":"Vault","redirect_uris":["*"]},{"realm":"sovereign-central","client_id":"gitea","name":"Gitea","redirect_uris":["*"]},{"realm":"sovereign-central","client_id":"openshift-central","name":"OpenShift Central","redirect_uris":["*"]},{"realm":"sovereign-central","client_id":"aap","name":"Ansible Automation Platform","redirect_uris":["*"]},{"realm":"sovereign-central","client_id":"acs","name":"Advanced Cluster Security","redirect_uris":["*"]}]'
+        - name: SECRETS_NAMESPACE
+          value: "sovereign-cloud-jobs"
+    keycloakRbac:
+      enabled: true
+      playbook: keycloak-rbac.yml
+      activeDeadlineSeconds: 600
+      syncWave: "27"
+      env:
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+    keycloakOauth:
+      enabled: true
+      playbook: keycloak-oauth.yml
+      activeDeadlineSeconds: 600
+      syncWave: "27"
+      env:
+        - name: RUN_ID
+          value: "2026-06-24-fix-oauth"
+        - name: KEYCLOAK_CENTRAL_URL
+          value: "https://rhbk-central.apps.central.lab.example.com"
+        - name: KEYCLOAK_SERVICES_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-central-initial-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "central-rhbk"
+        - name: KEYCLOAK_SERVICES_ADMIN_SECRET
+          value: "rhbk-services-initial-admin"
+        - name: KEYCLOAK_SERVICES_ADMIN_SECRET_NS
+          value: "services-rhbk"
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+        - name: SERVICES_REALM_NAME
+          value: "sovereign-tenants"
+    giteaInit:
+      enabled: true  # enables Gitea init + token write to Vault
+      playbook: gitea-init.yml
+      activeDeadlineSeconds: 600
+      # RUN_ID bump forces re-run after Gitea DB reset (fresh deployment)
+      syncWave: "35"
+      externalSecrets:
+        giteaAdminCredentials:
+          enabled: true
+          targetSecretName: gitea-admin-credentials
+          data:
+            - secretKey: admin_user
+              remoteKey: gitea-admin
+              property: admin_user
+            - secretKey: admin_password
+              remoteKey: gitea-admin
+              property: admin_password
+      pushSecrets:
+        pushGiteaAdmin:
+          enabled: false
+          secretName: gitea-credentials
+          data:
+            - secretKey: admin_user
+              remoteKey: gitea-admin
+              property: admin_user
+            - secretKey: admin_password
+              remoteKey: gitea-admin
+              property: admin_password
+            - secretKey: admin_token
+              remoteKey: gitea-admin
+              property: admin_token
+      env:
+        - name: RUN_ID
+          value: "3"
+        - name: GITEA_URL
+          value: "https://gitea-gitea.apps.central.lab.example.com"
+        - name: GITEA_ADMIN_USER
+          value: "gitea_admin"
+        - name: GITEA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gitea-admin-credentials
+              key: admin_password
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+        - name: SECRETS_NAMESPACE
+          value: "sovereign-cloud-jobs"
+    giteaCreateRepo:
+      enabled: true  # Required: plugin_iaac needs tenancy_repo to exist on central Gitea
+      playbook: gitea-create-repo.yml
+      activeDeadlineSeconds: 300
+      syncWave: "36"
+      env:
+        - name: RUN_ID
+          value: "3"
+        - name: GITEA_URL
+          value: "https://gitea-gitea.apps.central.lab.example.com"
+        - name: GITEA_ADMIN_USER
+          value: "gitea_admin"
+        - name: GITEA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gitea-admin-credentials
+              key: admin_password
+        - name: REPO_NAME
+          value: "tenancy_repo"
+    keycloakServicesRealms:
+      enabled: true
+      playbook: keycloak-realms.yml
+      activeDeadlineSeconds: 600
+      syncWave: "28"
+      externalSecrets:
+        rhbkServicesAdmin:
+          enabled: true
+          targetSecretName: rhbk-services-admin
+          data:
+            - secretKey: username
+              remoteKey: rhbk-services-admin
+              property: username
+            - secretKey: password
+              remoteKey: rhbk-services-admin
+              property: password
+      env:
+        - name: KEYCLOAK_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-services-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+        - name: REALM_NAME
+          value: "sovereign-tenants"
+        - name: FORCE_RERUN
+          value: "2026-06-24-services-rhbk"
+    keycloakServicesGroups:
+      enabled: true
+      playbook: keycloak-groups.yml
+      activeDeadlineSeconds: 600
+      syncWave: "29"
+      env:
+        - name: KEYCLOAK_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-services-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+        - name: REALM_NAME
+          value: "sovereign-tenants"
+        - name: ADMIN_GROUP
+          value: "sovereign-admin"
+        - name: EXTRA_GROUPS
+          value: '[{"name":"acme-corp-platform-engineering-admins"},{"name":"acme-corp-platform-engineering-editors"},{"name":"acme-corp-platform-engineering-viewers"},{"name":"acme-corp-platform-ops-admins"},{"name":"acme-corp-platform-ops-editors"},{"name":"acme-corp-platform-ops-viewers"},{"name":"acme-corp-assignment-admins"},{"name":"acme-corp-developers"},{"name":"acme-corp-platform-viewers"},{"name":"acme-corp-devops"}]'
+    keycloakServicesClients:
+      enabled: true
+      playbook: keycloak-clients.yml
+      activeDeadlineSeconds: 600
+      syncWave: "30"
+      env:
+        - name: KEYCLOAK_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-services-admin"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+        - name: REALM_NAME
+          value: "sovereign-tenants"
+        - name: KEYCLOAK_CLIENTS
+          value: '[{"realm":"sovereign-tenants","client_id":"openshift-services","name":"OpenShift Services","redirect_uris":["*"]},{"realm":"sovereign-tenants","client_id":"quay-services","name":"Quay Services","redirect_uris":["*"]},{"realm":"sovereign-tenants","client_id":"aap","name":"Ansible Automation Platform","redirect_uris":["*"]},{"realm":"sovereign-tenants","client_id":"acs","name":"Advanced Cluster Security","redirect_uris":["*"]}]'
+        - name: SECRETS_NAMESPACE
+          value: "sovereign-cloud-jobs"
+    vaultServicesInit:
+      enabled: true
+      playbook: vault-services-init.yml
+      activeDeadlineSeconds: 600
+      syncWave: "29"
+      env:
+        - name: VAULT_ADDR
+          value: "https://vault-services.apps.services.lab.example.com"
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+        - name: VAULT_SECRET_NAME
+          value: "vault-services-init-secrets"
+        - name: VAULT_SECRET_NAMESPACE
+          value: "sovereign-cloud-jobs"
+    vaultOidcAuth:
+      enabled: true
+      playbook: vault-oidc-auth.yml
+      activeDeadlineSeconds: 1800
+      syncWave: "29"
+      env:
+        - name: VAULT_ADDR
+          value: "http://vault-active.central-vault.svc:8200"
+        - name: VAULT_SECRET_NAMESPACE
+          value: "central-vault"
+        - name: VAULT_SECRET_NAME
+          value: "vault-init-secrets"
+        - name: VAULT_SERVICES_ADDR
+          value: "https://vault-services.apps.services.lab.example.com"
+        # External HTTPS URL — Vault needs this to match the issuer in OIDC discovery doc.
+        # central_ingress_ca_pem is fetched in pre_tasks and passed to the Vault OIDC config.
+        - name: KEYCLOAK_CENTRAL_URL
+          value: "https://rhbk-central.apps.central.lab.example.com"
+        - name: KEYCLOAK_SERVICES_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_CENTRAL_REALM
+          value: "sovereign-central"
+        - name: KEYCLOAK_SERVICES_REALM
+          value: "sovereign-tenants"
+        - name: KEYCLOAK_SERVICES_ADMIN_SECRET
+          value: "rhbk-services-admin"
+        - name: KEYCLOAK_SERVICES_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+    aapLicenseServices:
+      enabled: true
+      playbook: aap-license.yml
+      activeDeadlineSeconds: 600
+      syncWave: "31"
+      externalSecrets:
+        aapManifest:
+          enabled: true
+          targetSecretName: aap-manifest
+          data:
+            - secretKey: manifest_b64
+              remoteKey: aap-manifest
+              property: manifest_b64
+        aapAdmin:
+          enabled: true
+          targetSecretName: aap-admin-credentials
+          data:
+            - secretKey: token
+              remoteKey: aap-admin
+              property: token
+      env:
+        - name: AAP_GATEWAY_URL
+          value: "https://sovereign-aap-aap.apps.services.lab.example.com"
+      volumeMounts:
+        - name: aap-manifest
+          mountPath: /var/run/secrets/aap-manifest
+          readOnly: true
+        - name: aap-admin
+          mountPath: /var/run/secrets/aap-admin
+          readOnly: true
+      volumes:
+        - name: aap-manifest
+          secret:
+            secretName: aap-manifest
+        - name: aap-admin
+          secret:
+            secretName: aap-admin-credentials
+    aapLicenseCentral:
+      enabled: true
+      playbook: aap-license.yml
+      activeDeadlineSeconds: 600
+      syncWave: "31"
+      externalSecrets:
+        aapManifestCentral:
+          enabled: true
+          targetSecretName: aap-manifest-central
+          data:
+            - secretKey: manifest_b64
+              remoteKey: aap-manifest
+              property: manifest_b64
+        aapAdminCentral:
+          enabled: true
+          targetSecretName: aap-admin-credentials-central
+          data:
+            - secretKey: token
+              remoteKey: aap-admin-central
+              property: token
+      env:
+        - name: AAP_GATEWAY_URL
+          value: "https://sovereign-aap-aap.apps.central.lab.example.com"
+      volumeMounts:
+        - name: aap-manifest
+          mountPath: /var/run/secrets/aap-manifest
+          readOnly: true
+        - name: aap-admin
+          mountPath: /var/run/secrets/aap-admin
+          readOnly: true
+      volumes:
+        - name: aap-manifest
+          secret:
+            secretName: aap-manifest-central
+        - name: aap-admin
+          secret:
+            secretName: aap-admin-credentials-central
+    aapControllerConfig:
+      enabled: false
+      playbook: aap-controller-config.yml
+      activeDeadlineSeconds: 1200
+      syncWave: "33"
+      externalSecrets:
+        aapAdminControllerConfig:
+          enabled: true
+          targetSecretName: aap-controller-admin-config
+          data:
+            - secretKey: password
+              remoteKey: aap-admin-central
+              property: password
+        ociCredentialsControllerConfig:
+          enabled: true
+          targetSecretName: aap-controller-oci-credentials
+          data:
+            - secretKey: username
+              remoteKey: oci-credentials
+              property: username
+            - secretKey: password
+              remoteKey: oci-credentials
+              property: password
+            - secretKey: registry
+              remoteKey: oci-credentials
+              property: registry
+        githubTokenControllerConfig:
+          enabled: true
+          targetSecretName: aap-controller-github-token
+          data:
+            - secretKey: token
+              remoteKey: github-charts-token
+              property: token
+        centralClusterSaToken:
+          enabled: true
+          targetSecretName: aap-controller-central-sa
+          data:
+            - secretKey: bearer_token
+              remoteKey: aap-central-cluster-sa
+              property: bearer_token
+      env:
+        - name: RUN_ID
+          value: "8"
+        - name: AAP_CONTROLLER_URL
+          value: "https://sovereign-aap-controller-aap.apps.central.lab.example.com"
+        - name: AAP_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aap-controller-admin-config
+              key: password
+        - name: OCI_REGISTRY
+          valueFrom:
+            secretKeyRef:
+              name: aap-controller-oci-credentials
+              key: registry
+        - name: OCI_ROBOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: aap-controller-oci-credentials
+              key: username
+        - name: OCI_ROBOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aap-controller-oci-credentials
+              key: password
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aap-controller-github-token
+              key: token
+        - name: EDA_REPO_URL
+          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+        - name: OCP_CENTRAL_SERVER
+          value: "https://api.central.lab.example.com:6443"
+        - name: OCP_CENTRAL_SA_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aap-controller-central-sa
+              key: bearer_token
+    aapPostgresGuard:
+      enabled: true
+      playbook: aap-postgres-guard.yml
+      activeDeadlineSeconds: 600
+      syncWave: "31"
+      env:
+        - name: RUN_ID
+          value: "1"
+    edaConfig:
+      enabled: false
+      playbook: eda-config.yml
+      activeDeadlineSeconds: 2400
+      syncWave: "32"
+      externalSecrets:
+        aapAdminEda:
+          enabled: true
+          targetSecretName: eda-admin-credentials
+          data:
+            - secretKey: token
+              remoteKey: aap-admin-central
+              property: token
+        eventStreamToken:
+          enabled: true
+          targetSecretName: event-stream-token
+          data:
+            - secretKey: token
+              remoteKey: event-forwarder
+              property: token
+        ociCredentials:
+          enabled: true
+          targetSecretName: eda-oci-credentials
+          data:
+            - secretKey: username
+              remoteKey: oci-credentials
+              property: username
+            - secretKey: password
+              remoteKey: oci-credentials
+              property: password
+            - secretKey: registry
+              remoteKey: oci-credentials
+              property: registry
+        githubTokenEdaConfig:
+          enabled: true
+          targetSecretName: eda-github-token
+          data:
+            - secretKey: token
+              remoteKey: github-charts-token
+              property: token
+      env:
+        - name: RUN_ID
+          value: "19"
+        - name: EDA_CONTROLLER_URL
+          value: "https://sovereign-aap-aap.apps.central.lab.example.com"
+        - name: AAP_CONTROLLER_URL
+          value: "https://sovereign-aap-aap.apps.central.lab.example.com"
+        - name: AAP_RESOURCE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: eda-admin-credentials
+              key: token
+        - name: RULEBOOK_REPO_URL
+          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: eda-github-token
+              key: token
+        - name: OCI_REGISTRY
+          valueFrom:
+            secretKeyRef:
+              name: eda-oci-credentials
+              key: registry
+        - name: OCI_ROBOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: eda-oci-credentials
+              key: username
+        - name: OCI_ROBOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eda-oci-credentials
+              key: password
+    aapConfigAsCode:
+      enabled: true
+      playbook: aap-config-as-code.yml
+      activeDeadlineSeconds: 2400
+      syncWave: "33"
+      externalSecrets:
+        aapAdminConfigAsCode:
+          enabled: true
+          targetSecretName: aap-config-as-code-admin
+          data:
+            - secretKey: password
+              remoteKey: aap-admin-central
+              property: password
+        edaAdminConfigAsCode:
+          enabled: true
+          targetSecretName: eda-config-as-code-admin
+          data:
+            - secretKey: password
+              remoteKey: eda-admin-central
+              property: password
+            - secretKey: token
+              remoteKey: aap-admin-central
+              property: token
+        ociCredentialsConfigAsCode:
+          enabled: true
+          targetSecretName: aap-config-as-code-oci-credentials
+          data:
+            - secretKey: username
+              remoteKey: oci-credentials
+              property: username
+            - secretKey: password
+              remoteKey: oci-credentials
+              property: password
+            - secretKey: registry
+              remoteKey: oci-credentials
+              property: registry
+        githubTokenConfigAsCode:
+          enabled: true
+          targetSecretName: aap-config-as-code-github-token
+          data:
+            - secretKey: token
+              remoteKey: github-charts-token
+              property: token
+        centralClusterSaTokenConfigAsCode:
+          enabled: true
+          targetSecretName: aap-config-as-code-central-sa
+          data:
+            - secretKey: bearer_token
+              remoteKey: aap-central-cluster-sa
+              property: bearer_token
+        eventStreamTokenConfigAsCode:
+          enabled: true
+          targetSecretName: aap-config-as-code-event-stream-token
+          data:
+            - secretKey: token
+              remoteKey: event-forwarder
+              property: token
+      env:
+        - name: RUN_ID
+          value: "1"
+        - name: AAP_CONFIG_PATH
+          value: "/runner/project/aap-config"
+        - name: AAP_CONTROLLER_HOST
+          value: "https://aap-controller.apps.central.lab.example.com"
+        - name: AAP_CONTROLLER_URL
+          value: "https://aap-controller.apps.central.lab.example.com"
+        - name: EDA_CONTROLLER_HOST
+          value: "https://eda-controller.apps.central.lab.example.com"
+        - name: AAP_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-admin
+              key: password
+        - name: EDA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eda-config-as-code-admin
+              key: password
+        - name: AAP_RESOURCE_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: eda-config-as-code-admin
+              key: token
+        - name: OCI_REGISTRY
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-oci-credentials
+              key: registry
+        - name: OCI_ROBOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-oci-credentials
+              key: username
+        - name: OCI_ROBOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-oci-credentials
+              key: password
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-github-token
+              key: token
+        - name: EDA_REPO_URL
+          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+        - name: RULEBOOK_REPO_URL
+          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+        - name: OCP_CENTRAL_SERVER
+          value: "https://api.central.lab.example.com:6443"
+        - name: OCP_CENTRAL_SA_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-central-sa
+              key: bearer_token
+        - name: EVENT_STREAM_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-event-stream-token
+              key: token
+    keycloakTestUsers:
+      enabled: true
+      playbook: keycloak-test-users.yml
+      activeDeadlineSeconds: 300
+      syncWave: "32"
+      env:
+        - name: RUN_ID
+          value: "2026-06-24-fix-keycloak-test-users"
+        - name: KEYCLOAK_CENTRAL_URL
+          value: "https://rhbk-central.apps.central.lab.example.com"
+        - name: KEYCLOAK_SERVICES_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_CENTRAL_REALM
+          value: "sovereign-central"
+        - name: KEYCLOAK_SERVICES_REALM
+          value: "sovereign-tenants"
+        - name: KEYCLOAK_CENTRAL_ADMIN_SECRET
+          value: "rhbk-central-initial-admin"
+        - name: KEYCLOAK_CENTRAL_ADMIN_SECRET_NS
+          value: "central-rhbk"
+        - name: KEYCLOAK_SERVICES_ADMIN_SECRET
+          value: "rhbk-services-admin"
+        - name: KEYCLOAK_SERVICES_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+    # Bootstraps the cluster_builds Gitea repo and its ArgoCD repo secret.
+    # Idempotent — safe to re-run; repo creation and secret upsert are guarded.
+    # Runs at wave 37 so the ApplicationSet (wave 50) can connect immediately.
+    giteaClusterBuildsRepo:
+      enabled: false  # cluster-build no longer depends on Gitea (direct Helm by operators)
+      playbook: gitea-cluster-builds.yml
+      activeDeadlineSeconds: 300
+      syncWave: "37"
+      # No externalSecrets declared here — gitea-admin-credentials is already
+      # owned by the giteaInit job (wave 35). Referencing it via secretKeyRef
+      # avoids dual-ownership conflict with ESO creationPolicy: Owner.
+      env:
+        - name: GITEA_URL
+          value: "https://gitea-gitea.apps.central.lab.example.com"
+        - name: GITEA_ADMIN_USER
+          value: "gitea_admin"
+        - name: GITEA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: gitea-admin-credentials
+              key: admin_password
+        - name: GITEA_CREDENTIALS_SECRET
+          value: "gitea-credentials"
+        - name: GITEA_CREDENTIALS_NAMESPACE
+          value: "sovereign-cloud-jobs"
+        - name: ARGOCD_NAMESPACE
+          value: "openshift-gitops"
+
+    # Creates Entity, AAPOrg, QuayOrg sample CRs via Ansible job.
+    # Runs after all operators are deployed (wave 45) so their CRDs exist.
+    # Disables broken chart-default samples that have incorrect field names.
+    operatorSamples:
+      enabled: true
+      playbook: operator-samples.yml
+      activeDeadlineSeconds: 900
+      syncWave: "45"
+      env:
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+        - name: RUN_ID
+          value: "3"
+
+    # ─── Quay Central Config: init admin + store in Vault + configure OIDC ──────
+    quayCentralConfig:
+      enabled: true
+      playbook: quay-config.yml
+      activeDeadlineSeconds: 1200
+      syncWave: "37"
+      externalSecrets:
+        rhbkCentralAdmin:
+          enabled: true
+          targetSecretName: rhbk-central-admin-quay
+          data:
+            - secretKey: username
+              remoteKey: rhbk-central-admin
+              property: username
+            - secretKey: password
+              remoteKey: rhbk-central-admin
+              property: password
+      env:
+        - name: QUAY_URL
+          value: "https://sovereign-registry-quay-central-quay.apps.central.lab.example.com"
+        - name: QUAY_ADMIN_USER
+          value: "sovereign_admin"
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+        - name: VAULT_SECRET_PATH
+          value: "central/quay-central-admin"
+        - name: KEYCLOAK_URL
+          value: "https://rhbk-central.apps.central.lab.example.com"
+        - name: KEYCLOAK_REALM
+          value: "sovereign-central"
+        - name: KEYCLOAK_CLIENT_ID
+          value: "quay-central"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-central-admin-quay"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+
+    # ─── Quay Services Config: init admin + store in Vault + configure OIDC ─────
+    quayServicesConfig:
+      enabled: true
+      playbook: quay-config.yml
+      activeDeadlineSeconds: 1200
+      syncWave: "37"
+      externalSecrets:
+        rhbkServicesAdminQuay:
+          enabled: true
+          targetSecretName: rhbk-services-admin-quay
+          data:
+            - secretKey: username
+              remoteKey: rhbk-services-admin
+              property: username
+            - secretKey: password
+              remoteKey: rhbk-services-admin
+              property: password
+      env:
+        - name: QUAY_URL
+          value: "https://svc-sovereign-registry-quay-services-quay.apps.services.lab.example.com"
+        - name: QUAY_ADMIN_USER
+          value: "sovereign_admin"
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+        - name: VAULT_SECRET_PATH
+          value: "central/quay-services-admin"
+        - name: KEYCLOAK_URL
+          value: "https://rhbk-services.apps.services.lab.example.com"
+        - name: KEYCLOAK_REALM
+          value: "sovereign-tenants"
+        - name: KEYCLOAK_CLIENT_ID
+          value: "quay-services"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-services-admin-quay"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+
+    # ─── ACS Config: register clusters + configure OIDC ─────────────────────────
+    acsConfig:
+      enabled: true
+      playbook: acs-config.yml
+      activeDeadlineSeconds: 1200
+      syncWave: "36"
+      externalSecrets:
+        rhbkCentralAdminAcs:
+          enabled: true
+          targetSecretName: rhbk-central-admin-acs
+          data:
+            - secretKey: username
+              remoteKey: rhbk-central-admin
+              property: username
+            - secretKey: password
+              remoteKey: rhbk-central-admin
+              property: password
+      env:
+        - name: ACS_URL
+          value: "https://central-stackrox.apps.central.lab.example.com"
+        - name: ACS_ADMIN_SECRET_NAME
+          value: "stackrox-central-services-admin-password"
+        - name: ACS_ADMIN_SECRET_NAMESPACE
+          value: "stackrox"
+        - name: VAULT_ADDR
+          value: "http://vault.central-vault.svc:8200"
+        - name: VAULT_NAMESPACE
+          value: "central-vault"
+        - name: VAULT_SECRET_PATH
+          value: "central/acs-admin"
+        - name: KEYCLOAK_URL
+          value: "https://rhbk-central.apps.central.lab.example.com"
+        - name: KEYCLOAK_REALM
+          value: "sovereign-central"
+        - name: KEYCLOAK_CLIENT_ID
+          value: "acs"
+        - name: KEYCLOAK_ADMIN_SECRET
+          value: "rhbk-central-admin-acs"
+        - name: KEYCLOAK_ADMIN_SECRET_NS
+          value: "sovereign-cloud-jobs"
+        - name: OCP_SERVICES_SERVER
+          value: "https://api.services.lab.example.com:6443"
+
+# ─── Plugin RBAC Operator (services cluster) ────────────────────────────────
+pluginRbac:
+  enabled: false
+  chartVersion: "0.4.9"
+  syncWave: "39"
+  destinationNamespace: sovereign-cloud-plugins
+  values:
+    namespace: sovereign-cloud-plugins
+    createNamespace: false
+    image:
+      repository: quay.example.com/hybrid-sovereign/plugin-rbac
+      tag: "0.0.8"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1536Mi
+      requests:
+        cpu: 10m
+        memory: 512Mi
+    externalSecret:
+      # Disabled: plugin-vault already deploys rhbk-services-admin ExternalSecret.
+      # Dual ownership causes ArgoCD label drift (Issue 19).
+      enabled: false
+      targetSecretName: rhbk-services-admin
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: rhbk-services-admin
+      refreshInterval: "1h"
+    defaultRbacConfig:
+      enabled: true
+      name: keycloak-sovereign-tenants-services
+      type: keycloak
+      secret: rhbk-services-admin
+    samples:
+      enabled: false
+
+# ─── Plugin Vault Operator (services cluster) ──────────────────────────────
+pluginVault:
+  enabled: false
+  chartVersion: "0.2.14"
+  syncWave: "39"
+  destinationNamespace: sovereign-cloud-plugins
+  values:
+    namespace: sovereign-cloud-plugins
+    createNamespace: false
+    image:
+      repository: quay.example.com/hybrid-sovereign/plugin-vault
+      tag: "0.0.13"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    vaultImage:
+      repository: quay.example.com/hybrid-sovereign/vault
+      tag: "1.21.2"
+    keycloak:
+      internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
+      realm: sovereign-tenants
+      adminSecret: rhbk-services-admin
+    externalSecret:
+      enabled: true
+      targetSecretName: rhbk-services-admin
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: rhbk-services-admin
+      refreshInterval: "1h"
+    samples:
+      enabled: false
+
+# ─── Plugin AAP Operator (services cluster) ───────────────────────────────
+pluginAap:
+  enabled: false
+  chartVersion: "0.2.9"
+  syncWave: "39"
+  destinationNamespace: sovereign-cloud-plugins
+  values:
+    namespace: sovereign-cloud-plugins
+    createNamespace: false
+    image:
+      repository: quay.example.com/hybrid-sovereign/plugin-aap
+      tag: "0.0.10"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    aap:
+      controllerUrl: "https://sovereign-aap-controller-aap.apps.services.lab.example.com"
+      controllerInternalUrl: "http://sovereign-aap-controller-service.aap.svc:80"
+      gatewayUrl: "https://sovereign-aap-aap.apps.services.lab.example.com"
+      gatewayInternalUrl: "http://sovereign-aap.aap.svc:80"
+    keycloak:
+      internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
+      realm: sovereign-tenants
+    externalSecret:
+      enabled: true
+      targetSecretName: aap-admin-credentials
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: aap-admin
+      refreshInterval: "1h"
+    defaultAAPConfig:
+      enabled: true
+      name: aap-sovereign-services
+      secret: aap-admin-credentials
+      rbacConfig: keycloak-sovereign-tenants-services
+    samples:
+      # Chart samples disabled: template generates spec.config but CRD requires
+      # spec.aapConfig. AAPOrg CRs are created by the operator-samples job.
+      enabled: false
+
+# ─── Plugin Quay Operator (services cluster) ──────────────────────────────
+pluginQuay:
+  enabled: false
+  chartVersion: "0.2.11"
+  syncWave: "39"
+  destinationNamespace: sovereign-cloud-plugins
+  values:
+    namespace: sovereign-cloud-plugins
+    createNamespace: false
+    image:
+      repository: quay.example.com/hybrid-sovereign/plugin-quay
+      tag: "0.0.9"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    quay:
+      url: "https://svc-sovereign-registry-quay-quay-enterprise.apps.services.lab.example.com"
+      internalUrl: "http://svc-sovereign-registry-quay-app.quay-enterprise.svc:443"
+    keycloak:
+      internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
+      realm: sovereign-tenants
+    externalSecret:
+      enabled: true
+      targetSecretName: quay-admin-credentials
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: quay-admin
+      refreshInterval: "1h"
+    defaultQuayConfig:
+      enabled: true
+      name: quay-sovereign-services
+      secret: quay-admin-credentials
+      rbacConfig: keycloak-sovereign-tenants-services
+    samples:
+      # Chart samples disabled: template generates spec.config but CRD requires
+      # spec.quayConfig. QuayOrg CRs are created by the operator-samples job.
+      enabled: false
+
+# ─── Entity Operator (services cluster) ─────────────────────────────────────
+entityOperator:
+  enabled: false
+  chartVersion: "0.7.7"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/entity-operator
+      tag: "0.1.5"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    samples:
+      # Chart samples disabled: billingId (lowercase) in template mismatches
+      # CRD schema requiring billingID (uppercase). Entity CRs are created by
+      # the operator-samples Ansible job with the correct field name.
+      enabled: false
+
+# ─── Persona Operator (services cluster) ──────────────────────────────────
+personaOperator:
+  enabled: false
+  chartVersion: "0.1.7"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/persona-operator
+      tag: "v0.1.0"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    samples:
+      enabled: false
+
+# ─── Team Operator (services cluster) ─────────────────────────────────────
+teamOperator:
+  enabled: false
+  chartVersion: "0.4.9"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/team-operator
+      tag: "0.0.5"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    samples:
+      enabled: false
+
+# ─── Assignment Central RBAC (central cluster) ──────────────────────────────
+# Creates the assignment-acm-creator SA + least-privilege Role + PushSecret on central.
+# Must deploy BEFORE assignmentOperator so the ExternalSecret has a Vault path to pull from.
+assignmentCentralRbac:
+  enabled: true
+  chartVersion: "0.1.3"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud-helpers
+  values:
+    namespace: sovereign-cloud-helpers
+    serviceAccount:
+      name: assignment-acm-creator
+    role:
+      name: assignment-acm-creator
+    pushSecret:
+      enabled: true
+      name: assignment-acm-creator-push
+      secretStoreName: vault-backend
+      secretStoreKind: ClusterSecretStore
+      vaultPath: assignment-acm-creator
+      refreshInterval: "1h"
+
+# ─── Assignment Operator (services cluster) ────────────────────────────────
+assignmentOperator:
+  enabled: false
+  chartVersion: "0.5.14"
+  syncWave: "39"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    centralApiServer: "https://api.central.lab.example.com:6443"
+    image:
+      repository: quay.example.com/hybrid-sovereign/assignment-operator
+      tag: "0.2.8"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    samples:
+      enabled: false
+
+# ─── Project Operator (services cluster) ───────────────────────────────────
+projectOperator:
+  enabled: false
+  chartVersion: "0.4.8"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/project-operator
+      tag: "0.0.5"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    samples:
+      enabled: false
+
+# ─── PlatformOpenshift Operator (services cluster) ─────────────────────────
+platformOpenshiftOperator:
+  enabled: false
+  chartVersion: "0.5.25"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/platformopenshift-operator
+      tag: "0.3.15"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    keycloak:
+      internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
+      externalUrl: "https://rhbk-services.apps.services.lab.example.com"
+      realm: "sovereign-tenants"
+      adminSecretName: "rhbk-admin-credentials"
+      adminSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: rhbk-services-admin
+        refreshInterval: "1h"
+    centralSA:
+      secretName: awshelper-creator-sa
+      externalSecret:
+        enabled: false
+    osoCentralSA:
+      secretName: osohelper-creator-sa
+      externalSecret:
+        enabled: false
+    samples:
+      enabled: false  # CRs created manually on services cluster
+
+
+# ─── CloudOSO Operator (services cluster) ──────────────────────────────────
+cloudOSOOperator:
+  enabled: false
+  chartVersion: "0.5.8"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/cloudoso-operator
+      tag: "0.3.1"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    centralSA:
+      secretName: aap-central-cluster-sa
+      externalSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: aap-central-cluster-sa
+        refreshInterval: "1h"
+    samples:
+      enabled: false  # CRs created by operatorSamples job
+
+# ─── OpenStackMigration Operator (services cluster) ─────────────────────────
+openstackMigrationOperator:
+  enabled: false
+  chartVersion: "0.1.1"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/openstackmigration-operator
+      tag: "0.1.0"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    replicas: 2
+    samples:
+      enabled: false
+
+# ─── CloudAWS Operator (services cluster) ──────────────────────────────────
+cloudAWSOperator:
+  enabled: false
+  chartVersion: "0.1.11"
+  syncWave: "39"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/cloudaws-operator
+      tag: "0.1.4"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    centralSA:
+      secretName: awshelper-creator-sa
+      externalSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: awshelper-creator-sa
+        refreshInterval: "1h"
+    samples:
+      enabled: false  # CRs created by operatorSamples job
+
+# ─── Sovereign Cloud Dashboard (services cluster) ──────────────────────────
+sovereignDashboard:
+  enabled: true
+  chartVersion: "0.9.18"
+  syncWave: "40"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    clusterDomain: apps.services.lab.example.com
+    image:
+      repository: quay.example.com/hybrid-sovereign/sovereign-cloud-dashboard
+      tag: "1.9.4"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    oauthProxy:
+      image: registry.redhat.io/openshift4/ose-oauth-proxy:v4.14
+      # cookieSecret and clientSecret are NOT stored here.
+      # Vault key pulled via ExternalSecret into the sovereign-cloud namespace.
+      externalSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: "dashboard-oauth"
+        refreshInterval: "1h"
+    route:
+      enabled: true
+    env:
+      ENTITY_NAMESPACE: sovereign-cloud
+      NODE_ENV: production
+      OAUTH_SYNC_VERSION: "2"
+
+# ─── Tenancy Dashboard (services cluster) ────────────────────────────────
+tenancyDashboard:
+  enabled: true
+  chartVersion: "1.1.13"
+  syncWave: "41"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    clusterDomain: apps.services.lab.example.com
+    image:
+      repository: quay.example.com/hybrid-sovereign/tenancy-dashboard
+      tag: "4.1.8"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    oauthProxy:
+      image: registry.redhat.io/openshift4/ose-oauth-proxy:v4.14
+      # cookieSecret and clientSecret are NOT stored here.
+      # Vault key pulled via ExternalSecret into the sovereign-cloud namespace.
+      externalSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: "tenancy-dashboard-oauth"
+        refreshInterval: "1h"
+    route:
+      enabled: true
+    env:
+      NODE_ENV: production
+      OAUTH_SYNC_VERSION: "2"
+
+# ─── Sovereign Admin Console Plugin (services cluster) ───────────────────────
+sovereignAdminPlugin:
+  enabled: true
+  chartVersion: "0.1.11"
+  syncWave: "42"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/sovereign-admin-plugin
+      tag: "1.1.5"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    plugin:
+      name: sovereign-admin-plugin
+      displayName: "Sovereign Admin"
+    service:
+      port: 9001
+
+# ─── Sovereign Tenant Console Plugin (services cluster) ──────────────────────
+sovereignTenantPlugin:
+  enabled: true
+  chartVersion: "0.1.10"
+  syncWave: "42"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/sovereign-tenant-plugin
+      tag: "1.1.7"
+      pullPolicy: Always
+    imagePullSecrets:
+      - name: quay-pull-secret
+    plugin:
+      name: sovereign-tenant-plugin
+      displayName: "Sovereign Tenant"
+    service:
+      port: 9001
+
+# ─── Cluster Builds ApplicationSet ───────────────────────────────────────────
+# Monitors cluster_builds Gitea repo for Application definitions in aws/*.yaml.
+# The giteaClusterBuildsRepo sovereign job (wave 37) creates the repo and the
+# ArgoCD repo secret before this ApplicationSet (wave 50) is deployed.
+clusterBuilds:
+  enabled: false  # direct Helm by operators replaces Gitea→ArgoCD cluster-build flow
+  syncWave: "50"
+  repoURL: "https://gitea-gitea.apps.central.lab.example.com/gitea_admin/cluster_builds.git"
+  chartsRepoURL: "oci://quay.example.com/hybrid-sovereign/mce-cluster-build"
+  mceChartName: "mce-cluster-build"
+  mceChartVersion: "0.2.0"
+
+# ─── ACM Policy: install ExternalSecrets on provisioned clusters ──────────────
+acmPolicies:
+  enabled: false
+  syncWave: "55"
+  namespace: openshift-gitops
+  externalSecrets:
+    enabled: true
+    channel: stable
+    source: community-operators
+    sourceNamespace: openshift-marketplace
+  clusterSelector:
+    matchExpressions:
+      - key: vendor
+        operator: In
+        values:
+          - OpenShift
+      - key: local-cluster
+        operator: NotIn
+        values:
+          - "true"
+
+# ─── ACM Policy: basechart — install ESO + GitOps on basechart:true clusters ─
+# Installs External Secrets Operator and OpenShift GitOps Operator via OLM.
+acmBasechart:
+  enabled: false
+  syncWave: "56"
+  namespace: openshift-gitops
+  externalSecrets:
+    enabled: true
+    channel: stable
+    source: community-operators
+    sourceNamespace: openshift-marketplace
+  gitopsOperator:
+    enabled: true
+    channel: latest
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+  istioOperator:
+    enabled: true
+    channel: stable
+
+# ─── AMQ Streams (central cluster) ───────────────────────────────────────────
+amqStreams:
+  enabled: true
+  chartVersion: "0.1.0"
+  syncWave: "13"
+  destinationNamespace: amq-streams
+  values:
+    namespace: amq-streams
+    kafka:
+      enabled: true
+      name: hybridsovereign-kafka
+      replicas: 3
+      storage: 10Gi
+
+# ─── HybridSovereign Primary Operator (services) ─────────────────────────────
+hybridsovereignPrimaryOperator:
+  enabled: true
+  chartVersion: "0.1.0"
+  syncWave: "38"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    pluginsNamespace: sovereign-cloud-plugins
+    image:
+      repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
+      tag: "0.1.0"
+    namespaceOperator:
+      image:
+        repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
+        tag: "0.1.0"
+    imagePullSecrets:
+      - name: quay-pull-secret
+    replicas: 2
+
+# ─── IAAC Git Sync StatefulSet (services) ────────────────────────────────────
+iaacGitSync:
+  enabled: true
+  chartVersion: "0.1.0"
+  syncWave: "40"
+  destinationNamespace: sovereign-cloud-plugins
+  values:
+    namespace: sovereign-cloud-plugins
+    image:
+      repository: quay.example.com/hybrid-sovereign/iaac-git-sync
+      tag: "0.1.0"
+    imagePullSecrets:
+      - name: quay-pull-secret
+    gitea:
+      url: "https://gitea-gitea.apps.central.lab.example.com"
+      repoOwner: gitea_admin
+      repoName: tenancy_repo
+      externalSecret:
+        enabled: true
+        secretStoreName: vault-backend
+        secretStoreKind: ClusterSecretStore
+        vaultPath: gitea-admin
+        targetSecretName: gitea-admin-token
+        tokenKey: admin_token
+
+# ─── ACM GitOpsCluster pull model ────────────────────────────────────────────
+acmGitOpsCluster:
+  enabled: true
+  syncWave: "11"
+  namespace: open-cluster-management
+  placementName: services-placement
+  managedClusterSet: hybridsovereign-clusters
+
+# ─── AAP config-as-code (infra.aap_configuration) ───────────────────────────
+# Deployed via sovereignJobs.jobs.aapConfigAsCode (see above)
+aapConfigAsCode:
+  enabled: true

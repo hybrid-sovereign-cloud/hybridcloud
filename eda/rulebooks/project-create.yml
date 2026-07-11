@@ -1,0 +1,16 @@
+- name: Project Create Rulebook
+  hosts: all
+  sources:
+  - ansible.eda.event_stream:
+      event_stream_name: sovereign-operator-events
+  rules:
+  - name: Handle Project Create
+    condition: event.payload.reason in ["ProjectCreateRequested", "ProjectReconcileRequested"]
+      and event.payload.regarding.kind == "Project"
+    action:
+      run_job_template:
+        name: project-provision
+        organization: sovereign
+        job_args:
+          extra_vars:
+            event_payload: '{{ event.payload }}'

@@ -1,0 +1,113 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        project_cr_name: "{{ event_payload.regarding.name }}"
+        project_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        project_spec: "{{ event_payload.note | from_json }}"
+        ansible_operator_meta:
+          name: "{{ event_payload.regarding.name }}"
+          namespace: "{{ event_payload.regarding.namespace }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Announce AAP job started in CR status
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: projects
+        cr_name: "{{ project_cr_name }}"
+        cr_namespace: "{{ project_cr_namespace }}"
+        cr_status_body:
+          status: reconciling
+          ready: false
+          message: "AAP job started"
+      when: lookup('env', 'TOWER_JOB_ID') | length > 0
+
+    - name: Read Project CR from services cluster
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: Project
+        name: "{{ project_cr_name }}"
+        namespace: "{{ project_cr_namespace }}"
+      register: project_cr
+
+    - name: Fail if Project CR is missing on services cluster
+      ansible.builtin.fail:
+        msg: Project CR {{ project_cr_name }} not found in {{ project_cr_namespace }}
+      when: project_cr.resources | length == 0
+
+    - name: Read namespace labels and annotations
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: v1
+        kind: Namespace
+        name: "{{ project_cr_namespace }}"
+      register: ns_info
+
+    - name: Extract namespace metadata
+      ansible.builtin.set_fact:
+        project_entity: "{{ ns_info.resources[0].metadata.labels['hybridsovereign.redhat/entity'] | default('') }}"
+        project_billing_id: "{{ ns_info.resources[0].metadata.labels['hybridsovereign.redhat/billing-id'] | default('') }}"
+        project_description: "{{ ns_info.resources[0].metadata.annotations['hybridsovereign.redhat/description'] | default('') }}"
+        project_generation: "{{ project_cr.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Get current timestamp
+      ansible.builtin.set_fact:
+        project_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Update Project status as ready on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: projects
+        cr_name: "{{ project_cr_name }}"
+        cr_namespace: "{{ project_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          observedGeneration: "{{ project_generation }}"
+          lastReconciledAt: "{{ project_status_transition_time }}"
+          name: "{{ project_cr_name }}"
+          namespace: "{{ project_cr_namespace }}"
+          entity: "{{ project_entity }}"
+          billingId: "{{ project_billing_id }}"
+          description: "{{ project_description }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ project_status_transition_time }}"
+              reason: EDASucceeded
+              message: Project {{ project_cr_name }} provisioned by EDA
+
+  rescue:
+    - name: Mark Project as failed on services cluster
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: projects
+        cr_name: "{{ project_cr_name }}"
+        cr_namespace: "{{ project_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('EDA provisioning failed')) }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise provisioning failure
+      ansible.builtin.fail:
+        msg: "Project {{ project_cr_name | default('unknown') }} EDA provisioning failed"
