@@ -33,7 +33,6 @@ spec:
             - --leader-elect
             - --leader-election-id=hybridsovereign-namespace-operator-{{ .Values.entityName }}
             - --health-probe-bind-address=:6789
-            - --watched-namespaces={{ .Values.namespace }}
           env:
             - name: WATCH_NAMESPACE
               value: {{ .Values.namespace | quote }}

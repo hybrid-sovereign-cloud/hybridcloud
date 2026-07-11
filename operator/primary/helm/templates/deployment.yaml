@@ -34,8 +34,9 @@ spec:
             - --leader-elect
             - --leader-election-id=hybridsovereign-primary-operator
             - --health-probe-bind-address=:6789
-            - --watched-namespaces={{ .Values.namespace }},{{ .Values.pluginsNamespace }}
           env:
+            - name: WATCH_NAMESPACE
+              value: "{{ .Values.namespace }},{{ .Values.pluginsNamespace }}"
             - name: ANSIBLE_GATHERING
               value: explicit
             - name: NAMESPACE_OPERATOR_IMAGE

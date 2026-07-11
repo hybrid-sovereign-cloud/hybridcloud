@@ -102,7 +102,6 @@
                   - --leader-elect
                   - --leader-election-id=hybridsovereign-namespace-operator-{{ ansible_operator_meta.name }}
                   - --health-probe-bind-address=:6789
-                  - --watched-namespaces={{ entity_tenant_namespace }}
                 env:
                   - name: WATCH_NAMESPACE
                     value: "{{ entity_tenant_namespace }}"
