@@ -12,9 +12,9 @@ metadata:
 spec:
   project: services
   source:
-    repoURL: {{ printf "oci://%s/%s/iaac-git-sync" .Values.oci.registry .Values.oci.repositoryBase | quote }}
-    chart: iaac-git-sync
-    targetRevision: {{ .Values.iaacGitSync.chartVersion | quote }}
+    repoURL: "https://github.com/hybrid-sovereign-cloud/hybridcloud.git"
+    path: iaac/helm
+    targetRevision: HEAD
     helm:
       releaseName: iaac-git-sync
       values: |

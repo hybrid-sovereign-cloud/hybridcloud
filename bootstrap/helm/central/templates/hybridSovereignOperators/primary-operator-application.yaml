@@ -13,9 +13,9 @@ metadata:
 spec:
   project: services
   source:
-    repoURL: {{ printf "oci://%s/%s/hybridsovereign-primary-operator" .Values.oci.registry .Values.oci.repositoryBase | quote }}
-    chart: hybridsovereign-primary-operator
-    targetRevision: {{ .Values.hybridsovereignPrimaryOperator.chartVersion | quote }}
+    repoURL: "https://github.com/hybrid-sovereign-cloud/hybridcloud.git"
+    path: operator/primary/helm
+    targetRevision: HEAD
     helm:
       releaseName: hybridsovereign-primary-operator
       values: |
