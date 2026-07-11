@@ -1,7 +1,7 @@
 # ─── GitOps repository ────────────────────────────────────────────────────────
 gitops:
   # Full HTTPS URL of the bootstrap repository
-  repoURL: "https://github.com/my-org/bootstrap"
+  repoURL: "https://github.com/hybrid-sovereign-cloud/hybridcloud"
   # Branch ArgoCD will track for all app-of-apps charts
   targetRevision: HEAD
   # Personal / service-account token with read access to the repo
@@ -77,7 +77,7 @@ clusters:
 applicationSet:
   name: sovereign-central-appset
   # Path inside the repo that holds the central app-of-apps Helm chart
-  chartPath: helm/central
+  chartPath: bootstrap/helm/central
   # Namespace where the ApplicationSet controller renders child Applications
   destinationNamespace: openshift-gitops
   # Sync policy applied to every generated Application

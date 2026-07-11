@@ -17,7 +17,7 @@ spec:
     - list:
         elements:
           - cluster: central
-            chartPath: helm/central
+            chartPath: bootstrap/helm/central
   template:
     metadata:
       name: "sovereign-{{`{{cluster}}`}}-apps"

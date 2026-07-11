@@ -66,4 +66,4 @@ centralServiceAccounts: {}
 edaS3Creds:
   enabled: false
   bucketName: "eda-job-logs"
-  endpoint: "https://s3-openshift-storage.apps.services.lab.example.com"
+  endpoint: "https://s3.apps.services.example.com"
