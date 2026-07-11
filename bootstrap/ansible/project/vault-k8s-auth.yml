@@ -10,6 +10,7 @@
     vault_secret_name: "{{ lookup('env', 'VAULT_SECRET_NAME') | default('vault-init-secrets', true) }}"
     vault_services_addr: "{{ lookup('env', 'VAULT_SERVICES_ADDR') | default('', true) }}"
     ocp_services_server: "{{ lookup('env', 'OCP_SERVICES_SERVER') | default('', true) }}"
+    vault_services_secret_namespace: "{{ lookup('env', 'VAULT_SERVICES_SECRET_NAMESPACE') | default('services-vault', true) }}"
 
   pre_tasks:
     - name: Retrieve Vault root token from secret
@@ -46,11 +47,30 @@
           {{ (argocd_cluster_secret.resources[0].data.config | b64decode | from_json).bearerToken }}
       when: vault_services_addr | length > 0 and argocd_cluster_secret.resources | length > 0
 
-    # vault-services-init-secrets lives in the vault namespace on the SERVICES cluster.
+    # vault-services-init-secrets lives in services-vault on the SERVICES cluster.
     # Retrieve it via the services-cluster Kubernetes API using the ArgoCD bearer token.
+    - name: Retrieve services cluster Kubernetes CA via services cluster API
+      ansible.builtin.uri:
+        url: "{{ ocp_services_server }}/api/v1/namespaces/kube-system/configmaps/kube-root-ca.crt"
+        method: GET
+        validate_certs: false
+        headers:
+          Authorization: "Bearer {{ services_bearer_token }}"
+        status_code: [200]
+      register: services_k8s_ca_resp
+      when: vault_services_addr | length > 0 and services_bearer_token is defined
+      retries: 5
+      delay: 5
+      until: services_k8s_ca_resp.status == 200
+
+    - name: Set services cluster Kubernetes CA fact
+      ansible.builtin.set_fact:
+        services_k8s_ca_cert: "{{ services_k8s_ca_resp.json.data['ca.crt'] }}"
+      when: vault_services_addr | length > 0 and services_k8s_ca_resp.status is defined and services_k8s_ca_resp.status == 200
+
     - name: Retrieve services vault init secrets via services cluster API
       ansible.builtin.uri:
-        url: "{{ ocp_services_server }}/api/v1/namespaces/vault/secrets/vault-services-init-secrets"
+        url: "{{ ocp_services_server }}/api/v1/namespaces/{{ vault_services_secret_namespace }}/secrets/vault-services-init-secrets"
         method: GET
         validate_certs: false
         headers:

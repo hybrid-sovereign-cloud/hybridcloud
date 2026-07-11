@@ -6,9 +6,14 @@ vault_root_token: ""
 vault_k8s_central_mount: "kubernetes-central"
 vault_k8s_services_mount: "kubernetes-services"
 
-# ESO ServiceAccount that authenticates to Vault
+# ESO ServiceAccount that authenticates to Vault on the central cluster
 eso_service_account: "external-secrets-vault-sa"
+# ESO ServiceAccount on the services cluster (vault-secret-store-services chart)
+eso_services_service_account: "vault-eso-sa"
 eso_namespace: "external-secrets"
+
+# Services cluster namespace holding vault-services-init-secrets
+vault_services_secret_namespace: "services-vault"
 
 # Vault policy name granted to ESO for reading platform secrets
 eso_policy_name: "external-secrets-policy"
