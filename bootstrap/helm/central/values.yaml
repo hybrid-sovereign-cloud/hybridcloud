@@ -2579,7 +2579,7 @@ iaacGitSync:
 
 # ─── ACM GitOpsCluster pull model ────────────────────────────────────────────
 acmGitOpsCluster:
-  enabled: true
+  enabled: false
   syncWave: "11"
   namespace: open-cluster-management
   placementName: services-placement
