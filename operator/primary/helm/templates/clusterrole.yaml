@@ -21,9 +21,22 @@ rules:
       - quayconfigs
       - quayconfigs/status
       - quayconfigs/finalizers
+      - teams
+      - projects
+      - personas
+      - rbacs
+      - assignments
+      - cloudosos
+      - cloudaws
+      - platformopenshifts
+      - openstackmigrations
+      - vaults
+      - vaultkvs
+      - aaporgs
+      - quayorgs
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
-    resources: ["namespaces", "events"]
+    resources: ["namespaces", "events", "configmaps"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
   - apiGroups: ["events.k8s.io"]
     resources: ["events"]
