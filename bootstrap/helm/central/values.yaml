@@ -2543,7 +2543,7 @@ hybridsovereignPrimaryOperator:
     pluginsNamespace: sovereign-cloud-plugins
     image:
       repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
-      tag: "0.1.2"
+      tag: "0.1.3"
     namespaceOperator:
       image:
         repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
