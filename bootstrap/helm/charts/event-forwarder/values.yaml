@@ -15,7 +15,7 @@ kafka:
   bootstrapServers: "hybridsovereign-kafka-kafka-bootstrap.amq-streams.svc:9092"
   topic: hybridsovereign-events
 
-vaultSecretPath: "central/event-forwarder"
+vaultSecretPath: "event-forwarder"
 
 resources:
   requests:

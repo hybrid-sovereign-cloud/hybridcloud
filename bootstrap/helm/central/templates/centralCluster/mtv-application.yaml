@@ -26,6 +26,13 @@ spec:
     server: https://kubernetes.default.svc
     namespace: {{ .Values.mtv.destinationNamespace }}
 
+  ignoreDifferences:
+    {{- include "sovereign-central.esoIgnoreDifferences" . | nindent 4 }}
+    - group: forklift.konveyor.io
+      kind: ForkliftController
+      jsonPointers:
+        - /spec/controller_replicas
+
   syncPolicy:
     automated:
       prune: true
@@ -34,6 +41,7 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 10
       backoff:

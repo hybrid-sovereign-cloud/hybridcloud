@@ -447,13 +447,13 @@ pluginIaac:
 # ─── Event Forwarder (services cluster) ─────────────────────────────────────
 eventForwarder:
   enabled: true
-  chartVersion: "0.5.3"
+  chartVersion: "0.5.4"
   syncWave: "32"
   image:
     repository: quay.example.com/hybrid-sovereign/event-forwarder
     tag: "0.3.0"
   eventStreamUrl: "https://aap.apps.central.example.com/eda-event-streams/api/eda/v1/external_event_stream/4392c64b-2faf-4414-a6e6-5ff1bc8d5a75/post/"
-  vaultSecretPath: "central/event-forwarder"
+  vaultSecretPath: "event-forwarder"
 
 # ─── OpenShift Virtualization (CNV) — central cluster ───────────────────────
 cnv:
@@ -2555,7 +2555,7 @@ hybridsovereignPrimaryOperator:
 # ─── IAAC Git Sync StatefulSet (services) ────────────────────────────────────
 iaacGitSync:
   enabled: true
-  chartVersion: "0.1.0"
+  chartVersion: "0.1.2"
   syncWave: "40"
   destinationNamespace: sovereign-cloud-plugins
   values:
