@@ -11,7 +11,7 @@ rules:
     resources: ["*"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
-    resources: ["namespaces", "events", "configmaps"]
+    resources: ["namespaces", "events", "configmaps", "secrets"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
   - apiGroups: ["events.k8s.io"]
     resources: ["events"]
