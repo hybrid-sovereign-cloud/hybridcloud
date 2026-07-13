@@ -6,7 +6,10 @@
 *.key
 *credentials*
 *secret*
+!**/templates/externalsecret.yaml
+!**/templates/*-externalsecret.yaml
 *token*
+!**/templates/*token*.yaml
 kubeconfig
 clouds.yaml
 
