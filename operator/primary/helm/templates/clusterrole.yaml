@@ -8,32 +8,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 rules:
   - apiGroups: ["hybridsovereign.redhat"]
-    resources:
-      - entities
-      - entities/status
-      - entities/finalizers
-      - rbacconfigs
-      - rbacconfigs/status
-      - rbacconfigs/finalizers
-      - aapconfigs
-      - aapconfigs/status
-      - aapconfigs/finalizers
-      - quayconfigs
-      - quayconfigs/status
-      - quayconfigs/finalizers
-      - teams
-      - projects
-      - personas
-      - rbacs
-      - assignments
-      - cloudosos
-      - cloudaws
-      - platformopenshifts
-      - openstackmigrations
-      - vaults
-      - vaultkvs
-      - aaporgs
-      - quayorgs
+    resources: ["*"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
     resources: ["namespaces", "events", "configmaps"]
