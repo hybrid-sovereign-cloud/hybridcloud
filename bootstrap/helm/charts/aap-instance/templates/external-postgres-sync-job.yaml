@@ -54,13 +54,27 @@ spec:
                 --from-literal=run_id="${RUN_ID}" \
                 --dry-run=client -o yaml | oc apply -f -
 
+              EDA_PG_SECRET="{{ .Values.postgres.name | default "aap-pgcluster" }}-pguser-eda"
+              echo "Waiting for EDA Postgres user secret ${EDA_PG_SECRET}..."
+              for i in $(seq 1 60); do
+                oc get secret "${EDA_PG_SECRET}" -n "${NS}" >/dev/null 2>&1 && break
+                sleep 10
+              done
+              oc get secret "${EDA_PG_SECRET}" -n "${NS}" >/dev/null
+
+              EDA_HOST=$(oc get secret "${EDA_PG_SECRET}" -n "${NS}" -o jsonpath='{.data.host}' | base64 -d)
+              EDA_PORT=$(oc get secret "${EDA_PG_SECRET}" -n "${NS}" -o jsonpath='{.data.port}' | base64 -d)
+              EDA_DB=$(oc get secret "${EDA_PG_SECRET}" -n "${NS}" -o jsonpath='{.data.dbname}' | base64 -d)
+              EDA_USER=$(oc get secret "${EDA_PG_SECRET}" -n "${NS}" -o jsonpath='{.data.user}' | base64 -d)
+              EDA_PASS=$(oc get secret "${EDA_PG_SECRET}" -n "${NS}" -o jsonpath='{.data.password}' | base64 -d)
+
               EDA_TARGET="{{ .Values.name }}-eda-postgres-configuration"
               oc create secret generic "${EDA_TARGET}" -n "${NS}" \
-                --from-literal=host="${HOST}" \
-                --from-literal=port="${PORT}" \
-                --from-literal=database="${DB}" \
-                --from-literal=username="${USER}" \
-                --from-literal=password="${PASS}" \
+                --from-literal=host="${EDA_HOST}" \
+                --from-literal=port="${EDA_PORT}" \
+                --from-literal=database="${EDA_DB}" \
+                --from-literal=username="${EDA_USER}" \
+                --from-literal=password="${EDA_PASS}" \
                 --from-literal=type=unmanaged \
                 --from-literal=managed_by_aap=true \
                 --from-literal=run_id="${RUN_ID}" \

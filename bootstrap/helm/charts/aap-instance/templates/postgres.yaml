@@ -35,4 +35,8 @@ spec:
       databases:
         - aap
       options: "SUPERUSER"
+    - name: eda
+      databases:
+        - eda
+      options: "SUPERUSER"
 {{- end }}
