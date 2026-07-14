@@ -1151,7 +1151,7 @@ sovereignJobs:
       syncWave: "14"
       env:
         - name: RUN_ID
-          value: "2026-07-14-amq-producer-init"
+          value: "2026-07-14-amq-producer-init-v2"
         - name: VAULT_ADDR
           value: "http://vault-active.central-vault.svc:8200"
         - name: KAFKA_EXTERNAL_BOOTSTRAP
