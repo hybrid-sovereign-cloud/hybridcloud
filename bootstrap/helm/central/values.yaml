@@ -555,8 +555,9 @@ odfServices:
       enabled: true
 
 # ─── Quay (central) ─────────────────────────────────────────────────────────
+# Temporarily disabled to free CPU/memory for AAP controller/EDA on central.
 quay:
-  enabled: true
+  enabled: false
   chartVersion: "0.6.3"
   syncWave: "35"
   destinationNamespace: central-quay
@@ -1925,7 +1926,7 @@ sovereignJobs:
 
     # ─── Quay Central Config: init admin + store in Vault + configure OIDC ──────
     quayCentralConfig:
-      enabled: true
+      enabled: false
       playbook: quay-config.yml
       activeDeadlineSeconds: 1200
       syncWave: "37"
