@@ -31,6 +31,14 @@ spec:
                 requests:
                   storage: {{ .Values.postgres.backupStorage | default "10Gi" }}
   users:
+    - name: gateway
+      databases:
+        - gateway
+      options: "SUPERUSER"
+    - name: controller
+      databases:
+        - controller
+      options: "SUPERUSER"
     - name: aap
       databases:
         - aap

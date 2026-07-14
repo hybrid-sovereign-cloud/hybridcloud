@@ -390,7 +390,7 @@ aap:
 # ─── AAP (central cluster — EDA controller) ────────────────────────────────
 aapCentral:
   enabled: true
-  chartVersion: "0.3.5"
+  chartVersion: "0.3.6"
   syncWave: "30"
   destinationNamespace: aap
   values:
@@ -410,7 +410,7 @@ aapCentral:
       instances: 2
       storage: 10Gi
       backupStorage: 10Gi
-      syncRunId: "2026-07-14-external-postgres-v4"
+      syncRunId: "2026-07-14-external-postgres-v5"
 
 # ─── Plugin IaaC Operator (services cluster) — Go direct Gitea sync ─────────
 pluginIaac:
@@ -1045,7 +1045,7 @@ vaultSecretStore:
 # Uses kubernetes-services auth mount on central vault (k8s auth, no root token)
 vaultSecretStoreServices:
   enabled: true
-  chartVersion: "0.3.5"
+  chartVersion: "0.3.3"
   syncWave: "22"
   values:
     vault:
