@@ -21,13 +21,24 @@
   until: amq_consumer_secret.resources | length > 0
   no_log: true
 
+- name: Read Kafka cluster clients CA certificate
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: "{{ kafka_cluster_name }}-clients-ca-cert"
+    namespace: "{{ kafka_namespace }}"
+  register: amq_clients_ca_secret
+  retries: 30
+  delay: 20
+  until: amq_clients_ca_secret.resources | length > 0
+  no_log: true
+
 - name: Decode Kafka credential fields
   ansible.builtin.set_fact:
-    amq_producer_username: "{{ amq_producer_secret.resources[0].data.username | b64decode }}"
+    amq_producer_username: "{{ kafka_producer_user }}"
     amq_producer_password: "{{ amq_producer_secret.resources[0].data.password | b64decode }}"
-    amq_consumer_username: "{{ amq_consumer_secret.resources[0].data.username | b64decode }}"
+    amq_consumer_username: "{{ kafka_consumer_user }}"
     amq_consumer_password: "{{ amq_consumer_secret.resources[0].data.password | b64decode }}"
-    amq_producer_ca: "{{ amq_producer_secret.resources[0].data.ca.crt | default('') | b64decode }}"
+    amq_producer_ca: "{{ amq_clients_ca_secret.resources[0].data['ca.crt'] | b64decode }}"
   no_log: true
 
 - name: Resolve external Kafka bootstrap servers

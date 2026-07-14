@@ -54,6 +54,8 @@ COPY --from=galaxy /usr/share/ansible /usr/share/ansible
 
 COPY _build/requirements.txt requirements.txt
 RUN $PYCMD /output/scripts/introspect.py introspect --user-pip=requirements.txt --write-bindep=/tmp/src/bindep.txt --write-pip=/tmp/src/requirements.txt
+RUN sed -i '/openshift-clients/d' /tmp/src/bindep.txt
+RUN sed -i '/^systemd-python/d' /tmp/src/requirements.txt
 RUN /output/scripts/assemble
 
 # Final build stage
