@@ -34,15 +34,44 @@ spec:
 ---
 {{- if .Values.kafka.enabled }}
 apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ .Values.kafka.nodePool.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    strimzi.io/cluster: {{ .Values.kafka.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  replicas: {{ .Values.kafka.replicas }}
+  roles:
+    {{- toYaml .Values.kafka.nodePool.roles | nindent 4 }}
+  storage:
+    type: jbod
+    volumes:
+      - id: 0
+        type: persistent-claim
+        size: {{ .Values.kafka.storage }}
+        deleteClaim: false
+    kraftMetadata: shared
+---
+apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: {{ .Values.kafka.name }}
   namespace: {{ .Values.namespace }}
   annotations:
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
     argocd.argoproj.io/sync-wave: "5"
 spec:
   kafka:
-    replicas: {{ .Values.kafka.replicas }}
+    {{- if .Values.kafka.version }}
+    version: {{ .Values.kafka.version | quote }}
+    {{- end }}
+    {{- if .Values.kafka.metadataVersion }}
+    metadataVersion: {{ .Values.kafka.metadataVersion | quote }}
+    {{- end }}
     listeners:
       {{- if .Values.kafka.listeners.internalPlain }}
       - name: plain
@@ -64,16 +93,12 @@ spec:
         authentication:
           type: scram-sha-512
       {{- end }}
-    storage:
-      type: persistent-claim
-      size: {{ .Values.kafka.storage }}
-      deleteClaim: false
-  zookeeper:
-    replicas: {{ .Values.kafka.zookeeper.replicas }}
-    storage:
-      type: persistent-claim
-      size: {{ .Values.kafka.zookeeper.storage }}
-      deleteClaim: false
+    config:
+      offsets.topic.replication.factor: {{ .Values.kafka.replicas }}
+      transaction.state.log.replication.factor: {{ .Values.kafka.replicas }}
+      transaction.state.log.min.isr: {{ max 1 (sub .Values.kafka.replicas 1) }}
+      default.replication.factor: {{ .Values.kafka.replicas }}
+      min.insync.replicas: {{ max 1 (sub .Values.kafka.replicas 1) }}
   entityOperator:
     topicOperator: {}
     userOperator: {}
