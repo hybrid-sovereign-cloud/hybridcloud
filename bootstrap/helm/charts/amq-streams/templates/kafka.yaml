@@ -99,6 +99,10 @@ spec:
       transaction.state.log.min.isr: {{ max 1 (sub .Values.kafka.replicas 1) }}
       default.replication.factor: {{ .Values.kafka.replicas }}
       min.insync.replicas: {{ max 1 (sub .Values.kafka.replicas 1) }}
+    {{- if .Values.kafka.authorization.enabled }}
+    authorization:
+      type: simple
+    {{- end }}
   entityOperator:
     topicOperator: {}
     userOperator: {}

@@ -2567,7 +2567,7 @@ acmBasechart:
 # ─── AMQ Streams (central cluster) ───────────────────────────────────────────
 amqStreams:
   enabled: true
-  chartVersion: "0.2.2"
+  chartVersion: "0.2.3"
   syncWave: "13"
   destinationNamespace: amq-streams
   values:

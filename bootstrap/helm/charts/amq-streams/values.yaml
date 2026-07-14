@@ -18,6 +18,8 @@ kafka:
     roles:
       - controller
       - broker
+  authorization:
+    enabled: true
   listeners:
     internalPlain: true
     internalTls: true
