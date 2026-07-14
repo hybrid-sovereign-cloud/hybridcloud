@@ -9,6 +9,10 @@ metadata:
 spec:
   api:
     replicas: 1
+  {{- if .Values.postgres.enabled }}
+  database:
+    database_secret: {{ .Values.name }}-external-postgres
+  {{- end }}
   {{- if .Values.controller.enabled }}
   controller:
     replicas: {{ .Values.controller.replicas | default 1 }}

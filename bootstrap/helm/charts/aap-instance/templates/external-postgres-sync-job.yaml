@@ -1,0 +1,66 @@
+{{- if .Values.postgres.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.name }}-external-postgres-sync
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ .Values.name }}-external-postgres-sync
+      containers:
+        - name: sync
+          image: {{ .Values.postgres.syncImage | default "registry.redhat.io/openshift4/ose-cli:latest" }}
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              set -euo pipefail
+              NS="{{ .Values.namespace }}"
+              PG_SECRET="{{ .Values.postgres.name | default "aap-pgcluster" }}-pguser-aap"
+              TARGET="{{ .Values.name }}-external-postgres"
+              RUN_ID="${RUN_ID:-initial}"
+
+              echo "Waiting for Crunchy Postgres user secret ${PG_SECRET}..."
+              for i in $(seq 1 60); do
+                oc get secret "${PG_SECRET}" -n "${NS}" >/dev/null 2>&1 && break
+                sleep 10
+              done
+              oc get secret "${PG_SECRET}" -n "${NS}" >/dev/null
+
+              HOST=$(oc get secret "${PG_SECRET}" -n "${NS}" -o jsonpath='{.data.host}' | base64 -d)
+              PORT=$(oc get secret "${PG_SECRET}" -n "${NS}" -o jsonpath='{.data.port}' | base64 -d)
+              DB=$(oc get secret "${PG_SECRET}" -n "${NS}" -o jsonpath='{.data.dbname}' | base64 -d)
+              USER=$(oc get secret "${PG_SECRET}" -n "${NS}" -o jsonpath='{.data.user}' | base64 -d)
+              PASS=$(oc get secret "${PG_SECRET}" -n "${NS}" -o jsonpath='{.data.password}' | base64 -d)
+
+              oc create secret generic "${TARGET}" -n "${NS}" \
+                --from-literal=host="${HOST}" \
+                --from-literal=port="${PORT}" \
+                --from-literal=database="${DB}" \
+                --from-literal=username="${USER}" \
+                --from-literal=password="${PASS}" \
+                --from-literal=sslmode=prefer \
+                --from-literal=type=unmanaged \
+                --from-literal=run_id="${RUN_ID}" \
+                --dry-run=client -o yaml | oc apply -f -
+
+              echo "External postgres secret ${TARGET} synced (run_id=${RUN_ID})"
+          env:
+            - name: RUN_ID
+              value: {{ .Values.postgres.syncRunId | default "2026-07-14-external-postgres" | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+{{- end }}
