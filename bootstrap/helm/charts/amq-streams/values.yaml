@@ -11,8 +11,8 @@ kafka:
   name: hybridsovereign-kafka
   replicas: 3
   storage: 10Gi
-  version: "3.9.0"
-  metadataVersion: "3.9-IV2"
+  version: "4.2.0"
+  metadataVersion: "4.2-IV1"
   nodePool:
     name: dual-role
     roles:
