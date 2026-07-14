@@ -77,6 +77,59 @@ spec:
               read_pg_secret "${PG_PREFIX}-pguser-controller"
               apply_pg_secret "{{ .Values.name }}-controller-postgres-configuration" true
 
+              CTRL_APP_SECRET="{{ .Values.name }}-controller-app-credentials"
+              WS_SECRET=""
+              if oc get secret "{{ .Values.name }}-controller-broadcast-websocket" -n "${NS}" >/dev/null 2>&1; then
+                WS_SECRET=$(oc get secret "{{ .Values.name }}-controller-broadcast-websocket" -n "${NS}" -o jsonpath='{.data.secret}' | base64 -d)
+              fi
+              export PG_HOST PG_PORT PG_DB PG_USER PG_PASS WS_SECRET
+              CREDS_FILE=$(mktemp)
+              python3 - <<'PY' > "${CREDS_FILE}"
+              import os
+              host = os.environ["PG_HOST"]
+              port = os.environ["PG_PORT"]
+              db = os.environ["PG_DB"]
+              user = os.environ["PG_USER"]
+              password = os.environ["PG_PASS"]
+              ws = os.environ.get("WS_SECRET", "")
+              print("DATABASES = {")
+              print("    'default': {")
+              print("        'ATOMIC_REQUESTS': True,")
+              print("        'ENGINE': 'awx.main.db.profiled_pg',")
+              print(f"        'NAME': {db!r},")
+              print(f"        'USER': {user!r},")
+              print(f"        'PASSWORD': {password!r},")
+              print(f"        'HOST': {host!r},")
+              print(f"        'PORT': {port!r},")
+              print("        'OPTIONS': { 'sslmode': 'prefer',")
+              print("        },")
+              print("    }")
+              print("}")
+              print("")
+              print("LISTENER_DATABASES = {")
+              print("    'default': {")
+              print("        'OPTIONS': {")
+              print("            'keepalives': 1,")
+              print("            'keepalives_idle': 5,")
+              print("            'keepalives_interval': 5,")
+              print("            'keepalives_count': 5,")
+              print("        },")
+              print("    }")
+              print("}")
+              print("")
+              print(f"BROADCAST_WEBSOCKET_SECRET = {ws!r}")
+              PY
+              LDAP_FILE=$(mktemp)
+              printf '%s\n' "# LDAP configuration" > "${LDAP_FILE}"
+              EE_FILE=$(mktemp)
+              printf '%s\n' "# Execution environments configuration" > "${EE_FILE}"
+              oc create secret generic "${CTRL_APP_SECRET}" -n "${NS}" \
+                --from-file=credentials.py="${CREDS_FILE}" \
+                --from-file=ldap.py="${LDAP_FILE}" \
+                --from-file=execution_environments.py="${EE_FILE}" \
+                --dry-run=client -o yaml | oc apply -f -
+              rm -f "${CREDS_FILE}" "${LDAP_FILE}" "${EE_FILE}"
+
               read_pg_secret "${PG_PREFIX}-pguser-eda"
               apply_pg_secret "{{ .Values.name }}-eda-postgres-configuration" true
 

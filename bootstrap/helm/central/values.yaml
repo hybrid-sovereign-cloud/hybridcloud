@@ -390,7 +390,7 @@ aap:
 # ─── AAP (central cluster — EDA controller) ────────────────────────────────
 aapCentral:
   enabled: true
-  chartVersion: "0.3.6"
+  chartVersion: "0.3.7"
   syncWave: "30"
   destinationNamespace: aap
   values:
@@ -410,7 +410,7 @@ aapCentral:
       instances: 2
       storage: 10Gi
       backupStorage: 10Gi
-      syncRunId: "2026-07-14-external-postgres-v5"
+      syncRunId: "2026-07-14-external-postgres-v6"
 
 # ─── Plugin IaaC Operator (services cluster) — Go direct Gitea sync ─────────
 pluginIaac:
