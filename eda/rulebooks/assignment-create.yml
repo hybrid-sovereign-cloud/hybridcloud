@@ -5,8 +5,8 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle Assignment Create
-    condition: event.payload.reason in ["AssignmentCreateRequested", "AssignmentReconcileRequested"]
-      and event.payload.regarding.kind == "Assignment"
+    condition: event.payload.reason | default(event.message.reason | default('')) in ["AssignmentCreateRequested", "AssignmentReconcileRequested"]
+      and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "Assignment"
     action:
       run_job_template:
         name: assignment-provision

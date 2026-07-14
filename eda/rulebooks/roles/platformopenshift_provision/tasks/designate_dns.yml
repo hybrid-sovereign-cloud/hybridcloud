@@ -53,6 +53,12 @@
       - cb_ingress_vip | length > 0
     fail_msg: "CloudOSO apiVIP/ingressVIP must be set before Designate DNS records can be created."
 
+- name: Ensure openstacksdk is available for Designate tasks
+  ansible.builtin.pip:
+    name: openstacksdk
+    state: present
+  become: false
+
 - name: Create Designate DNS records for cluster endpoints
   ansible.builtin.shell: |
     python3 -c "
@@ -82,7 +88,7 @@
             print(f'unchanged {name} -> {ip}')
             continue
         if existing:
-            conn.dns.update_recordset(zone, existing[0], records=[ip])
+            conn.dns.update_recordset(existing[0], records=[ip])
         else:
             conn.dns.create_recordset(zone, name=name, type='A', ttl=300, records=[ip])
         print(f'upserted {name} -> {ip}')

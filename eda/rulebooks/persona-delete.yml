@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle Persona Delete
-    condition: event.payload.reason == "PersonaDeleteRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "PersonaDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "Persona"
     action:
       run_job_template:

@@ -16,28 +16,22 @@
           message: Awaiting EDA delete
           lastReconciledAt: "{{ project_delete_transition_time }}"
 
-    - name: Emit Project delete event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "project-{{ ansible_operator_meta.name }}-delete-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: Project
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_project.metadata.uid }}"
-          reason: ProjectDeleteRequested
-          note: "{{ _hybridsovereign_redhat_project.spec | to_json }}"
-          type: Normal
-          action: Delete
-          reportingController: project-operator
-          reportingInstance: project-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "ProjectDeleteRequested"
+        operator_event_action: "Delete"
+        operator_event_note: "{{ _hybridsovereign_redhat_project.spec | to_json }}"
+        operator_reporting_controller: project-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: Project
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_project.metadata.uid }}"
+
 
     - name: Exit cleanly when EDA completed deletion
       ansible.builtin.meta: end_host

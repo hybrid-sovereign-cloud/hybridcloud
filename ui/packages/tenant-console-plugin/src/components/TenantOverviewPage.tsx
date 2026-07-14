@@ -1,15 +1,18 @@
 import * as React from 'react';
-import { Title, PageSection, EmptyState, EmptyStateBody } from '@patternfly/react-core';
+import { Title, PageSection } from '@patternfly/react-core';
+import { EntityTopology, useEntityNamespace } from '@hybridsovereign/shared';
 
-const TenantOverviewPage: React.FC = () => (
-  <PageSection>
-    <Title headingLevel="h1" size="2xl">My Sovereign Cloud</Title>
-    <EmptyState>
-      <EmptyStateBody>
-        Tenant-scoped console plugin scaffold. Resources are filtered to your entity namespace.
-      </EmptyStateBody>
-    </EmptyState>
-  </PageSection>
-);
+const TenantOverviewPage: React.FC = () => {
+  const { namespace } = useEntityNamespace({
+    userGroups: ['acme-corp-platform-engineering-admins'],
+  });
+
+  return (
+    <PageSection>
+      <Title headingLevel="h1" size="2xl">My Sovereign Cloud</Title>
+      <EntityTopology entityNamespace={namespace} filterByPermissions />
+    </PageSection>
+  );
+};
 
 export default TenantOverviewPage;

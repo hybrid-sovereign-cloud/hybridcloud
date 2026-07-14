@@ -38,6 +38,43 @@ spec:
               value: {{ .Values.namespace | quote }}
             - name: ANSIBLE_GATHERING
               value: explicit
+            {{- if .Values.amqKafka.enabled }}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: bootstrap_servers
+            - name: KAFKA_TOPIC
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: topic
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: username
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: password
+            - name: KAFKA_CA_CERT
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: ca.crt
+            - name: KAFKA_SECURITY_PROTOCOL
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: security_protocol
+            - name: KAFKA_SASL_MECHANISM
+              valueFrom:
+                secretKeyRef:
+                  name: amq-producer-credentials
+                  key: sasl_mechanism
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

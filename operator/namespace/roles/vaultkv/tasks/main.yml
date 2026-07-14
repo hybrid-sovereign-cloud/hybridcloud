@@ -96,28 +96,22 @@
               reason: AwaitingEDA
               message: Awaiting EDA to complete provisioning
 
-    - name: Emit VaultKV create or reconcile event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "vaultkv-{{ ansible_operator_meta.name }}-create-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: VaultKV
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_vaultkv.metadata.uid }}"
-          reason: "{{ vaultkv_event_reason }}"
-          note: "{{ vaultkv_spec | to_json }}"
-          type: Normal
-          action: "{{ vaultkv_event_action }}"
-          reportingController: plugin-vault-operator
-          reportingInstance: plugin-vault-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "{{ vaultkv_event_reason }}"
+        operator_event_action: "{{ vaultkv_event_action }}"
+        operator_event_note: "{{ vaultkv_spec | to_json }}"
+        operator_reporting_controller: plugin-vault-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: VaultKV
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_vaultkv.metadata.uid }}"
+
 
   rescue:
     - name: Mark VaultKV as failed

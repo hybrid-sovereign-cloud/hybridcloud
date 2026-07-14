@@ -82,5 +82,34 @@
       no_log: true
       when: lookup('env', 'GITHUB_TOKEN') | length > 0
 
+    - name: Obtain AAP gateway OAuth token for EDA API
+      ansible.builtin.uri:
+        url: "{{ eda_controller_url }}/api/gateway/v1/tokens/"
+        method: POST
+        validate_certs: false
+        url_username: "{{ eda_admin_username }}"
+        url_password: "{{ eda_admin_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          description: "sovereign-eda-config"
+          scope: write
+        status_code: [201]
+      register: eda_gateway_token_resp
+      no_log: true
+      when: lookup('env', 'AAP_OAUTH_TOKEN') | length == 0
+
+    - name: Set EDA gateway token from API response
+      ansible.builtin.set_fact:
+        eda_gateway_token: "{{ eda_gateway_token_resp.json.token }}"
+      no_log: true
+      when: lookup('env', 'AAP_OAUTH_TOKEN') | length == 0
+
+    - name: Set EDA gateway token from environment
+      ansible.builtin.set_fact:
+        eda_gateway_token: "{{ lookup('env', 'AAP_OAUTH_TOKEN') }}"
+      no_log: true
+      when: lookup('env', 'AAP_OAUTH_TOKEN') | length > 0
+
   roles:
     - eda-config

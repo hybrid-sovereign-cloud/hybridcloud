@@ -5,52 +5,66 @@
   gather_facts: false
 
   vars:
-    keycloak_central_url: "{{ lookup('env', 'KEYCLOAK_CENTRAL_URL') }}"
-    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') | default('', true) }}"
-    keycloak_central_realm: "{{ lookup('env', 'KEYCLOAK_CENTRAL_REALM') | default('sovereign-central', true) }}"
+    keycloak_central_url: "{{ lookup('env', 'KEYCLOAK_CENTRAL_URL') | default('https://rhbk-central.apps.central.example.com', true) }}"
+    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') | default('https://rhbk-services.apps.services.example.com', true) }}"
+    keycloak_central_realm: "{{ lookup('env', 'KEYCLOAK_CENTRAL_REALM') | default('master', true) }}"
     keycloak_services_realm: "{{ lookup('env', 'KEYCLOAK_SERVICES_REALM') | default('sovereign-tenants', true) }}"
-    keycloak_central_admin_secret_name: "{{ lookup('env', 'KEYCLOAK_CENTRAL_ADMIN_SECRET') | default('rhbk-central-admin', true) }}"
-    keycloak_central_admin_secret_ns: "{{ lookup('env', 'KEYCLOAK_CENTRAL_ADMIN_SECRET_NS') | default('sovereign-cloud-jobs', true) }}"
-    keycloak_services_admin_secret_name: "{{ lookup('env', 'KEYCLOAK_SERVICES_ADMIN_SECRET') | default('rhbk-services-admin', true) }}"
-    keycloak_services_admin_secret_ns: "{{ lookup('env', 'KEYCLOAK_SERVICES_ADMIN_SECRET_NS') | default('sovereign-cloud-jobs', true) }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('https://vault-central.apps.central.example.com', true) }}"
+    vault_token: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
+    keycloak_central_vault_path: "{{ lookup('env', 'KEYCLOAK_CENTRAL_VAULT_PATH') | default('rhbk-central-admin', true) }}"
+    keycloak_services_vault_path: "{{ lookup('env', 'KEYCLOAK_SERVICES_VAULT_PATH') | default('rhbk-services-admin', true) }}"
 
   pre_tasks:
-    - name: Read central Keycloak admin secret
-      kubernetes.core.k8s_info:
-        kind: Secret
-        name: "{{ keycloak_central_admin_secret_name }}"
-        namespace: "{{ keycloak_central_admin_secret_ns }}"
-      register: kc_central_secret
-      retries: 10
-      delay: 10
-      until: kc_central_secret.resources | length > 0
+    - name: Resolve Vault token from central cluster when not in environment
+      ansible.builtin.command:
+        cmd: >-
+          oc get secret vault-init-secrets-copy -n vault-central
+          --context={{ lookup('env', 'OCP_CENTRAL_CONTEXT') | default('default/api-central-lab-signal9-gg:6443/kube:admin', true) }}
+          -o jsonpath={.data.root_token}
+      register: _vault_token_b64
+      changed_when: false
+      when: vault_token | length == 0
+
+    - name: Set Vault token fact
+      ansible.builtin.set_fact:
+        vault_token: "{{ _vault_token_b64.stdout | b64decode }}"
+      no_log: true
+      when: vault_token | length == 0
+
+    - name: Read central Keycloak admin credentials from Vault
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/central/data/{{ keycloak_central_vault_path }}"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: kc_central_vault
+      no_log: true
 
     - name: Set central admin credentials
       ansible.builtin.set_fact:
-        keycloak_central_admin_password: "{{ kc_central_secret.resources[0].data.password | b64decode }}"
-        keycloak_central_admin_user: >-
-          {{ kc_central_secret.resources[0].data.username | b64decode
-             if kc_central_secret.resources[0].data.username is defined
-             else 'admin' }}
+        keycloak_central_admin_password: "{{ kc_central_vault.json.data.data.password }}"
+        keycloak_central_admin_user: "{{ kc_central_vault.json.data.data.username | default('admin') }}"
+      no_log: true
 
-    - name: Read services Keycloak admin secret
-      kubernetes.core.k8s_info:
-        kind: Secret
-        name: "{{ keycloak_services_admin_secret_name }}"
-        namespace: "{{ keycloak_services_admin_secret_ns }}"
-      register: kc_services_secret
+    - name: Read services Keycloak admin credentials from Vault
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/central/data/{{ keycloak_services_vault_path }}"
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_token }}"
+        validate_certs: false
+        status_code: [200]
+      register: kc_services_vault
+      no_log: true
       when: keycloak_services_url | length > 0
-      retries: 10
-      delay: 10
-      until: kc_services_secret.resources | length > 0
 
     - name: Set services admin credentials
       ansible.builtin.set_fact:
-        keycloak_services_admin_password: "{{ kc_services_secret.resources[0].data.password | b64decode }}"
-        keycloak_services_admin_user: >-
-          {{ kc_services_secret.resources[0].data.username | b64decode
-             if kc_services_secret.resources[0].data.username is defined
-             else 'admin' }}
+        keycloak_services_admin_password: "{{ kc_services_vault.json.data.data.password }}"
+        keycloak_services_admin_user: "{{ kc_services_vault.json.data.data.username | default('admin') }}"
+      no_log: true
       when: keycloak_services_url | length > 0
 
   roles:

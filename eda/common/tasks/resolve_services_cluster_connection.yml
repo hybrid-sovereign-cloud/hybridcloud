@@ -30,6 +30,3 @@
   ansible.builtin.set_fact:
     services_bearer_token: "{{ openshift_access_token }}"
   no_log: true
-
-- name: Pin services API host to reachable IP
-  ansible.builtin.include_tasks: pin_reachable_services_api.yml

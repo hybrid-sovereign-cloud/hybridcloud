@@ -1,15 +1,11 @@
 import * as React from 'react';
-import { Title, PageSection, EmptyState, EmptyStateBody } from '@patternfly/react-core';
+import { Title, PageSection } from '@patternfly/react-core';
+import { EntityTopology } from '@hybridsovereign/shared';
 
 const AdminOverviewPage: React.FC = () => (
   <PageSection>
     <Title headingLevel="h1" size="2xl">Hybrid Sovereign Overview</Title>
-    <EmptyState>
-      <EmptyStateBody>
-        Platform operator console plugin scaffold. Connect to the services cluster API
-        to list entities, teams, and platform resources.
-      </EmptyStateBody>
-    </EmptyState>
+    <EntityTopology filterByPermissions={false} />
   </PageSection>
 );
 

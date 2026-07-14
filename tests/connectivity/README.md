@@ -120,7 +120,7 @@ oc logs -l app.kubernetes.io/name=event-forwarder -n sovereign-cloud-jobs --cont
 dig +short <lab-ingress-host>
 ```
 
-**Expected**: Resolves to lab ingress IP (`resolve_lab_ingress_ip.yml` output)
+**Expected**: Resolves to the correct lab ingress hostname (public DNS A record)
 
 ### TC-CONN-013: EDA → AAP Connectivity
 

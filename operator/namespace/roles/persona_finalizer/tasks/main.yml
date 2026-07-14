@@ -25,28 +25,22 @@
               reason: Deleting
               message: Awaiting EDA to complete teardown
 
-    - name: Emit Persona delete event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "persona-{{ ansible_operator_meta.name }}-delete-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: Persona
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_persona.metadata.uid }}"
-          reason: PersonaDeleteRequested
-          note: "{{ persona_spec | to_json }}"
-          type: Normal
-          action: Delete
-          reportingController: persona-operator
-          reportingInstance: persona-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "PersonaDeleteRequested"
+        operator_event_action: "Delete"
+        operator_event_note: "{{ persona_spec | to_json }}"
+        operator_reporting_controller: persona-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: Persona
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_persona.metadata.uid }}"
+
 
   rescue:
     - name: Log finalizer failure

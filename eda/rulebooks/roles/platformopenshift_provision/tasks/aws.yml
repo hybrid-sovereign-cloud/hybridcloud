@@ -48,6 +48,9 @@
 
 - name: Emit reconciliation event
   kubernetes.core.k8s:
+    host: "{{ services_api_host }}"
+    api_key: "{{ services_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: events.k8s.io/v1

@@ -31,7 +31,7 @@ export interface ObjectMeta {
   annotations?: Record<string, string>;
 }
 
-export interface K8sResource<TSpec = Record<string, unknown>, TStatus = OperatorStatus> {
+export interface K8sResource<TSpec = object, TStatus = OperatorStatus> {
   apiVersion: string;
   kind: string;
   metadata: ObjectMeta;

@@ -11,6 +11,7 @@ import {
   DescriptionListTerm,
   DescriptionListDescription,
 } from '@patternfly/react-core';
+import { EntityTopology } from '@hybridsovereign/shared';
 
 const SUMMARY_CARDS = [
   { title: 'Entities', description: 'Top-level tenants', path: '/entities' },
@@ -47,6 +48,10 @@ export function OverviewPage(): React.ReactElement {
           </GridItem>
         ))}
       </Grid>
+      <Title headingLevel="h3" size="lg" style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+        Platform Topology
+      </Title>
+      <EntityTopology filterByPermissions={false} />
     </>
   );
 }

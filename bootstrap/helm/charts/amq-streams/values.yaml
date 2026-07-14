@@ -14,6 +14,11 @@ kafka:
   zookeeper:
     replicas: 3
     storage: 5Gi
+  listeners:
+    internalPlain: true
+    internalTls: true
+    externalRoute: true
+    externalPort: 9094
 
 topics:
   - name: hybridsovereign-events
@@ -22,3 +27,21 @@ topics:
   - name: hybridsovereign-audit
     partitions: 3
     replicas: 3
+
+kafkaUsers:
+  producer:
+    enabled: true
+    name: hybridsovereign-producer
+    acls:
+      - topic: hybridsovereign-events
+        operations: [Write, Describe, Create]
+  consumer:
+    enabled: true
+    name: hybridsovereign-eda-consumer
+    acls:
+      - topic: hybridsovereign-events
+        operations: [Read, Describe]
+      - group: eda-
+        patternType: prefix
+        type: group
+        operations: [Read, Describe]

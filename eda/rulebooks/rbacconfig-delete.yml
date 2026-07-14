@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle RbacConfig Delete
-    condition: event.payload.reason == "RbacConfigDeleteRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "RbacConfigDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "RbacConfig"
     action:
       run_job_template:

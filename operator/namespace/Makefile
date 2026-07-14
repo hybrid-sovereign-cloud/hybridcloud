@@ -7,7 +7,7 @@ CHART_VERSION := $(shell grep '^version:' helm/Chart.yaml | awk '{print $$2}')
 all: operator-build-push upload-chart
 
 operator-build:
-	podman build -t $(OPERATOR_IMAGE):$(OPERATOR_TAG) -f Dockerfile .
+	podman build -t $(OPERATOR_IMAGE):$(OPERATOR_TAG) -f namespace/Dockerfile ..
 
 operator-push:
 	podman push $(OPERATOR_IMAGE):$(OPERATOR_TAG)

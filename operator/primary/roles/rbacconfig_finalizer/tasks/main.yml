@@ -16,28 +16,22 @@
           message: Awaiting EDA delete
           lastReconciledAt: "{{ rbac_config_delete_transition_time }}"
 
-    - name: Emit RbacConfig delete event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "rbacconfig-{{ ansible_operator_meta.name }}-delete-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: RbacConfig
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_rbacconfig.metadata.uid }}"
-          reason: RbacConfigDeleteRequested
-          note: "{{ _hybridsovereign_redhat_rbacconfig.spec | to_json }}"
-          type: Normal
-          action: Delete
-          reportingController: plugin-rbac-operator
-          reportingInstance: plugin-rbac-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "RbacConfigDeleteRequested"
+        operator_event_action: "Delete"
+        operator_event_note: "{{ _hybridsovereign_redhat_rbacconfig.spec | to_json }}"
+        operator_reporting_controller: plugin-rbac-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: RbacConfig
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_rbacconfig.metadata.uid }}"
+
 
     - name: Exit cleanly when EDA completed deletion
       ansible.builtin.meta: end_host

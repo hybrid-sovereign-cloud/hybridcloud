@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle AAPOrg Delete
-    condition: event.payload.reason == "AAPOrgDeleteRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "AAPOrgDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "AAPOrg"
     action:
       run_job_template:

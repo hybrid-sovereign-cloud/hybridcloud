@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle CloudAWS Delete
-    condition: event.payload.reason == "CloudAWSDeleteRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "CloudAWSDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "CloudAWS"
     action:
       run_job_template:

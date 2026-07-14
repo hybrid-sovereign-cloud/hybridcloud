@@ -72,12 +72,6 @@
              | default(plugin_rbac_keycloak_url_default, true) }}
       when: kc_route.resources | length == 0
 
-    - name: Pin Keycloak URL hostname to reachable apps ingress IP
-      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_https_url.yml"
-      vars:
-        pin_url: "{{ plugin_rbac_keycloak_url }}"
-        pin_url_fact: plugin_rbac_keycloak_url
-
     - name: Load Keycloak admin credentials
       ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/obtain_keycloak_admin_credentials.yml"
       vars:

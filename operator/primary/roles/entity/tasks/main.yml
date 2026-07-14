@@ -84,28 +84,22 @@
             } | to_json
           }}
 
-    - name: Emit Entity create or reconcile event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "entity-{{ ansible_operator_meta.name }}-create-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: Entity
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_entity.metadata.uid }}"
-          reason: "{{ entity_event_reason }}"
-          note: "{{ entity_event_note }}"
-          type: Normal
-          action: "{{ entity_event_action }}"
-          reportingController: entity-operator
-          reportingInstance: entity-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "{{ entity_event_reason }}"
+        operator_event_action: "{{ entity_event_action }}"
+        operator_event_note: "{{ entity_event_note }}"
+        operator_reporting_controller: entity-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: Entity
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_entity.metadata.uid }}"
+
 
     - name: Deploy per-entity namespace operator
       ansible.builtin.include_tasks: deploy_namespace_operator.yml

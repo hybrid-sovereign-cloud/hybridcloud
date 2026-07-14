@@ -64,28 +64,22 @@
               reason: AwaitingEDA
               message: Awaiting EDA to complete provisioning
 
-    - name: Emit Project create or reconcile event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "project-{{ ansible_operator_meta.name }}-create-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: Project
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_project.metadata.uid }}"
-          reason: "{{ project_event_reason }}"
-          note: "{{ project_spec | to_json }}"
-          type: Normal
-          action: "{{ project_event_action }}"
-          reportingController: project-operator
-          reportingInstance: project-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "{{ project_event_reason }}"
+        operator_event_action: "{{ project_event_action }}"
+        operator_event_note: "{{ project_spec | to_json }}"
+        operator_reporting_controller: project-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: Project
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_project.metadata.uid }}"
+
 
   rescue:
     - name: Mark Project as failed

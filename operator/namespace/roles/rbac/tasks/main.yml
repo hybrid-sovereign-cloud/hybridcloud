@@ -99,28 +99,22 @@
               reason: AwaitingEDA
               message: Awaiting EDA to complete provisioning
 
-    - name: Emit Rbac create or reconcile event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "rbac-{{ ansible_operator_meta.name }}-create-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: Rbac
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_rbac.metadata.uid }}"
-          reason: "{{ rbac_event_reason }}"
-          note: "{{ rbac_spec | to_json }}"
-          type: Normal
-          action: "{{ rbac_event_action }}"
-          reportingController: plugin-rbac-operator
-          reportingInstance: plugin-rbac-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "{{ rbac_event_reason }}"
+        operator_event_action: "{{ rbac_event_action }}"
+        operator_event_note: "{{ rbac_spec | to_json }}"
+        operator_reporting_controller: plugin-rbac-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: Rbac
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_rbac.metadata.uid }}"
+
 
   rescue:
     - name: Mark Rbac as failed

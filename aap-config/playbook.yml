@@ -130,32 +130,3 @@
         name: infra.aap_configuration.eda_rulebook_activations
       vars:
         eda_configuration_rulebook_activations_secure_logging: true
-
-    - name: Disable test_mode on sovereign operator event stream
-      ansible.builtin.uri:
-        url: "{{ lookup('env', 'EDA_CONTROLLER_HOST') }}/api/eda/v1/event-streams/?name={{ 'sovereign-operator-events' | urlencode }}"
-        method: GET
-        validate_certs: false
-        url_username: admin
-        url_password: "{{ lookup('env', 'EDA_ADMIN_PASSWORD') }}"
-        force_basic_auth: true
-        status_code: [200]
-      register: event_stream_lookup
-      no_log: true
-
-    - name: Patch event stream test_mode to false
-      ansible.builtin.uri:
-        url: "{{ lookup('env', 'EDA_CONTROLLER_HOST') }}/api/eda/v1/event-streams/{{ event_stream_lookup.json.results[0].id }}/"
-        method: PATCH
-        validate_certs: false
-        url_username: admin
-        url_password: "{{ lookup('env', 'EDA_ADMIN_PASSWORD') }}"
-        force_basic_auth: true
-        body_format: json
-        body:
-          test_mode: false
-        status_code: [200]
-      when:
-        - event_stream_lookup.json.results | length > 0
-        - event_stream_lookup.json.results[0].test_mode | default(false) | bool
-      no_log: true

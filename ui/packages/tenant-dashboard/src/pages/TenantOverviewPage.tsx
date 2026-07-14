@@ -11,6 +11,7 @@ import {
   DescriptionListTerm,
   DescriptionListDescription,
 } from '@patternfly/react-core';
+import { EntityTopology } from '@hybridsovereign/shared';
 
 interface TenantOverviewPageProps {
   namespace: string;
@@ -53,6 +54,10 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
           </GridItem>
         ))}
       </Grid>
+      <Title headingLevel="h3" size="lg" style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+        Entity Topology
+      </Title>
+      <EntityTopology entityNamespace={namespace} filterByPermissions />
     </>
   );
 }

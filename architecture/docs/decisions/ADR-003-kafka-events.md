@@ -1,7 +1,8 @@
 # ADR-003: Kafka Event Bus via AMQ Streams
 
-**Status**: Accepted  
+**Status**: Phase 2 complete (EDA consumes Kafka; forwarder retired)  
 **Date**: 2026-07-11  
+**Updated**: 2026-07-14  
 **Deciders**: Platform architecture team
 
 ---
@@ -26,36 +27,37 @@ This design had limitations:
 
 ## Decision
 
-Introduce AMQ Streams (Strimzi Kafka) on the central cluster as the primary durable event bus, while retaining the EDA Event Stream as the current rulebook trigger during migration.
+AMQ Streams (Strimzi Kafka) on the central cluster is the **primary and sole** automation event bus. Operators on the services cluster publish directly to Kafka; central EDA rulebooks consume via `ansible.eda.kafka`. The legacy HTTP event stream and event-forwarder are retired.
 
 ### Components
 
 | Component | Cluster | Path |
 |-----------|---------|------|
-| AMQ Streams operator | Central | `bootstrap/helm/central/templates/centralCluster/amq-streams-application.yaml` |
-| Kafka cluster | Central (`amq-streams`) | `hybridsovereign-kafka`, 3 brokers |
+| AMQ Streams operator | Central | `bootstrap/helm/charts/amq-streams/` |
+| Kafka cluster | Central (`amq-streams`) | `hybridsovereign-kafka`, external bootstrap Route |
 | Topic `hybridsovereign-events` | Central | Operator and platform events |
 | Topic `hybridsovereign-audit` | Central | Reserved for audit consumers |
-| Event Forwarder (updated) | Services | `hybridcloud/eda/event-forwarder/src/forwarder.py` |
+| Operator Kafka producer | Services | `operator/roles/_common/tasks/amq_publish.yml` |
+| EDA Kafka consumer | Central | `aap-config/eda/` + rulebooks in `eda.git` |
+| Event Forwarder | **Retired** | `eventForwarder.enabled: false` |
 
-### Dual-publish strategy
+### Event path
 
-The event forwarder publishes to both destinations:
-
-1. **Kafka** (`KAFKA_ENABLED=true`) — durable, replayable, auditable
-2. **EDA Event Stream** (legacy `EVENT_STREAM_URL`) — immediate rulebook activation
-
-Operators may also publish directly via `hybridcloud/operator/roles/_common/tasks/amq_publish.yml`.
+```
+Operator (services) → Kafka (central, SASL_SSL) → EDA activation (central) → AAP job → CR status patch (services)
+```
 
 ### Sync-wave ordering
 
 - Wave 13: AMQ Streams Kafka cluster (central)
-- Wave 32: Event Forwarder (services, after Kafka is Ready)
+- Wave 14: `amqProducerInit` — Vault producer/consumer credentials
+- Wave 30+: AAP central + `aapConfigAsCode` (Kafka credential, no HTTP stream)
 
 ### Security
 
-- TLS encryption on broker connections
-- SASL credentials via ExternalSecret from Vault (`central/event-forwarder`)
+- TLS on external bootstrap Route (port 443) and internal brokers
+- Producer credentials: Vault `central/data/amq-producer` → services ExternalSecret
+- Consumer credentials: Vault `central/data/amq-consumer` → aapConfigAsCode job env
 - No tokens or passwords in Git or Helm values
 
 ---
@@ -75,11 +77,11 @@ Operators may also publish directly via `hybridcloud/operator/roles/_common/task
 - Dual-publish adds latency and operational complexity during migration
 - Kafka credential rotation requires forwarder pod restart
 
-### Migration path
+### Migration path (complete)
 
-1. **Phase 1** (current): Dual-publish to Kafka + EDA Event Stream
-2. **Phase 2**: EDA rulebooks consume from Kafka source instead of HTTP event stream
-3. **Phase 3**: Retire EDA Event Stream HTTP endpoint
+1. ~~**Phase 1**: Dual-publish to Kafka + EDA Event Stream~~
+2. **Phase 2** (current): EDA rulebooks consume from Kafka; HTTP event stream retired
+3. **Phase 3**: Event forwarder disabled; operators publish directly only
 
 ---
 

@@ -4,17 +4,9 @@
     cb_install_config: "{{ lookup('template', 'install-config.yaml.j2') }}"
   no_log: true
 
-- name: Read Vault root token for write access
-  kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Secret
-    name: "{{ vault_init_secret_name }}"
-    namespace: "{{ vault_init_secret_namespace }}"
-  register: vault_init_secret_info
-
-- name: Set Vault root token
+- name: Set Vault root token from job credential
   ansible.builtin.set_fact:
-    vault_root_token: "{{ vault_init_secret_info.resources[0].data.root_token | b64decode }}"
+    vault_root_token: "{{ lookup('env', 'VAULT_TOKEN') }}"
   no_log: true
 
 - name: Write install-config to Vault

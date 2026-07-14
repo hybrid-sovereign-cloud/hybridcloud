@@ -64,28 +64,22 @@
               reason: AwaitingEDA
               message: Awaiting EDA to complete provisioning
 
-    - name: Emit PlatformOpenshift create or reconcile event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "platformopenshift-{{ ansible_operator_meta.name }}-create-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: PlatformOpenshift
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_platformopenshift.metadata.uid }}"
-          reason: "{{ platformopenshift_event_reason }}"
-          note: "{{ platformopenshift_spec | to_json }}"
-          type: Normal
-          action: "{{ platformopenshift_event_action }}"
-          reportingController: platformopenshift-operator
-          reportingInstance: platformopenshift-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "{{ platformopenshift_event_reason }}"
+        operator_event_action: "{{ platformopenshift_event_action }}"
+        operator_event_note: "{{ platformopenshift_spec | to_json }}"
+        operator_reporting_controller: platformopenshift-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: PlatformOpenshift
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_platformopenshift.metadata.uid }}"
+
 
   rescue:
     - name: Mark PlatformOpenshift as failed

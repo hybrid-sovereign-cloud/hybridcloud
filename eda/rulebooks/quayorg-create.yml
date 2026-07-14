@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle QuayOrg Create
-    condition: event.payload.reason in ["QuayOrgCreateRequested", "QuayOrgReconcileRequested"] and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) in ["QuayOrgCreateRequested", "QuayOrgReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "QuayOrg"
     action:
       run_job_template:

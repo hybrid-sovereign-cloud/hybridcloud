@@ -29,5 +29,11 @@ resources:
 
 replicas: 2
 
+amqKafka:
+  enabled: true
+  vaultPath: amq-producer
+  secretStoreName: vault-backend
+  secretStoreKind: ClusterSecretStore
+
 metrics:
   enabled: true

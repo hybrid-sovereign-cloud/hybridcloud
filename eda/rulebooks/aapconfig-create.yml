@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle AAPConfig Create
-    condition: event.payload.reason in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "AAPConfig"
     action:
       run_job_template:

@@ -1,11 +1,26 @@
 ---
 - name: Check ClusterDeployment installation status
   kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     api_version: hive.openshift.io/v1
     kind: ClusterDeployment
     name: "{{ cb_cluster_name }}"
     namespace: "{{ cb_cluster_name }}"
   register: cd_info
+  until: >-
+    cd_info.resources | default([]) | length > 0
+    and (
+      cd_info.resources[0].spec.installed | default(false) | bool
+      or (
+        cd_info.resources[0].status.conditions | default([])
+        | selectattr('type', 'equalto', 'Provisioned')
+        | map(attribute='status') | first | default('') | trim == 'True'
+      )
+    )
+  retries: "{{ platformopenshift_hive_poll_retries | default(120) }}"
+  delay: "{{ platformopenshift_hive_poll_delay_seconds | default(60) }}"
   ignore_errors: true
 
 - name: Set cluster installed flag
@@ -21,14 +36,34 @@
           | selectattr('type', 'equalto', 'Provisioned')
           | map(attribute='reason') | first | default('Unknown'))
          if (cd_info.resources | default([]) | length > 0) else 'Unknown' }}
+    cb_provisioned_status: >-
+      {{ (cd_info.resources[0].status.conditions | default([])
+          | selectattr('type', 'equalto', 'Provisioned')
+          | map(attribute='status') | first | default('Unknown'))
+         if (cd_info.resources | default([]) | length > 0) else 'Unknown' }}
     cb_cluster_ready: >-
       {{ (cd_info.resources[0].status.conditions | default([])
           | selectattr('type', 'equalto', 'Ready')
           | map(attribute='status') | first | default('Unknown'))
          if (cd_info.resources | default([]) | length > 0) else 'Unknown' }}
+    cb_hive_complete: >-
+      {{
+        (cd_info.resources | default([]) | length > 0)
+        and (
+          cd_info.resources[0].spec.installed | default(false) | bool
+          or (
+            cd_info.resources[0].status.conditions | default([])
+            | selectattr('type', 'equalto', 'Provisioned')
+            | map(attribute='status') | first | default('') | trim == 'True'
+          )
+        )
+      }}
 
 - name: Check ManagedCluster ACM status
   kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     api_version: cluster.open-cluster-management.io/v1
     kind: ManagedCluster
     name: "{{ cb_cluster_name }}"
@@ -95,6 +130,9 @@
 
     - name: PushSecret — admin kubeconfig
       kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
         state: present
         definition:
           apiVersion: external-secrets.io/v1alpha1
@@ -128,6 +166,9 @@
 
     - name: PushSecret — admin password
       kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
         state: present
         definition:
           apiVersion: external-secrets.io/v1alpha1
@@ -161,6 +202,9 @@
 
     - name: PushSecret — SSH private key
       kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
         state: present
         definition:
           apiVersion: external-secrets.io/v1alpha1
@@ -188,6 +232,9 @@
 
     - name: PushSecret — install config
       kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
         state: present
         definition:
           apiVersion: external-secrets.io/v1alpha1
@@ -215,6 +262,9 @@
 
     - name: PushSecret — provider credentials
       kubernetes.core.k8s:
+        host: "{{ central_api_host }}"
+        api_key: "{{ central_bearer_token }}"
+        validate_certs: false
         state: present
         definition:
           apiVersion: external-secrets.io/v1alpha1
@@ -256,6 +306,9 @@
 
 - name: Apply basechart:true label to ManagedCluster
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: patched
     api_version: cluster.open-cluster-management.io/v1
     kind: ManagedCluster
@@ -274,4 +327,4 @@
     cb_admin_password_vault: "{{ cb_vault_cluster_path | default('cluster/aws/' + cb_app_name) }}/admin-password"
     cb_kubeconfig_vault: "{{ cb_vault_cluster_path | default('cluster/aws/' + cb_app_name) }}/admin-kubeconfig"
     cb_secrets_vault_path: "{{ cb_vault_cluster_path | default('cluster/aws/' + cb_app_name) }}"
-    cb_cluster_health: "{{ 'Healthy' if (cb_cluster_ready | default('Unknown') | trim == 'True') else 'Degraded' if (cb_cluster_installed | bool) else 'Provisioning' }}"
+    cb_cluster_health: "{{ 'Healthy' if (cb_cluster_ready | default('Unknown') | trim == 'True') else 'Degraded' if (cb_hive_complete | default(false) | bool) else 'Provisioning' }}"

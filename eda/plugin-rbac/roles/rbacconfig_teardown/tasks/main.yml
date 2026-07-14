@@ -30,12 +30,6 @@
             else lookup('env', 'KEYCLOAK_EXTERNAL_URL') | default('https://rhbk-services.apps.cluster.local', true)
           }}
 
-    - name: Pin Keycloak URL hostname to reachable apps ingress IP
-      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_https_url.yml"
-      vars:
-        pin_url: "{{ plugin_rbac_keycloak_url }}"
-        pin_url_fact: plugin_rbac_keycloak_url
-
     - name: Run Keycloak admin cleanup when spec is available
       when: rbac_config_spec.secret is defined
       block:

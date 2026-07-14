@@ -5,8 +5,8 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle CloudOSO Create
-    condition: event.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"]
-      and event.payload.regarding.kind == "CloudOSO"
+    condition: event.payload.reason | default(event.message.reason | default('')) in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"]
+      and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "CloudOSO"
     action:
       run_job_template:
         name: cloudoso-provision

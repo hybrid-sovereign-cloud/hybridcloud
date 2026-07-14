@@ -2,17 +2,19 @@
 
 **Scope**: AMQ Streams, Event Forwarder, AAP EDA  
 **API group**: `hybridsovereign.redhat/v1alpha1` (event `regarding.kind`)  
-**Last updated**: 2026-07-11
+**Last updated**: 2026-07-14
 
 ---
 
 ## Purpose
 
-Operators on the services cluster emit typed Kubernetes Events instead of running heavy Ansible inline. The event system routes those events to automation on the central cluster:
+Operators on the services cluster publish normalized event JSON directly to AMQ Streams on the central cluster. Central EDA rulebooks consume from Kafka and dispatch Ansible playbooks via AAP Controller.
 
-1. **Event Forwarder** watches `events.k8s.io/v1` and forwards matching events.
-2. **AMQ Streams** (Kafka) provides a durable event bus for audit and future EDA consumption.
-3. **AAP EDA** matches events via rulebook activations and dispatches Ansible playbooks.
+1. **Operators** publish to Kafka topic `hybridsovereign-events` (SASL_SSL via external bootstrap Route).
+2. **AMQ Streams** (Kafka) provides the durable event bus.
+3. **AAP EDA** matches events via `ansible.eda.kafka` rulebook activations.
+
+The legacy Event Forwarder and HTTP EDA Event Stream are **retired** (`eventForwarder.enabled: false`).
 
 ---
 
@@ -20,58 +22,37 @@ Operators on the services cluster emit typed Kubernetes Events instead of runnin
 
 ```mermaid
 C4Component
-    title Event System — Cross-Cluster Pipeline
+    title Event System — Kafka Pipeline
 
     Container_Boundary(services, "Services Cluster") {
-        Component(operators, "Operators", "Ansible SDK", "Emit typed K8s Events")
-        Component(forwarder, "Event Forwarder", "Python", "Filter, dedupe, publish")
-        Component(k8sEvents, "K8s Event API", "events.k8s.io/v1", "Event storage")
+        Component(operators, "Operators", "Ansible + kafka-python", "Publish *Requested events")
     }
 
     Container_Boundary(central, "Central Cluster") {
         Component(kafka, "AMQ Streams", "Strimzi Kafka", "hybridsovereign-events topic")
-        Component(eventStream, "EDA Event Stream", "AAP EDA", "sovereign-operator-events")
-        Component(activations, "Rulebook Activations", "EDA", "Match reason + kind")
+        Component(activations, "Rulebook Activations", "EDA", "ansible.eda.kafka source")
         Component(aap, "AAP Controller", "Job templates", "Execute Ansible roles")
         Component(des, "Decision Environments", "Container images", "Per-domain EE images")
     }
 
-    ComponentDb(vault, "Vault", "Credentials for Kafka + EDA stream")
+    ComponentDb(vault, "Vault", "amq-producer / amq-consumer credentials")
 
-    Rel(operators, k8sEvents, "Create Event")
-    Rel(forwarder, k8sEvents, "Watch")
-    Rel(forwarder, kafka, "Produce (KAFKA_ENABLED)")
-    Rel(forwarder, eventStream, "POST (legacy path)")
-    Rel(eventStream, activations, "Trigger rule")
+    Rel(operators, kafka, "Produce SASL_SSL")
+    Rel(kafka, activations, "Consume")
     Rel(activations, aap, "run_playbook / run_job_template")
     Rel(aap, des, "Launch in EE")
-    Rel(forwarder, vault, "SASL token via ExternalSecret")
+    Rel(operators, vault, "Producer creds via ExternalSecret")
+    Rel(activations, vault, "Consumer creds via EDA credential")
 ```
 
 ---
 
-## Event Forwarder
+## Operator Kafka Producer
 
-**Path**: `hybridcloud/eda/event-forwarder/src/forwarder.py`  
-**Deployment**: Helm chart `bootstrap/helm/charts/event-forwarder/` → `sovereign-cloud-plugins`  
-**Sync-wave**: 32
+**Path**: `hybridcloud/operator/roles/_common/tasks/amq_publish.yml`  
+**Credentials**: ExternalSecret `amq-producer-credentials` → Vault `central/data/amq-producer`
 
-### Filter Rules
-
-| Filter | Pattern |
-|--------|---------|
-| Namespaces | `sovereign-cloud`, `sovereign-cloud-plugins`, `entity-*` |
-| Reporting controller | `*-operator` suffix |
-| Reason | `*Requested` suffix |
-
-### Outputs
-
-| Destination | Topic / endpoint | Purpose |
-|-------------|------------------|---------|
-| Kafka | `hybridsovereign-events` | Durable audit bus; future primary EDA source |
-| EDA Event Stream | `sovereign-operator-events` | Current rulebook activation trigger |
-
-Credentials for Kafka SASL and the EDA stream token are sourced from Vault via ExternalSecret (`vaultSecretPath: central/event-forwarder`). No tokens in Helm values committed to Git.
+Payload schema matches the historical forwarder normalization: `reason`, `regarding`, `note` (JSON spec snapshot).
 
 ---
 

@@ -99,28 +99,22 @@
               reason: AwaitingEDA
               message: Awaiting EDA to complete provisioning
 
-    - name: Emit AAPOrg create or reconcile event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "aaporg-{{ ansible_operator_meta.name }}-create-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: AAPOrg
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_aaporg.metadata.uid }}"
-          reason: "{{ aaporg_event_reason }}"
-          note: "{{ aaporg_spec | to_json }}"
-          type: Normal
-          action: "{{ aaporg_event_action }}"
-          reportingController: plugin-aap-operator
-          reportingInstance: plugin-aap-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "{{ aaporg_event_reason }}"
+        operator_event_action: "{{ aaporg_event_action }}"
+        operator_event_note: "{{ aaporg_spec | to_json }}"
+        operator_reporting_controller: plugin-aap-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: AAPOrg
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_aaporg.metadata.uid }}"
+
 
   rescue:
     - name: Mark AAPOrg as failed

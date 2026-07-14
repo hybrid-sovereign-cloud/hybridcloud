@@ -9,5 +9,5 @@ metadata:
   name: aap-sovereign-services
   namespace: sovereign-cloud-plugins
 spec:
-  secret: REDACTED
+  secret: aap-admin-credentials
   rbacConfig: keycloak-sovereign-tenants-services

@@ -16,28 +16,22 @@
           message: Awaiting EDA delete
           lastReconciledAt: "{{ team_delete_transition_time }}"
 
-    - name: Emit Team delete event
-      kubernetes.core.k8s:
-        state: present
-        definition:
-          apiVersion: events.k8s.io/v1
-          kind: Event
-          metadata:
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            generateName: "team-{{ ansible_operator_meta.name }}-delete-"
-          regarding:
-            apiVersion: hybridsovereign.redhat/v1alpha1
-            kind: Team
-            name: "{{ ansible_operator_meta.name }}"
-            namespace: "{{ ansible_operator_meta.namespace }}"
-            uid: "{{ _hybridsovereign_redhat_team.metadata.uid }}"
-          reason: TeamDeleteRequested
-          note: "{{ _hybridsovereign_redhat_team.spec | to_json }}"
-          type: Normal
-          action: Delete
-          reportingController: team-operator
-          reportingInstance: team-operator
-          eventTime: "{{ now(utc=true).isoformat() }}Z"
+    - name: Publish operator event to AMQ Streams
+      ansible.builtin.include_role:
+        name: _common
+        tasks_from: publish_operator_event
+      vars:
+        operator_event_reason: "TeamDeleteRequested"
+        operator_event_action: "Delete"
+        operator_event_note: "{{ _hybridsovereign_redhat_team.spec | to_json }}"
+        operator_reporting_controller: team-operator
+        operator_event_regarding:
+          apiVersion: hybridsovereign.redhat/v1alpha1
+          kind: Team
+          name: "{{ ansible_operator_meta.name }}"
+          namespace: "{{ ansible_operator_meta.namespace }}"
+          uid: "{{ _hybridsovereign_redhat_team.metadata.uid }}"
+
 
     - name: Exit cleanly when EDA completed deletion
       ansible.builtin.meta: end_host

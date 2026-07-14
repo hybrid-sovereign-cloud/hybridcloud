@@ -1,14 +1,67 @@
 ---
+- name: Skip AMQ publish when disabled
+  ansible.builtin.meta: end_host
+  when: not (amq_kafka_enabled | default(true) | bool)
+
 - name: Publish operator event to AMQ Streams Kafka topic
-  ansible.builtin.uri:
-    url: "{{ amq_kafka_broker_url | default('http://hybridsovereign-kafka-kafka-bootstrap.amq-streams.svc:9092') }}"
-    method: POST
-    body_format: json
-    body:
-      topic: "{{ amq_kafka_topic | default('hybridsovereign-events') }}"
-      key: "{{ event_regarding_kind | default('unknown') }}/{{ event_regarding_name | default('unknown') }}"
-      value: "{{ amq_event_payload | to_json }}"
-    status_code: [200, 201, 202]
-  when: amq_kafka_enabled | default(true) | bool
+  ansible.builtin.shell: |
+    python3 << 'PYEOF'
+    import json, os, ssl, sys, tempfile
+    from kafka import KafkaProducer
+
+    payload = json.loads(os.environ["AMQ_EVENT_PAYLOAD"])
+    bootstrap = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
+    topic = os.environ.get("KAFKA_TOPIC", "hybridsovereign-events")
+    username = os.environ.get("KAFKA_USERNAME", "")
+    password = os.environ.get("KAFKA_PASSWORD", "")
+    ca_pem = os.environ.get("KAFKA_CA_CERT", "")
+
+    kwargs = {
+        "bootstrap_servers": bootstrap.split(","),
+        "value_serializer": lambda v: json.dumps(v).encode("utf-8"),
+        "key_serializer": lambda k: k.encode("utf-8") if k else None,
+        "acks": "all",
+        "retries": 3,
+        "request_timeout_ms": 15000,
+    }
+
+    if username and password:
+        kwargs["security_protocol"] = os.environ.get("KAFKA_SECURITY_PROTOCOL", "SASL_SSL")
+        kwargs["sasl_mechanism"] = os.environ.get("KAFKA_SASL_MECHANISM", "SCRAM-SHA-512")
+        kwargs["sasl_plain_username"] = username
+        kwargs["sasl_plain_password"] = password
+        if ca_pem.strip():
+            ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            with tempfile.NamedTemporaryFile("w", delete=False) as fh:
+                fh.write(ca_pem)
+                ca_path = fh.name
+            ctx.load_verify_locations(cafile=ca_path)
+            kwargs["ssl_context"] = ctx
+
+    producer = KafkaProducer(**kwargs)
+    regarding = payload.get("regarding", {})
+    key = "{}/{}".format(regarding.get("kind", "unknown"), regarding.get("name", "unknown"))
+    future = producer.send(topic, key=key, value=payload)
+    future.get(timeout=15)
+    producer.flush()
+    producer.close()
+    print("published", key)
+    PYEOF
+  environment:
+    AMQ_EVENT_PAYLOAD: "{{ amq_event_payload | to_json }}"
+    KAFKA_BOOTSTRAP_SERVERS: "{{ lookup('env', 'KAFKA_BOOTSTRAP_SERVERS') | default('', true) }}"
+    KAFKA_TOPIC: "{{ lookup('env', 'KAFKA_TOPIC') | default('hybridsovereign-events', true) }}"
+    KAFKA_USERNAME: "{{ lookup('env', 'KAFKA_USERNAME') | default('', true) }}"
+    KAFKA_PASSWORD: "{{ lookup('env', 'KAFKA_PASSWORD') | default('', true) }}"
+    KAFKA_CA_CERT: "{{ lookup('env', 'KAFKA_CA_CERT') | default('', true) }}"
+    KAFKA_SECURITY_PROTOCOL: "{{ lookup('env', 'KAFKA_SECURITY_PROTOCOL') | default('SASL_SSL', true) }}"
+    KAFKA_SASL_MECHANISM: "{{ lookup('env', 'KAFKA_SASL_MECHANISM') | default('SCRAM-SHA-512', true) }}"
+  register: amq_publish_result
+  changed_when: true
+  failed_when: false
   no_log: true
-  ignore_errors: true
+
+- name: Log AMQ publish failure
+  ansible.builtin.debug:
+    msg: "AMQ publish failed (non-fatal): {{ amq_publish_result.stderr | default('unknown') }}"
+  when: amq_publish_result.rc | default(0) != 0

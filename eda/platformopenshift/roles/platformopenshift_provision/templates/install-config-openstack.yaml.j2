@@ -1,0 +1,41 @@
+apiVersion: v1
+metadata:
+  name: {{ cb_cluster_name }}
+baseDomain: {{ cb_cluster_domain }}
+publish: External
+controlPlane:
+  name: master
+  replicas: {{ cb_control_plane_count }}
+  platform:
+    openstack:
+      type: {{ cb_controller_flavor }}
+compute:
+- name: worker
+  replicas: {{ cb_worker_count }}
+  platform:
+    openstack:
+      type: {{ cb_worker_flavor }}
+networking:
+  networkType: OVNKubernetes
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  openstack:
+    cloud: openstack
+    externalNetwork: {{ cb_external_network }}
+    apiFloatingIP: {{ cb_api_vip }}
+    ingressFloatingIP: {{ cb_ingress_vip }}
+    computeFlavor: {{ cb_controller_flavor }}
+    clusterOSImage: {{ cb_glance_image }}
+    externalDNS: []
+{% if cb_trust_bundle | default('') | trim | length > 0 %}
+additionalTrustBundle: |
+{{ cb_trust_bundle | trim | indent(2, true) }}
+{% endif %}
+pullSecret: '{{ cb_pull_secret_json | to_json }}'
+sshKey: '{{ cb_ssh_public_key | trim }}'

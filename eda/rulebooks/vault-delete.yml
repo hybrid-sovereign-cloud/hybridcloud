@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle Vault Delete
-    condition: event.payload.reason == "VaultDeleteRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "VaultDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "Vault"
     action:
       run_job_template:

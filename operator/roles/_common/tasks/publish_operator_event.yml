@@ -1,0 +1,33 @@
+---
+- name: Build operator event payload for AMQ Streams
+  ansible.builtin.set_fact:
+    amq_event_payload:
+      reason: "{{ operator_event_reason }}"
+      regarding: "{{ operator_event_regarding }}"
+      note: "{{ operator_event_note | default('') }}"
+      reportingController: "{{ operator_reporting_controller | default('hybridsovereign-operator') }}"
+      action: "{{ operator_event_action | default('Create') }}"
+      cluster: services
+      timestamp: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+
+- name: Publish operator event to AMQ Streams
+  ansible.builtin.include_tasks: amq_publish.yml
+
+- name: Emit optional Kubernetes Event for debugging
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: events.k8s.io/v1
+      kind: Event
+      metadata:
+        namespace: "{{ operator_event_regarding.namespace }}"
+        generateName: "{{ operator_event_regarding.kind | lower }}-{{ operator_event_regarding.name }}-eda-"
+      regarding: "{{ operator_event_regarding }}"
+      reason: "{{ operator_event_reason }}"
+      note: "{{ operator_event_note | default('') | truncate(1024, True, '…') }}"
+      type: Normal
+      action: "{{ operator_event_action | default('Create') }}"
+      reportingController: "{{ operator_reporting_controller | default('hybridsovereign-operator') }}"
+      reportingInstance: "{{ operator_reporting_controller | default('hybridsovereign-operator') }}"
+      eventTime: "{{ now(utc=true).isoformat() }}Z"
+  when: operator_emit_k8s_events | default(false) | bool

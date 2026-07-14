@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle Persona Create
-    condition: event.payload.reason == "PersonaCreateRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "PersonaCreateRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "Persona"
     action:
       run_job_template:
@@ -15,7 +15,7 @@
           extra_vars:
             event_payload: '{{ event.payload }}'
   - name: Handle Persona Reconcile
-    condition: event.payload.reason == "PersonaReconcileRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "PersonaReconcileRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "Persona"
     action:
       run_job_template:

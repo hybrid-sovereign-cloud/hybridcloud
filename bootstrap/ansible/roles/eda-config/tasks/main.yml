@@ -82,8 +82,7 @@
 - name: Create Container Registry credential for Quay
   ansible.eda.credential:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "quay-registry-credential"
     credential_type_name: "Container Registry"
@@ -100,8 +99,7 @@
 - name: Create AAP Controller credential for EDA
   ansible.eda.credential:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "sovereign-aap-controller-credential"
     credential_type_name: "Red Hat Ansible Automation Platform"
@@ -117,8 +115,7 @@
 - name: Register Decision Environments
   ansible.eda.decision_environment:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "de-{{ item.name }}"
     image_url: "{{ item.de_image }}"
@@ -133,8 +130,7 @@
 - name: Create Event Stream credential
   ansible.eda.credential:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "{{ event_stream_name }}-credential"
     credential_type_name: "Token Event Stream"
@@ -147,8 +143,7 @@
 - name: Create Event Stream
   ansible.eda.event_stream:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "{{ event_stream_name }}"
     credential_name: "{{ event_stream_name }}-credential"
@@ -161,9 +156,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/event-streams/?name={{ event_stream_name | urlencode }}"
     method: GET
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200]
   register: event_stream_lookup
 
@@ -172,9 +166,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/event-streams/{{ event_stream_lookup.json.results[0].id }}/"
     method: PATCH
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     body_format: json
     body:
       test_mode: false
@@ -186,9 +179,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/projects/?name=sovereign-eda-rulebooks"
     method: GET
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200]
   register: existing_project
   no_log: false
@@ -198,9 +190,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/projects/{{ existing_project.json.results[0].id }}/"
     method: DELETE
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [204]
   when:
     - existing_project.json.results | length > 0
@@ -210,8 +201,7 @@
 - name: Create EDA Project for sovereign rulebooks (authenticated URL for private repo)
   ansible.eda.project:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "sovereign-eda-rulebooks"
     url: "{{ lookup('env', 'RULEBOOK_REPO_URL') | regex_replace('^https://', 'https://' + github_token + '@') }}"
@@ -225,9 +215,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/projects/?name=sovereign-eda-rulebooks"
     method: GET
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200]
   register: eda_project_current
   no_log: true
@@ -237,9 +226,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/projects/{{ eda_project_current.json.results[0].id }}/sync/"
     method: POST
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200, 201, 202]
     body_format: json
     body: {}
@@ -255,9 +243,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/projects/?name=sovereign-eda-rulebooks"
     method: GET
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200]
   register: project_status
   retries: 30
@@ -272,9 +259,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/activations/?page_size=200"
     method: GET
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200]
   register: existing_activations
   no_log: true
@@ -295,9 +281,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/activations/{{ item.id }}/"
     method: DELETE
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [204, 404]
   loop: "{{ existing_activations.json.results | default([]) }}"
   when:
@@ -310,9 +295,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/activations/{{ item.id }}/disable/"
     method: POST
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [204, 404, 400]
   loop: "{{ existing_activations.json.results | default([]) }}"
   when:
@@ -324,9 +308,8 @@
     url: "{{ eda_controller_url }}/api/eda/v1/activations/?name={{ item | urlencode }}"
     method: GET
     validate_certs: false
-    url_username: "{{ eda_admin_username }}"
-    url_password: "{{ eda_admin_password }}"
-    force_basic_auth: true
+    headers:
+      Authorization: "Bearer {{ eda_gateway_token }}"
     status_code: [200]
   loop: "{{ managed_activation_names }}"
   register: activation_ready
@@ -343,8 +326,7 @@
 - name: Create Rulebook Activations
   ansible.eda.rulebook_activation:
     controller_host: "{{ eda_controller_url }}"
-    controller_username: "{{ eda_admin_username }}"
-    controller_password: "{{ eda_admin_password }}"
+    controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "{{ item.1.name }}-activation"
     project_name: "sovereign-eda-rulebooks"

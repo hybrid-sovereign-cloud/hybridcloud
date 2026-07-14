@@ -2,7 +2,7 @@
 
 **Feature**: 006 Platform EDA Rebuild  
 **Audience**: Platform engineers, operator developers  
-**Last updated**: 2026-06-15
+**Last updated**: 2026-07-14
 
 ---
 
@@ -15,11 +15,11 @@ The Platform EDA rebuild moves heavy Ansible automation out of `hybridsovereign.
 | Component | Cluster | Namespace |
 |-----------|---------|-----------|
 | Operators (`hybridsovereign.redhat`) | Services | `sovereign-cloud`, `sovereign-cloud-plugins` |
-| Event forwarder | Services | `sovereign-cloud-plugins` |
+| AMQ Streams Kafka | Central | `amq-streams` |
 | AAP EDA controller | Central | `aap` |
 | AAP Controller | Central | `aap` |
-| EDA config Job | Central | `sovereign-cloud-jobs` |
-| AAP controller config Job | Central | `sovereign-cloud-jobs` |
+| AAP Controller (AAPOrg only) | Services | `aap` |
+| AAP config-as-code Job | Central | `sovereign-cloud-jobs` |
 | Global test suite | External runner | `global_tests/` |
 
 ---
@@ -29,32 +29,29 @@ The Platform EDA rebuild moves heavy Ansible automation out of `hybridsovereign.
 End-to-end path from a user action to completed automation:
 
 1. **Trigger** — User creates/updates/deletes a CR, or clicks Refresh in the tenancy dashboard.
-2. **Operator reconcile** — Operator validates prerequisites, sets `status: reconciling`, emits a typed Kubernetes Event.
-3. **Event forwarder** — Watches `events.k8s.io/v1` Events on services, filters, normalizes, POSTs to central Event Stream.
-4. **EDA rulebook** — Activation receives event, matches `reason` + `regarding.kind`, calls `run_job_template` targeting AAP Controller.
-5. **AAP job template** — AAP Controller launches a Job using the operator's Execution Environment and Gitea project.
-6. **AAP role** — Executes Ansible logic; patches CR status at START (running) and END (ready/failed) with AAP job ID and URL.
-7. **Operator completion** — Operator sees `observedGeneration` match and stops re-emitting; on delete, finalizer removes CR after `deletionComplete: true`.
+2. **Operator reconcile** — Operator validates prerequisites, sets `status: reconciling`, publishes event JSON to Kafka (`hybridsovereign-events`).
+3. **EDA rulebook** — Central activation consumes from Kafka (`ansible.eda.kafka`), matches `reason` + `regarding.kind`, calls `run_job_template`.
+4. **AAP job template** — AAP Controller launches a Job using the operator's Execution Environment and `eda.git` project.
+5. **AAP role** — Executes Ansible logic; patches CR status at START (running) and END (ready/failed) with AAP job ID and URL.
+6. **Operator completion** — Operator sees `observedGeneration` match and stops re-emitting; on delete, finalizer removes CR after `deletionComplete: true`.
+
+Optional: operators may still emit K8s Events for `oc get events` debugging when `operator_emit_k8s_events` is enabled.
 
 ### Event Flow Diagram
 
 ```mermaid
 flowchart LR
     User["User / Dashboard"]
-    Op["Operator"]
-    Ev["K8s Event"]
-    Fwd["Event Forwarder"]
-    ES["Event Stream"]
-    EDA["EDA Activation\n(run_job_template)"]
-    AAP["AAP Controller\nJob Template"]
+    Op["Operator\n(services)"]
+    Kafka["AMQ Streams\n(central)"]
+    EDA["EDA Activation\n(central)"]
+    AAP["AAP Controller\n(central)"]
     Role["Ansible Role\n(EE container)"]
-    CR["CR Status\n(jobId + URL)"]
+    CR["CR Status\n(services)"]
 
     User --> Op
-    Op --> Ev
-    Ev --> Fwd
-    Fwd --> ES
-    ES --> EDA
+    Op --> Kafka
+    Kafka --> EDA
     EDA --> AAP
     AAP --> Role
     Role --> CR

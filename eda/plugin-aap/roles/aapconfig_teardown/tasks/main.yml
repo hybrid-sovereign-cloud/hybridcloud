@@ -6,21 +6,8 @@
         aapconfig_cr_namespace: "{{ event_payload.regarding.namespace }}"
         aapconfig_spec: "{{ event_payload.note | from_json }}"
 
-    - name: Read services bearer token
-      kubernetes.core.k8s_info:
-        kind: Secret
-        name: argocd-cluster-services
-        namespace: openshift-gitops
-      register: argocd_cluster_secret
-      no_log: true
-
-    - name: Fail if services cluster secret is missing
-      ansible.builtin.fail:
-        msg: Secret argocd-cluster-services not found in openshift-gitops
-      when: argocd_cluster_secret.resources | length == 0
-
-    - name: Pin services API host to reachable IP (skip stale DNS A records)
-      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/pin_reachable_services_api.yml"
+    - name: Resolve services cluster API connection
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
 
     - name: Read AAP admin secret
       kubernetes.core.k8s_info:

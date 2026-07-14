@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle VaultKV Create
-    condition: event.payload.reason in ["VaultKVCreateRequested", "VaultKVReconcileRequested"] and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) in ["VaultKVCreateRequested", "VaultKVReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "VaultKV"
     action:
       run_job_template:

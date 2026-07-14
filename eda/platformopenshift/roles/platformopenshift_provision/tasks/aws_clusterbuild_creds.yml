@@ -1,6 +1,9 @@
 ---
 - name: Create temporary ExternalSecret for AWS credentials
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: external-secrets.io/v1beta1
@@ -35,6 +38,9 @@
 
 - name: Wait for AWS credentials secret to sync
   kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     api_version: v1
     kind: Secret
     name: "eda-po-{{ ansible_operator_meta.name }}-aws-creds"
@@ -72,6 +78,9 @@
 
 - name: Create temporary ExternalSecret for OCP pull secret
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: external-secrets.io/v1beta1
@@ -98,6 +107,9 @@
 
 - name: Create temporary ExternalSecret for SSH key
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: external-secrets.io/v1beta1
@@ -128,6 +140,9 @@
 
 - name: Wait for pull secret and SSH key secrets to sync
   kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     api_version: v1
     kind: Secret
     name: "{{ item }}"

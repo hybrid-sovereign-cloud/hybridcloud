@@ -1,13 +1,16 @@
 ---
 - name: Create temporary ExternalSecret for AWS credentials
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: external-secrets.io/v1beta1
       kind: ExternalSecret
       metadata:
         name: "eda-po-{{ ansible_operator_meta.name }}-aws-creds"
-        namespace: "{{ eda_central_work_namespace }}"
+        namespace: "{{ platformopenshift_operator_namespace }}"
         labels:
           app.kubernetes.io/managed-by: eda-platformopenshift
           platformopenshift: "{{ ansible_operator_meta.name }}"
@@ -35,10 +38,13 @@
 
 - name: Wait for AWS credentials secret to sync
   kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     api_version: v1
     kind: Secret
     name: "eda-po-{{ ansible_operator_meta.name }}-aws-creds"
-    namespace: "{{ eda_central_work_namespace }}"
+    namespace: "{{ platformopenshift_operator_namespace }}"
   register: aws_creds_secret
   until: >-
     aws_creds_secret.resources | length > 0 and
@@ -72,13 +78,16 @@
 
 - name: Create temporary ExternalSecret for OCP pull secret
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: external-secrets.io/v1beta1
       kind: ExternalSecret
       metadata:
         name: "eda-po-{{ ansible_operator_meta.name }}-pull-secret"
-        namespace: "{{ eda_central_work_namespace }}"
+        namespace: "{{ platformopenshift_operator_namespace }}"
         labels:
           app.kubernetes.io/managed-by: eda-platformopenshift
           platformopenshift: "{{ ansible_operator_meta.name }}"
@@ -98,13 +107,16 @@
 
 - name: Create temporary ExternalSecret for SSH key
   kubernetes.core.k8s:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     state: present
     definition:
       apiVersion: external-secrets.io/v1beta1
       kind: ExternalSecret
       metadata:
         name: "eda-po-{{ ansible_operator_meta.name }}-ssh-key"
-        namespace: "{{ eda_central_work_namespace }}"
+        namespace: "{{ platformopenshift_operator_namespace }}"
         labels:
           app.kubernetes.io/managed-by: eda-platformopenshift
           platformopenshift: "{{ ansible_operator_meta.name }}"
@@ -128,10 +140,13 @@
 
 - name: Wait for pull secret and SSH key secrets to sync
   kubernetes.core.k8s_info:
+    host: "{{ central_api_host }}"
+    api_key: "{{ central_bearer_token }}"
+    validate_certs: false
     api_version: v1
     kind: Secret
     name: "{{ item }}"
-    namespace: "{{ eda_central_work_namespace }}"
+    namespace: "{{ platformopenshift_operator_namespace }}"
   register: shared_secrets
   until: >-
     shared_secrets.resources | length > 0 and

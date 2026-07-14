@@ -15,13 +15,13 @@ import {
 } from '@patternfly/react-core';
 import { MoonIcon, SunIcon } from '@patternfly/react-icons';
 import { NavLink, Routes, Route } from 'react-router-dom';
-import { SovereignThemeProvider, useTheme } from '@hybridsovereign/shared';
+import { SovereignThemeProvider, useTheme, useEntityNamespace, EntityTopology } from '@hybridsovereign/shared';
 import { TenantOverviewPage } from './pages/TenantOverviewPage';
 import { TenantResourcePage } from './pages/TenantResourcePage';
 import { SelfServiceFormPage } from './pages/SelfServiceFormPage';
 
-/** Scaffold: replace with OIDC-derived entity namespace */
-const TENANT_NAMESPACE = 'entity-acme-corp';
+/** Fallback when OIDC groups are unavailable (local dev) */
+const DEV_USER_GROUPS = ['acme-corp-platform-engineering-admins'];
 
 const NAV_ITEMS = [
   { path: '/', label: 'Overview', end: true },
@@ -46,6 +46,10 @@ function ThemeToggle(): React.ReactElement {
 }
 
 function TenantLayout(): React.ReactElement {
+  const { namespace: tenantNamespace } = useEntityNamespace({
+    userGroups: DEV_USER_GROUPS,
+  });
+
   const sidebar = (
     <PageSidebar>
       <PageSidebarBody>
@@ -83,7 +87,7 @@ function TenantLayout(): React.ReactElement {
               </Title>
             </ToolbarItem>
             <ToolbarItem>
-              <span style={{ opacity: 0.7 }}>Namespace: {TENANT_NAMESPACE}</span>
+              <span style={{ opacity: 0.7 }}>Namespace: {tenantNamespace}</span>
             </ToolbarItem>
             <ToolbarItem align={{ default: 'alignEnd' }}>
               <ThemeToggle />
@@ -93,7 +97,7 @@ function TenantLayout(): React.ReactElement {
       </PageSection>
       <PageSection isFilled>
         <Routes>
-          <Route path="/" element={<TenantOverviewPage namespace={TENANT_NAMESPACE} />} />
+          <Route path="/" element={<TenantOverviewPage namespace={tenantNamespace} />} />
           {NAV_ITEMS.filter((i) => i.kind).map((item) => (
             <Route
               key={item.path}
@@ -102,7 +106,7 @@ function TenantLayout(): React.ReactElement {
                 <TenantResourcePage
                   kind={item.kind!}
                   title={item.label}
-                  namespace={TENANT_NAMESPACE}
+                  namespace={tenantNamespace}
                   formType={item.form}
                 />
               }
@@ -110,7 +114,7 @@ function TenantLayout(): React.ReactElement {
           ))}
           <Route
             path="/create/:formType"
-            element={<SelfServiceFormPage namespace={TENANT_NAMESPACE} />}
+            element={<SelfServiceFormPage namespace={tenantNamespace} />}
           />
         </Routes>
       </PageSection>
@@ -126,4 +130,4 @@ export function App(): React.ReactElement {
   );
 }
 
-export { TENANT_NAMESPACE };
+export { DEV_USER_GROUPS as TENANT_NAMESPACE };

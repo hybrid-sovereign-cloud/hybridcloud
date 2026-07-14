@@ -2,11 +2,18 @@
 - name: VaultKV Delete Rulebook
   hosts: all
   sources:
-    - ansible.eda.event_stream:
-        event_stream_name: sovereign-operator-events
+    - ansible.eda.kafka:
+        host: "{{ lookup('env', 'KAFKA_BOOTSTRAP_HOST') }}"
+        port: "{{ lookup('env', 'KAFKA_BOOTSTRAP_PORT') | default('443') | int }}"
+        topic: "{{ lookup('env', 'KAFKA_TOPIC') | default('hybridsovereign-events', true) }}"
+        group_id: "{{ lookup('env', 'KAFKA_CONSUMER_GROUP') | default('eda-sovereign-operators', true) }}"
+        security_protocol: "{{ lookup('env', 'KAFKA_SECURITY_PROTOCOL') | default('SASL_SSL', true) }}"
+        sasl_mechanism: "{{ lookup('env', 'KAFKA_SASL_MECHANISM') | default('SCRAM-SHA-512', true) }}"
+        sasl_plain_username: "{{ lookup('env', 'KAFKA_USERNAME') }}"
+        sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle VaultKV Delete
-      condition: event.payload.reason == "VaultKVDeleteRequested" and event.payload.regarding.kind == "VaultKV"
+      condition: event.payload.reason | default(event.message.reason | default('')) == "VaultKVDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "VaultKV"
       action:
         run_playbook:
           name: vaultkv-teardown-playbook.yml

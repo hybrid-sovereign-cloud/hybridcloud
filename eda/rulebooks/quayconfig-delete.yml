@@ -5,7 +5,7 @@
       event_stream_name: sovereign-operator-events
   rules:
   - name: Handle QuayConfig Delete
-    condition: event.payload.reason == "QuayConfigDeleteRequested" and event.payload.regarding.kind
+    condition: event.payload.reason | default(event.message.reason | default('')) == "QuayConfigDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
       == "QuayConfig"
     action:
       run_job_template:

@@ -11,3 +11,7 @@ export type {
   UseK8sResourceOptions,
   UseK8sResourceResult,
 } from './k8s';
+export { usePermissions, useCanListKind, configurePermissionsClient } from './permissions';
+export type { K8sVerb, PermissionCheck, UsePermissionsResult } from './permissions';
+export { useEntityNamespace } from './entityNamespace';
+export type { UseEntityNamespaceOptions, UseEntityNamespaceResult } from './entityNamespace';

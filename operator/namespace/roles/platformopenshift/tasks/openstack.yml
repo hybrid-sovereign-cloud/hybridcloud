@@ -161,29 +161,23 @@
     event_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
     transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
 
-- name: Emit reconciliation event
-  kubernetes.core.k8s:
-    state: present
-    definition:
-      apiVersion: events.k8s.io/v1
-      kind: Event
-      metadata:
-        namespace: "{{ ansible_operator_meta.namespace }}"
-        generateName: "platformopenshift-{{ ansible_operator_meta.name }}-"
-      regarding:
-        apiVersion: hybridsovereign.redhat/v1alpha1
-        kind: PlatformOpenshift
-        name: "{{ ansible_operator_meta.name }}"
-        namespace: "{{ ansible_operator_meta.namespace }}"
-      note: >-
-        PlatformOpenshift {{ ansible_operator_meta.name }} OpenStack cluster build triggered.
-        App: {{ cb_app_name }}, Domain: {{ cb_base_domain }}
-      type: Normal
-      action: Reconcile
-      reason: ClusterBuildCreated
-      reportingController: platformopenshift-operator
-      reportingInstance: platformopenshift-operator
-      eventTime: "{{ event_time }}"
+- name: Publish reconciliation event to AMQ Streams
+  ansible.builtin.include_role:
+    name: _common
+    tasks_from: publish_operator_event
+  vars:
+    operator_event_reason: ClusterBuildCreated
+    operator_event_action: Reconcile
+    operator_event_note: >-
+      PlatformOpenshift {{ ansible_operator_meta.name }} OpenStack cluster build triggered.
+      App: {{ cb_app_name }}, Domain: {{ cb_base_domain }}
+    operator_reporting_controller: platformopenshift-operator
+    operator_event_regarding:
+      apiVersion: hybridsovereign.redhat/v1alpha1
+      kind: PlatformOpenshift
+      name: "{{ ansible_operator_meta.name }}"
+      namespace: "{{ ansible_operator_meta.namespace }}"
+      uid: "{{ _hybridsovereign_redhat_platformopenshift.metadata.uid | default('') }}"
   ignore_errors: true
 
 - name: Update PlatformOpenshift status

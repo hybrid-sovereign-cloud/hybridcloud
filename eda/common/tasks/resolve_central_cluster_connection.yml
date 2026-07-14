@@ -16,27 +16,8 @@
 
 - name: Set central API host from Vault
   ansible.builtin.set_fact:
-    central_api_host_raw: "{{ vault_kv_data.api_host }}"
+    central_api_host: "{{ vault_kv_data.api_host }}"
   no_log: true
-
-- name: Parse central API hostname
-  ansible.builtin.set_fact:
-    _central_api_hostname: >-
-      {{
-        central_api_host_raw
-        | regex_replace('^https?://', '')
-        | regex_replace('/.*$', '')
-        | regex_replace(':.*$', '')
-      }}
-
-- name: Resolve central API hostname to reachable cluster API IP
-  ansible.builtin.include_tasks: resolve_lab_ingress_ip.yml
-  vars:
-    resolve_hostname: "{{ _central_api_hostname }}"
-
-- name: Build central API URL with reachable cluster API IP
-  ansible.builtin.set_fact:
-    central_api_host: "https://{{ resolve_public_ip }}:6443"
 
 - name: Obtain central cluster API bearer token via kubeadmin OAuth
   ansible.builtin.include_tasks: obtain_openshift_access_token.yml

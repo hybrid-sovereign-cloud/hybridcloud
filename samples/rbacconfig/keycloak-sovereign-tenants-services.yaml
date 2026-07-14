@@ -10,4 +10,4 @@ metadata:
   namespace: sovereign-cloud-plugins
 spec:
   type: keycloak
-  secret: REDACTED
+  secret: rhbk-services-admin
