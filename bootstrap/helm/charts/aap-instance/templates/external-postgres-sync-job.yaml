@@ -80,7 +80,19 @@ spec:
                 --from-literal=run_id="${RUN_ID}" \
                 --dry-run=client -o yaml | oc apply -f -
 
-              echo "External postgres secrets ${TARGET} and ${EDA_TARGET} synced (run_id=${RUN_ID})"
+              CTRL_TARGET="{{ .Values.name }}-controller-postgres-configuration"
+              oc create secret generic "${CTRL_TARGET}" -n "${NS}" \
+                --from-literal=host="${HOST}" \
+                --from-literal=port="${PORT}" \
+                --from-literal=database="${DB}" \
+                --from-literal=username="${USER}" \
+                --from-literal=password="${PASS}" \
+                --from-literal=type=unmanaged \
+                --from-literal=managed_by_aap=true \
+                --from-literal=run_id="${RUN_ID}" \
+                --dry-run=client -o yaml | oc apply -f -
+
+              echo "External postgres secrets ${TARGET}, ${EDA_TARGET}, and ${CTRL_TARGET} synced (run_id=${RUN_ID})"
           env:
             - name: RUN_ID
               value: {{ .Values.postgres.syncRunId | default "2026-07-14-external-postgres" | quote }}
