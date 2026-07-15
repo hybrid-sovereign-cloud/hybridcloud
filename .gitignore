@@ -5,6 +5,8 @@
 *.pem
 *.key
 *credentials*
+!aap-config/controller/credentials.yml
+!aap-config/eda/credentials.yml
 *secret*
 !**/templates/externalsecret.yaml
 !**/templates/*-externalsecret.yaml
