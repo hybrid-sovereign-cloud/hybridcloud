@@ -13,6 +13,9 @@
     aap_validate_certs: false
     aap_configuration_secure_logging: true
     aap_configuration_collect_logs: true
+    # Collection defaults use string 'false' for secure_logging flags (truthy in Jinja).
+    controller_configuration_credential_types_secure_logging: false
+    controller_configuration_organizations_secure_logging: false
 
   pre_tasks:
     - name: Load controller configuration
@@ -55,37 +58,37 @@
 
   tasks:
     - name: Configure AAP Controller organizations
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_organizations
 
     - name: Configure AAP Controller credential types
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_credential_types
 
     - name: Configure AAP Controller credentials
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_credentials
       vars:
         controller_configuration_credentials_secure_logging: true
 
     - name: Configure AAP Controller execution environments
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_execution_environments
 
     - name: Configure AAP Controller projects
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_projects
 
     - name: Configure AAP Controller inventories
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_inventories
 
     - name: Configure AAP Controller hosts
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_hosts
 
     - name: Configure AAP Controller job templates
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.controller_job_templates
 
     - name: Switch API target to EDA Controller
@@ -102,31 +105,31 @@
       no_log: true
 
     - name: Configure EDA credentials
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.eda_credentials
       vars:
         eda_configuration_credentials_secure_logging: true
 
     - name: Configure EDA projects
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.eda_projects
       vars:
         eda_configuration_projects_secure_logging: true
 
     - name: Configure EDA event streams
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.eda_event_streams
       vars:
         eda_configuration_event_streams_secure_logging: true
 
     - name: Configure EDA decision environments
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.eda_decision_environments
       vars:
         eda_configuration_decision_environments_secure_logging: true
 
     - name: Configure EDA rulebook activations
-      ansible.builtin.import_role:
+      ansible.builtin.include_role:
         name: infra.aap_configuration.eda_rulebook_activations
       vars:
         eda_configuration_rulebook_activations_secure_logging: true

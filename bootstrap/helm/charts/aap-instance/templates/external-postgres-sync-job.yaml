@@ -169,7 +169,7 @@ spec:
               else
                 HTTP=$(curl -sk -o /tmp/gw-org.json -w '%{http_code}' -u "admin:${GW_PASS}" \
                   -H 'Content-Type: application/json' \
-                  -d '{"name":"sovereign","description":"Hybrid Sovereign Cloud automation organization"}' \
+                  -d '{"name":"sovereign","description":"Hybrid Sovereign"}' \
                   "${GW_URL}/api/gateway/v1/organizations/")
                 if echo "${HTTP}" | grep -qE '^20'; then
                   echo "Created gateway organization sovereign (HTTP ${HTTP})"
