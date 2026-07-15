@@ -1784,7 +1784,7 @@ sovereignJobs:
               property: sasl_mechanism
       env:
         - name: RUN_ID
-          value: "2026-07-15-aap-config-v7"
+          value: "2026-07-15-aap-config-v8"
         - name: AAP_CONFIG_PATH
           value: "/runner/project/aap-config"
         - name: AAP_CONTROLLER_HOST
@@ -1792,7 +1792,9 @@ sovereignJobs:
         - name: AAP_CONTROLLER_URL
           value: "https://aap-controller.apps.central.example.com"
         - name: EDA_CONTROLLER_HOST
-          value: "https://sovereign-aap-eda-aap.apps.central.example.com"
+          value: "https://aap.apps.central.example.com"
+        - name: AAP_GATEWAY_URL
+          value: "https://aap.apps.central.example.com"
         - name: AAP_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:

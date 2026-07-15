@@ -91,17 +91,40 @@
       ansible.builtin.include_role:
         name: infra.aap_configuration.controller_job_templates
 
-    - name: Switch API target to EDA Controller
+    - name: Switch API target to EDA via AAP gateway
       ansible.builtin.set_fact:
-        aap_hostname: "{{ lookup('env', 'EDA_CONTROLLER_HOST') }}"
-        aap_password: "{{ lookup('env', 'EDA_ADMIN_PASSWORD') }}"
+        aap_gateway_url: "{{ lookup('env', 'AAP_GATEWAY_URL') | default(lookup('env', 'EDA_CONTROLLER_HOST')) }}"
+        aap_hostname: "{{ lookup('env', 'AAP_GATEWAY_URL') | default(lookup('env', 'EDA_CONTROLLER_HOST')) }}"
+        aap_username: admin
+        aap_password: "{{ lookup('env', 'AAP_ADMIN_PASSWORD') }}"
       no_log: true
 
-    - name: Validate EDA Controller admin password is available
+    - name: Validate gateway admin password is available for EDA API
       ansible.builtin.assert:
         that:
           - aap_password | length > 0
-        fail_msg: EDA_ADMIN_PASSWORD must be provided via ExternalSecret-backed env var.
+        fail_msg: AAP_ADMIN_PASSWORD (gateway admin) must be provided for EDA API token exchange.
+      no_log: true
+
+    - name: Obtain AAP gateway OAuth token for EDA API
+      ansible.builtin.uri:
+        url: "{{ aap_gateway_url }}/api/gateway/v1/tokens/"
+        method: POST
+        validate_certs: false
+        url_username: "{{ aap_username }}"
+        url_password: "{{ aap_password }}"
+        force_basic_auth: true
+        body_format: json
+        body:
+          description: "aap-config-as-code-eda"
+          scope: write
+        status_code: [201]
+      register: eda_gateway_token_resp
+      no_log: true
+
+    - name: Set EDA API bearer token
+      ansible.builtin.set_fact:
+        aap_token: "{{ eda_gateway_token_resp.json.token }}"
       no_log: true
 
     - name: Configure EDA credentials
