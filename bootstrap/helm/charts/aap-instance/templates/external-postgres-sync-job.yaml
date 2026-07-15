@@ -134,6 +134,51 @@ spec:
               apply_pg_secret "{{ .Values.name }}-eda-postgres-configuration" true
 
               echo "Synced gateway, controller, and EDA postgres secrets (run_id=${RUN_ID})"
+
+              GATEWAY_SVC="{{ .Values.name }}"
+              echo "Ensuring gateway Service ${GATEWAY_SVC} targets proxy port 8080..."
+              if oc get svc "${GATEWAY_SVC}" -n "${NS}" >/dev/null 2>&1; then
+                CURRENT_TP=$(oc get svc "${GATEWAY_SVC}" -n "${NS}" -o jsonpath='{.spec.ports[0].targetPort}')
+                if [ "${CURRENT_TP}" != "8080" ]; then
+                  oc patch svc "${GATEWAY_SVC}" -n "${NS}" --type=json \
+                    -p='[{"op":"replace","path":"/spec/ports/0/targetPort","value":8080}]'
+                  echo "Patched ${GATEWAY_SVC} targetPort ${CURRENT_TP} -> 8080"
+                else
+                  echo "${GATEWAY_SVC} targetPort already 8080"
+                fi
+              fi
+
+              GW_ADMIN_SECRET="{{ .Values.name }}-admin-password"
+              GW_URL="http://${GATEWAY_SVC}.${NS}.svc"
+              echo "Bootstrapping sovereign organization on gateway..."
+              for i in $(seq 1 60); do
+                if curl -sf "${GW_URL}/api/gateway/v1/ping/" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 10
+              done
+              curl -sf "${GW_URL}/api/gateway/v1/ping/" >/dev/null
+
+              wait_pg_secret "${GW_ADMIN_SECRET}"
+              GW_PASS=$(oc get secret "${GW_ADMIN_SECRET}" -n "${NS}" -o jsonpath='{.data.password}' | base64 -d)
+              ORG_COUNT=$(curl -sk -u "admin:${GW_PASS}" \
+                "${GW_URL}/api/gateway/v1/organizations/?name=sovereign" \
+                | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('count',0))")
+              if [ "${ORG_COUNT}" -ge 1 ]; then
+                echo "Gateway organization sovereign already exists"
+              else
+                HTTP=$(curl -sk -o /tmp/gw-org.json -w '%{http_code}' -u "admin:${GW_PASS}" \
+                  -H 'Content-Type: application/json' \
+                  -d '{"name":"sovereign","description":"Hybrid Sovereign Cloud automation organization"}' \
+                  "${GW_URL}/api/gateway/v1/organizations/")
+                if echo "${HTTP}" | grep -qE '^20'; then
+                  echo "Created gateway organization sovereign (HTTP ${HTTP})"
+                else
+                  echo "Gateway org create returned HTTP ${HTTP}: $(cat /tmp/gw-org.json)"
+                  exit 1
+                fi
+              fi
+              echo "Gateway bootstrap complete (run_id=${RUN_ID})"
           env:
             - name: RUN_ID
               value: {{ .Values.postgres.syncRunId | default "2026-07-14-external-postgres" | quote }}

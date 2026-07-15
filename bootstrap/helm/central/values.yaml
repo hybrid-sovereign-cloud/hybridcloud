@@ -390,7 +390,7 @@ aap:
 # ─── AAP (central cluster — EDA controller) ────────────────────────────────
 aapCentral:
   enabled: true
-  chartVersion: "0.3.7"
+  chartVersion: "0.3.8"
   syncWave: "30"
   destinationNamespace: aap
   values:
@@ -410,7 +410,7 @@ aapCentral:
       instances: 2
       storage: 10Gi
       backupStorage: 10Gi
-      syncRunId: "2026-07-14-external-postgres-v6"
+      syncRunId: "2026-07-15-external-postgres-v7"
 
 # ─── Plugin IaaC Operator (services cluster) — Go direct Gitea sync ─────────
 pluginIaac:
@@ -1718,6 +1718,9 @@ sovereignJobs:
             - secretKey: password
               remoteKey: aap-admin-central
               property: password
+            - secretKey: token
+              remoteKey: aap-admin-central
+              property: token
         edaAdminConfigAsCode:
           enabled: true
           targetSecretName: eda-config-as-code-admin
@@ -1781,7 +1784,7 @@ sovereignJobs:
               property: sasl_mechanism
       env:
         - name: RUN_ID
-          value: "2026-07-14-kafka-eda-migration-v4"
+          value: "2026-07-15-aap-config-v5"
         - name: AAP_CONFIG_PATH
           value: "/runner/project/aap-config"
         - name: AAP_CONTROLLER_HOST
