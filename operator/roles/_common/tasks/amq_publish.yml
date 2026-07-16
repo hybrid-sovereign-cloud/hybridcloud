@@ -7,7 +7,10 @@
   ansible.builtin.command:
     argv:
       - python3
-      - "{{ role_path | default('/opt/ansible/roles/_common') }}/files/amq_publish.py"
+      # Absolute path — role_path is unreliable when _common is pulled in via include_role/tasks_from
+      - /opt/ansible/roles/_common/files/amq_publish.py
+  # Keep stdout visible enough for failure triage; credentials stay in env (no_log)
+
   environment:
     AMQ_EVENT_PAYLOAD: "{{ amq_event_payload | to_json }}"
     KAFKA_BOOTSTRAP_SERVERS: "{{ lookup('env', 'KAFKA_BOOTSTRAP_SERVERS') | default('', true) }}"
