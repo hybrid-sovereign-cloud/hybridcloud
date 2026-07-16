@@ -2,13 +2,25 @@
 
 **Scope**: `hybridcloud/ui/` PatternFly 5 monorepo  
 **API group**: `hybridsovereign.redhat/v1alpha1` (TypeScript types)  
-**Last updated**: 2026-07-11
+**Last updated**: 2026-07-15
 
 ---
 
 ## Purpose
 
 The UI monorepo replaces legacy `user_dashboard` and `tenancy_dashboard` React apps. It provides four deployable UI packages plus a shared library, all consuming the Kubernetes API through an OAuth token proxy (never the pod ServiceAccount token).
+
+## Live deploy pins (services / `sovereign-cloud`)
+
+| Package | Image tag | ArgoCD app |
+|---------|-----------|------------|
+| Admin dashboard | `1.9.4` | `sovereign-cloud-dashboard` |
+| Tenant dashboard | `4.1.8` | `tenancy-dashboard` |
+| Admin console plugin | `1.1.5` | `sovereign-admin-plugin` |
+| Tenant console plugin | `1.1.7` | `sovereign-tenant-plugin` |
+
+Pins: `bootstrap/helm/central/values.yaml`. All four apps were **Synced / Healthy** on 2026-07-15.  
+Image build/push is not yet automated under `ui/` (no Containerfile); bump tags in values after external rebuild.
 
 ---
 

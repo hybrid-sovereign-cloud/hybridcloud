@@ -1,13 +1,11 @@
-# Hardening Check — Crunchy Postgres for Kubernetes
+# Hardening Check — Crunchy Postgres
 
-**Chart:** `bootstrap/helm/charts/crunchy-postgres`
-**Cluster:** Both
-**Namespace:** `openshift-operators`
+**Retested**: 2026-07-15
 
-## Checks
+| Check | Result | Notes |
+|-------|--------|-------|
+| Operator both clusters | PASS | Argo apps `crunchy-postgres-central/services` Synced |
+| Used by Keycloak / AAP / Gitea | PASS | Values wire `PostgresCluster` |
+| HA instances | PARTIAL | Most apps set `instances: 2` — confirm per cluster |
 
-| Check | Status | Notes |
-|---|---|---|
-| Operator from `certified-operators` | PASS | Package `crunchy-postgres-operator`, channel v5 |
-| Cluster-scoped installation | PASS | Manages PG in any namespace |
-| HA PostgresCluster instances | TODO | Dedicated instances per service |
+Backup retention policies: REVIEW for production.

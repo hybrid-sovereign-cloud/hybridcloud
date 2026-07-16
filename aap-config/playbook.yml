@@ -141,6 +141,12 @@
         aap_token: "{{ eda_gateway_token_resp.json.token }}"
       no_log: true
 
+    - name: Configure EDA credential types
+      ansible.builtin.include_role:
+        name: infra.aap_configuration.eda_credential_types
+      vars:
+        eda_configuration_credential_types_secure_logging: true
+
     - name: Configure EDA credentials
       ansible.builtin.include_role:
         name: infra.aap_configuration.eda_credentials

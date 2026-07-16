@@ -1,19 +1,15 @@
 collections:
-  - name: kubernetes.core
-    version: '>=3.0.0'
-  - name: openstack.cloud
-    version: '>=2.5.0'
-  - name: https://github.com/os-migrate/vmware-migration-kit
-    type: git
-    version: v2.2.7
-  - name: https://github.com/os-migrate/os-migrate
-    type: git
-    version: v1.0.5
-  - name: vmware.vmware
-    version: '>=2.4.0'
-  - name: vmware.vmware_rest
-    version: '>=4.9.0'
-
-roles:
-  - name: migration_cr_handler
-    src: ../../../../migration/roles/migration_cr_handler
+- name: kubernetes.core
+  version: '>=3.0.0'
+- name: openstack.cloud
+  version: '>=2.5.0'
+- name: https://github.com/os-migrate/vmware-migration-kit
+  type: git
+  version: v2.2.7
+- name: https://github.com/os-migrate/os-migrate
+  type: git
+  version: v1.0.5
+- name: vmware.vmware
+  version: '>=2.4.0'
+- name: vmware.vmware_rest
+  version: '>=4.9.0'

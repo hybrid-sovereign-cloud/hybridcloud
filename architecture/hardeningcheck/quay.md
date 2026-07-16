@@ -1,13 +1,12 @@
-# Hardening Check — Quay Registry
+# Hardening Check — Quay
 
-**Chart:** `bootstrap/helm/charts/quay`
-**Cluster:** Both
-**Namespace:** `quay-enterprise`
+**Retested**: 2026-07-15
 
-## Checks
+| Check | Result | Notes |
+|-------|--------|-------|
+| Charts enabled both clusters | PASS | values pins present |
+| OCI used for Helm charts | PASS | ArgoCD pulls from `quay.example.com` |
+| Robot read-only for pulls | PASS | Documented platform rule |
+| Admin token only for push | PASS | Make upload targets |
 
-| Check | Status | Notes |
-|---|---|---|
-| Clair scanning enabled | PASS | Managed component |
-| TLS via managed route | PASS | Operator-managed TLS |
-| Object storage via Noobaa | PASS | External backend |
+Thin check — deep Clair/storage review deferred to Quay day-2 ops.

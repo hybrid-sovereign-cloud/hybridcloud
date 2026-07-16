@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle OpenStackMigration Request
-      condition: >-
+      condition: event.payload.reason in ["OpenStackMigrationCreateRequested"] and event.payload.regarding.kind == "OpenStackMigration"
         event.payload.reason | default(event.message.reason | default('')) in ["OpenStackMigrationRequested", "OpenStackMigrationReconcileRequested"]
         and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "OpenStackMigration"
       action:

@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle VaultKV Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "VaultKVDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "VaultKV"
+      condition: event.payload.reason in ["VaultKVDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "VaultKVDeleteRequested"
       action:
         run_playbook:
           name: vaultkv-teardown-playbook.yml

@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Assignment Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "AssignmentDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "Assignment"
+      condition: event.payload.reason in ["AssignmentDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "AssignmentDeleteRequested"
       action:
         run_playbook:
           name: assignment-teardown-playbook.yml

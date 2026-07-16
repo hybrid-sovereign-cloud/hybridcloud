@@ -1,12 +1,16 @@
 # Hardening Check: 006 Platform EDA Rebuild
 
 **Feature**: Platform EDA Rebuild — Event-Driven Automation  
-**Date**: 2026-06-09  
-**Scope**: Event forwarder, Decision Environments, cross-cluster status writes, EDA controller, dashboard refresh
+**Original date**: 2026-06-09  
+**Retested**: 2026-07-15  
+
+> **Retest note**: Event Forwarder is **retired** (`eventForwarder.enabled: false`). Rows 1–12 below are historical for the chart still in-tree. Live path = operator → Kafka (`amq_publish.yml`) → EDA `ansible.eda.kafka` activations. See [operators-events.md](operators-events.md) and [aap-split.md](aap-split.md).
+
+**Scope (live)**: AMQ Streams, Decision Environments, EDA controller on central, dashboard refresh
 
 ---
 
-## CIS/NIST Validation Matrix
+## CIS/NIST Validation Matrix (includes historical forwarder rows)
 
 | # | Component | Check | Status | Notes |
 |---|-----------|-------|--------|-------|

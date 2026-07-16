@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle QuayOrg Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "QuayOrgDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "QuayOrg"
+      condition: event.payload.reason in ["QuayOrgDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "QuayOrgDeleteRequested"
       action:
         run_playbook:
           name: quayorg-teardown-playbook.yml

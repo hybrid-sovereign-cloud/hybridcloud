@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Vault Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["VaultCreateRequested", "VaultReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "Vault"
+      condition: event.payload.reason in ["VaultCreateRequested", "VaultReconcileRequested"] and event.payload.regarding.kind == "Vault"
       action:
         run_playbook:
           name: vault-provision-playbook.yml

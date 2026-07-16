@@ -4,9 +4,9 @@ controller_projects:
   - name: sovereign-eda-project
     organization: sovereign
     scm_type: git
-    scm_url: "{{ lookup('env', 'EDA_REPO_URL') }}"
+    scm_url: "{{ lookup('env', 'EDA_REPO_URL') | default(lookup('env', 'RULEBOOK_REPO_URL'), true) }}"
     credential: sovereign-github-credential
-    scm_clean: true
+    scm_clean: false
     scm_delete_on_update: false
     scm_update_on_launch: true
     scm_branch: main

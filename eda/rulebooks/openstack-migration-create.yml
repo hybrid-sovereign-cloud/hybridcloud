@@ -3,22 +3,22 @@
   hosts: all
   sources:
     - ansible.eda.kafka:
-        host: "{{ lookup('env', 'KAFKA_BOOTSTRAP_HOST') }}"
-        port: "{{ lookup('env', 'KAFKA_BOOTSTRAP_PORT') | default('443') | int }}"
-        topic: "{{ lookup('env', 'KAFKA_TOPIC') | default('hybridsovereign-events', true) }}"
-        group_id: "{{ lookup('env', 'KAFKA_CONSUMER_GROUP') | default('eda-sovereign-operators', true) }}"
-        security_protocol: "{{ lookup('env', 'KAFKA_SECURITY_PROTOCOL') | default('SASL_SSL', true) }}"
-        sasl_mechanism: "{{ lookup('env', 'KAFKA_SASL_MECHANISM') | default('SCRAM-SHA-512', true) }}"
-        sasl_plain_username: "{{ lookup('env', 'KAFKA_USERNAME') }}"
-        sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
+        host: kafka.apps.central.example.com
+        port: "443"
+        topic: hybridsovereign-events
+        group_id: eda-openstack-migration-create
+        security_protocol: SASL_SSL
+        sasl_mechanism: SCRAM-SHA-512
+        sasl_plain_username: "{{ KAFKA_USERNAME }}"
+        sasl_plain_password: "{{ KAFKA_PASSWORD }}"
+        check_hostname: false
+        verify_mode: CERT_NONE
   rules:
     - name: Handle OpenStackMigration Request
-      condition: >-
-        event.payload.reason | default(event.message.reason | default('')) in ["OpenStackMigrationRequested", "OpenStackMigrationReconcileRequested"]
-        and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "OpenStackMigration"
+      condition: event.payload.reason in ["OpenStackMigrationCreateRequested", "OpenStackMigrationReconcileRequested"] and event.payload.regarding.kind == "OpenStackMigration"
       action:
         run_job_template:
-          name: openstack-migration-provision
+          name: openstack-migration-dummy
           organization: sovereign
           job_args:
             extra_vars:

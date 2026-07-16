@@ -1,16 +1,25 @@
+---
 - name: QuayConfig Delete Rulebook
   hosts: all
   sources:
-  - ansible.eda.event_stream:
-      event_stream_name: sovereign-operator-events
+    - ansible.eda.kafka:
+        host: kafka.apps.central.example.com
+        port: "443"
+        topic: hybridsovereign-events
+        group_id: eda-quayconfig-delete
+        security_protocol: SASL_SSL
+        sasl_mechanism: SCRAM-SHA-512
+        sasl_plain_username: "{{ KAFKA_USERNAME }}"
+        sasl_plain_password: "{{ KAFKA_PASSWORD }}"
+        check_hostname: false
+        verify_mode: CERT_NONE
   rules:
-  - name: Handle QuayConfig Delete
-    condition: event.payload.reason | default(event.message.reason | default('')) == "QuayConfigDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default(''))
-      == "QuayConfig"
-    action:
-      run_job_template:
-        name: quayconfig-teardown
-        organization: sovereign
-        job_args:
-          extra_vars:
-            event_payload: '{{ event.payload }}'
+    - name: Handle QuayConfig Delete
+      condition: event.payload.reason in ["QuayConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "QuayConfigDeleteRequested"
+      action:
+        run_job_template:
+          name: quayconfig-teardown
+          organization: sovereign
+          job_args:
+            extra_vars:
+              event_payload: "{{ event.payload }}"

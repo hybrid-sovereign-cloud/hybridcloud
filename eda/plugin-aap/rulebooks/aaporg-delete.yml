@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle AAPOrg Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "AAPOrgDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "AAPOrg"
+      condition: event.payload.reason in ["AAPOrgDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "AAPOrgDeleteRequested"
       action:
         run_playbook:
           name: aaporg-teardown-playbook.yml

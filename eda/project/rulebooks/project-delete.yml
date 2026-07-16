@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Project Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "ProjectDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "Project"
+      condition: event.payload.reason in ["ProjectDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "ProjectDeleteRequested"
       action:
         run_playbook:
           name: project-teardown-playbook.yml

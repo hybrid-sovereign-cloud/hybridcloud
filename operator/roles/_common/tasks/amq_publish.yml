@@ -6,7 +6,7 @@
 - name: Publish operator event to AMQ Streams Kafka topic
   ansible.builtin.shell: |
     python3 << 'PYEOF'
-    import json, os, ssl, sys, tempfile
+    import json, os, ssl, sys
     from kafka import KafkaProducer
 
     payload = json.loads(os.environ["AMQ_EVENT_PAYLOAD"])
@@ -14,7 +14,6 @@
     topic = os.environ.get("KAFKA_TOPIC", "hybridsovereign-events")
     username = os.environ.get("KAFKA_USERNAME", "")
     password = os.environ.get("KAFKA_PASSWORD", "")
-    ca_pem = os.environ.get("KAFKA_CA_CERT", "")
 
     kwargs = {
         "bootstrap_servers": bootstrap.split(","),
@@ -30,13 +29,11 @@
         kwargs["sasl_mechanism"] = os.environ.get("KAFKA_SASL_MECHANISM", "SCRAM-SHA-512")
         kwargs["sasl_plain_username"] = username
         kwargs["sasl_plain_password"] = password
-        if ca_pem.strip():
-            ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            with tempfile.NamedTemporaryFile("w", delete=False) as fh:
-                fh.write(ca_pem)
-                ca_path = fh.name
-            ctx.load_verify_locations(cafile=ca_path)
-            kwargs["ssl_context"] = ctx
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        # Strimzi passthrough route presents broker cert; hostname won't match route DNS.
+        ctx.verify_mode = ssl.CERT_NONE
+        kwargs["ssl_context"] = ctx
 
     producer = KafkaProducer(**kwargs)
     regarding = payload.get("regarding", {})

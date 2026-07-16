@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle AAPOrg Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["AAPOrgCreateRequested", "AAPOrgReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "AAPOrg"
+      condition: event.payload.reason in ["AAPOrgCreateRequested", "AAPOrgReconcileRequested"] and event.payload.regarding.kind == "AAPOrg"
       action:
         run_playbook:
           name: aaporg-provision-playbook.yml

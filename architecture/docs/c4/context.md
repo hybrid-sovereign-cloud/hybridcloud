@@ -1,16 +1,16 @@
 # C4 Level 1 — System Context
 
-**Scope**: Hybrid Sovereign Cloud platform (`hybridcloud/` monorepo)  
+**Scope**: Hybrid Sovereign Cloud (`hybridcloud/` monorepo)  
 **API group**: `hybridsovereign.redhat/v1alpha1`  
-**Last updated**: 2026-07-11
+**Last updated**: 2026-07-15
 
 ---
 
 ## Purpose
 
-Hybrid Sovereign Cloud is a multi-tenant hybrid cloud management platform. Platform administrators onboard entities (tenants), provision OpenShift and cloud resources, and manage plugin integrations (AAP, Quay, Vault, RBAC). Tenant users self-service teams, projects, assignments, and cloud environments within their entity boundary.
+Hybrid Sovereign Cloud is a multi-tenant hybrid cloud management platform. Platform administrators onboard entities (tenants), provision OpenShift and cloud resources, and manage plugin integrations (AAP, Quay, Vault, RBAC). Tenant users self-service teams, projects, assignments, and cloud environments inside their entity boundary.
 
-All runtime configuration flows through GitOps (ArgoCD on the central cluster). No secrets are stored in Git; credentials are delivered from Vault via ExternalSecrets.
+Runtime configuration is GitOps-only after bootstrap (ArgoCD on the central cluster). Secrets never live in Git; Vault + ExternalSecrets deliver credentials at runtime.
 
 ---
 
@@ -20,86 +20,89 @@ All runtime configuration flows through GitOps (ArgoCD on the central cluster). 
 C4Context
     title Hybrid Sovereign Cloud — System Context
 
-    Person(platformAdmin, "Platform Administrator", "Onboards entities, manages platform config CRs")
+    Person(platformAdmin, "Platform Administrator", "Onboards entities, manages plugin config CRs")
     Person(tenantAdmin, "Tenant Administrator", "Manages teams, projects, clouds within an entity")
     Person(tenantDev, "Tenant Developer", "Consumes assignments and cloud resources")
 
-    System(hsc, "Hybrid Sovereign Cloud", "hybridcloud monorepo — operators, EDA, UI, bootstrap")
+    System(hsc, "Hybrid Sovereign Cloud", "Operators, EDA, UI, bootstrap GitOps")
 
-    System_Ext(idp, "Keycloak (RHBK)", "OIDC identity provider for dashboards and console")
-    System_Ext(vault, "HashiCorp Vault", "Central secrets store; no credentials in Git")
+    System_Ext(idp, "Keycloak (RHBK)", "OIDC for dashboards, console, Vault")
+    System_Ext(vault, "HashiCorp Vault", "Central secrets; no credentials in Git")
     System_Ext(quay, "Quay Registry", "OCI charts and container images")
-    System_Ext(gitea, "Gitea", "Config-as-code Git mirror for CR snapshots")
-    System_Ext(clouds, "Cloud Providers", "AWS, OpenStack (CloudOSO), ACM-managed OCP clusters")
+    System_Ext(gitea, "Gitea", "CR snapshot / tenancy config mirror")
+    System_Ext(clouds, "Cloud Providers", "AWS, OpenStack, ACM-managed OCP")
     System_Ext(vmware, "VMware vCenter", "Source inventory for VM migration")
 
-    Rel(platformAdmin, hsc, "Creates Entity, RbacConfig, plugin config CRs", "K8s API / Admin Dashboard")
-    Rel(tenantAdmin, hsc, "Creates Team, Project, Assignment CRs", "K8s API / Tenant Dashboard")
-    Rel(tenantDev, hsc, "Views assignments and cloud status", "K8s API / Console plugin")
+    Rel(platformAdmin, hsc, "Entity / plugin config CRs", "K8s API / Admin UI")
+    Rel(tenantAdmin, hsc, "Team / Project / Assignment CRs", "K8s API / Tenant UI")
+    Rel(tenantDev, hsc, "View scoped resources", "K8s API / Console plugin")
 
     Rel(hsc, idp, "OAuth login, group sync", "OIDC")
-    Rel(hsc, vault, "Pull/push secrets", "ExternalSecret / PushSecret")
+    Rel(hsc, vault, "Pull / push secrets", "ExternalSecret / PushSecret")
     Rel(hsc, quay, "Pull images and Helm charts", "OCI / HTTPS")
-    Rel(hsc, gitea, "Sync CR YAML snapshots", "HTTPS + token from Vault")
-    Rel(hsc, clouds, "Provision and manage resources", "Cloud APIs / ACM")
+    Rel(hsc, gitea, "Sync CR YAML snapshots", "HTTPS")
+    Rel(hsc, clouds, "Provision and manage", "Cloud APIs / ACM")
     Rel(hsc, vmware, "Inventory and migrate VMs", "MTV / os-migrate")
 ```
 
 ---
 
-## External Actors
+## Actors
 
-| Actor | Interaction | Authentication |
-|-------|-------------|----------------|
-| Platform Administrator | Entity onboarding, plugin config (`RbacConfig`, `AAPConfig`, `QuayConfig`), cluster bootstrap | Keycloak OAuth via Admin Dashboard or OCP console plugin |
-| Tenant Administrator | Team, Project, Assignment, Persona, cloud CRs within `entity-<name>` | Keycloak OAuth; 14 named RBAC roles |
-| Tenant Developer | Read-only or scoped CRUD per RoleBinding | Keycloak OAuth |
-
----
-
-## External Systems
-
-| System | Role in platform | Monorepo path |
-|--------|------------------|---------------|
-| Keycloak (RHBK) | SSO for dashboards, console plugins, Vault OIDC | `hybridcloud/bootstrap/ansible/` |
-| Vault | Credential store for all automation | `hybridcloud/bootstrap/helm/charts/vault-*` |
-| Quay | Image and Helm chart registry | `hybridcloud/bootstrap/make/upload-*.mk` |
-| Gitea | Tenancy config mirror (`tenancy_repo`) | `hybridcloud/iaac/` |
-| RHACM | Multi-cluster registration and spoke provisioning | `hybridcloud/bootstrap/helm/charts/rhacm/` |
-| Cloud providers | AWS, OpenStack, managed OCP | `hybridcloud/operator/namespace/` roles |
+| Actor | Interaction | Auth |
+|-------|-------------|------|
+| Platform Administrator | Entity onboarding, `RbacConfig` / `AAPConfig` / `QuayConfig`, bootstrap | Keycloak via Admin Dashboard or OCP console plugin |
+| Tenant Administrator | Team, Project, Assignment, Persona, cloud CRs in `entity-<name>` | Keycloak; 14 named RBAC roles |
+| Tenant Developer | Scoped CRUD / read per RoleBinding | Keycloak |
 
 ---
 
-## Cluster Topology (Context Summary)
+## External systems
 
-| Cluster | API endpoint (lab) | Management role |
-|---------|-------------------|-----------------|
-| Central | `api.central.lab.example.com` | ArgoCD app-of-apps, RHACM, Vault, Gitea, AAP/EDA |
-| Services | `api.services.lab.example.com` | All `hybridsovereign.redhat` operators, dashboards, tenant CRs |
-
-Central ArgoCD deploys to both clusters. The services cluster has no ArgoCD management plane.
+| System | Role | Monorepo path |
+|--------|------|---------------|
+| Keycloak (RHBK) | SSO for UI, console, Vault OIDC | `bootstrap/helm/charts/rhbk/`, sovereign Jobs |
+| Vault | Credential store (HA Raft, both clusters) | `bootstrap/helm/charts/vault*` |
+| Quay | Image + Helm chart registry | `bootstrap/make/upload-*.mk` |
+| Gitea | `tenancy_repo` + cluster-builds | `bootstrap/helm/charts/gitea/`, `iaac/` |
+| RHACM | Managed cluster / spoke lifecycle | `bootstrap/helm/charts/rhacm/` |
+| AMQ Streams | Cross-cluster event bus | `bootstrap/helm/charts/amq-streams/` |
+| AAP + EDA | Job execution and rulebook activations | `aap-config/`, `eda/` |
+| Cloud providers | AWS, OpenStack, managed OCP | `operator/namespace/` roles |
 
 ---
 
-## Monorepo Layout
+## Cluster topology
+
+| Cluster | Lab API | Management role |
+|---------|---------|-----------------|
+| Central | `api.central.lab.example.com` | Sole ArgoCD control plane; RHACM; Vault; Gitea; Kafka; AAP **Controller + EDA** |
+| Services | `api.services.lab.example.com` | All `hybridsovereign.redhat` operators, UIs, tenant CRs; AAP Controller only |
+
+Central ArgoCD deploys to both clusters via `destination.server`. The services cluster must not host Application / ApplicationSet management resources.
+
+---
+
+## Monorepo layout
 
 | Path | Responsibility |
 |------|----------------|
-| `hybridcloud/bootstrap/` | ArgoCD app-of-apps, init chart, platform OCI charts |
-| `hybridcloud/operator/primary/` | Primary operator (Entity + plugin configs) |
-| `hybridcloud/operator/namespace/` | Per-entity namespace operator |
-| `hybridcloud/eda/` | Event-driven automation rulebooks and decision environments |
-| `hybridcloud/iaac/` | Python StatefulSet — CR-to-Gitea sync |
-| `hybridcloud/ui/` | PatternFly 5 dashboards and console plugins |
-| `hybridcloud/aap-config/` | AAP/EDA config-as-code |
-| `hybridcloud/migration/` | VMware → CloudOSO migration playbooks |
-| `hybridcloud/samples/` | Sanitized sample CRs |
-| `hybridcloud/architecture/` | C4 model and technical documentation |
+| `bootstrap/` | ArgoCD app-of-apps, init chart, platform OCI charts |
+| `operator/primary/` | Primary operator (Entity + plugin configs) |
+| `operator/namespace/` | Per-entity namespace operator |
+| `eda/` | Rulebooks and decision environments |
+| `iaac/` | Python StatefulSet — CR → Gitea sync |
+| `ui/` | PatternFly dashboards + console plugins |
+| `aap-config/` | AAP/EDA config-as-code |
+| `migration/` | VMware → CloudOSO migration playbooks |
+| `samples/` | Sanitized sample CRs |
+| `specs/` | Feature specifications `001`–`034` |
+| `architecture/` | This C4 documentation set |
 
 ---
 
-## Related Documents
+## Related
 
-- [containers.md](containers.md) — L2 container diagrams
-- [components/operator.md](components/operator.md) — multi-tier operator detail
-- [../decisions/ADR-001-monorepo.md](../decisions/ADR-001-monorepo.md) — monorepo migration rationale
+- [containers.md](containers.md) — L2
+- [components/operator.md](components/operator.md) — operator tiers
+- [../decisions/ADR-001-monorepo.md](../decisions/ADR-001-monorepo.md)

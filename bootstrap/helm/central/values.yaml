@@ -1784,7 +1784,7 @@ sovereignJobs:
               property: sasl_mechanism
       env:
         - name: RUN_ID
-          value: "2026-07-15-aap-config-v9"
+          value: "2026-07-15-aap-config-v10"
         - name: AAP_CONFIG_PATH
           value: "/runner/project/aap-config"
         - name: AAP_CONTROLLER_HOST
@@ -2593,7 +2593,7 @@ amqStreams:
 # ─── HybridSovereign Primary Operator (services) ─────────────────────────────
 hybridsovereignPrimaryOperator:
   enabled: true
-  chartVersion: "0.1.8"
+  chartVersion: "0.1.10"
   syncWave: "38"
   destinationNamespace: sovereign-cloud
   values:
@@ -2601,7 +2601,7 @@ hybridsovereignPrimaryOperator:
     pluginsNamespace: sovereign-cloud-plugins
     image:
       repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
-      tag: "0.1.4"
+      tag: "0.1.6"
     namespaceOperator:
       image:
         repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator

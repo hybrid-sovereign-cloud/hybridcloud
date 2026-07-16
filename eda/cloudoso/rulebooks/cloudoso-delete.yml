@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle CloudOSO Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "CloudOSODeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "CloudOSO"
+      condition: event.payload.reason in ["CloudOSODeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "CloudOSODeleteRequested"
       action:
         run_playbook:
           name: cloudoso-teardown-playbook.yml

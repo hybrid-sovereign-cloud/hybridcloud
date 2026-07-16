@@ -1,13 +1,11 @@
 # Hardening Check — ODF / Noobaa
 
-**Chart:** `bootstrap/helm/charts/odf`
-**Cluster:** Both
-**Namespace:** `openshift-storage`
+**Retested**: 2026-07-15
 
-## Checks
+| Check | Result | Notes |
+|-------|--------|-------|
+| Chart present both clusters | PASS | `bootstrap/helm/charts/odf` + values |
+| Object storage for Quay | PASS | Platform design |
+| Certified operator channel | PASS | Per chart |
 
-| Check | Status | Notes |
-|---|---|---|
-| Noobaa-only deployment | PASS | Minimal footprint |
-| S3 endpoints active | PASS | Bucket storage for Quay |
-| Operator from `redhat-operators` | PASS | Certified operator |
+Capacity / encryption at rest: REVIEW per site.

@@ -6,6 +6,12 @@
 **Operator**: Helm chart
 **Namespace**: `sovereign-cloud-jobs`
 
+> **Status (2026-07-15): RETIRED / DISABLED**
+>
+> `eventForwarder.enabled: false` in `bootstrap/helm/central/values.yaml`.
+> Operators publish directly to AMQ Streams (`operator/roles/_common/tasks/amq_publish.yml`).
+> Prefer specs **016** (AMQ Streams) and **033** (unified operator) for the live event path.
+
 ## Description
 
 Event forwarder watches Kubernetes events and audit logs, forwarding them to AMQ Streams Kafka topics for EDA rulebook consumption.

@@ -42,4 +42,17 @@ If someone manually changes something on a cluster, ArgoCD detects the drift and
 | **RHACM** | Multi-cluster visibility and policies |
 | **Keycloak** | User authentication and access control |
 | **Vault** | Stores and delivers platform secrets |
-| **Ansible Jobs** | Configures Keycloak, Vault, Gitea post-deploy |
+| **Ansible Jobs** | Configures Keycloak, Vault, Gitea, AAP post-deploy |
+| **Operators → Kafka → EDA** | CR reconcile publishes events; central EDA runs job templates |
+
+## Runtime event path (simplified)
+
+```mermaid
+flowchart LR
+    CR[Tenant CR on services] --> OP[Operator reconcile]
+    OP --> KF[Kafka on central]
+    KF --> EDA[EDA rulebook]
+    EDA --> JT[AAP job template]
+```
+
+Detail: [C4 event system](../c4/components/event-system.md).

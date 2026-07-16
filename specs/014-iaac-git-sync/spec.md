@@ -6,6 +6,11 @@
 **Operator**: StatefulSet (Python)
 **Namespace**: `sovereign-cloud`
 
+> **Status (2026-07-15): UPDATE NEEDED**
+>
+> Live deployment is the Python StatefulSet `iaacGitSync` (`iaac/` + chart pin in central values).
+> The Go `pluginIaac` operator chart remains in repo but `enabled: false`.
+
 ## Description
 
 IAAC replaces the Go operator with a Python StatefulSet that watches all hybridsovereign CRDs and syncs them to a Gitea Git repository for config-as-code.

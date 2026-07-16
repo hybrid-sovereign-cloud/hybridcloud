@@ -1,5 +1,7 @@
 # Hardening — 010 CloudOSO VRF + OpenStack Migration
 
+**Retested**: 2026-07-15 — still in progress (dummy migration / token scoping gaps remain open).
+
 ## CloudOSO VRF passthrough
 
 - [x] No secrets in Git for VRF identifiers (user-supplied spec only)

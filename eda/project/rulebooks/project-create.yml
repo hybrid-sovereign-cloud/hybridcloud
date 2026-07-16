@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Project Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["ProjectCreateRequested", "ProjectReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "Project"
+      condition: event.payload.reason in ["ProjectCreateRequested", "ProjectReconcileRequested"] and event.payload.regarding.kind == "Project"
       action:
         run_playbook:
           name: project-provision-playbook.yml

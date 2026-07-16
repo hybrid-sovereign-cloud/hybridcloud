@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle AAPConfig Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "AAPConfigDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "AAPConfig"
+      condition: event.payload.reason in ["AAPConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "AAPConfigDeleteRequested"
       action:
         run_playbook:
           name: aapconfig-teardown-playbook.yml

@@ -12,9 +12,9 @@ YAML specs under this directory define repeatable verification steps for Hybrid 
 | `phase4-platform-status/` | PlatformOpenshift Hive polling |
 | `connectivity/` | Cross-cluster API, DNS, Kafka TLS |
 | `security/` | No secrets in Git, Vault-only creds |
-| `hardening/` | Checklist gates from `architecture/hardeningcheck/` |
-| `restart/` | Resilience after pod/broker restart |
 | `personas/` | Keycloak persona UI/API visibility |
+
+Hardening checklist gates live under `architecture/hardeningcheck/` (not duplicated here yet).
 
 ## Spec format
 

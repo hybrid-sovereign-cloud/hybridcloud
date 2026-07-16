@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle CloudAWS Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "CloudAWSDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "CloudAWS"
+      condition: event.payload.reason in ["CloudAWSDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "CloudAWSDeleteRequested"
       action:
         run_playbook:
           name: cloudaws-teardown-playbook.yml

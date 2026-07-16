@@ -3,6 +3,7 @@
 **Component**: OpenShift Virtualization (CNV) + Migration Toolkit for Virtualization (MTV)  
 **Feature Branch**: `009-install-virtualization-vmware`  
 **Date**: 2026-06-18  
+**Retested**: 2026-07-15 — CNV/MTV Argo apps Synced/Healthy on central; content still applicable  
 **Reviewer**: platform-team
 
 ---

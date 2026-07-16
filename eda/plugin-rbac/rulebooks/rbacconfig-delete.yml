@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle RbacConfig Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "RbacConfigDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "RbacConfig"
+      condition: event.payload.reason in ["RbacConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "RbacConfigDeleteRequested"
       action:
         run_playbook:
           name: rbacconfig-teardown-playbook.yml

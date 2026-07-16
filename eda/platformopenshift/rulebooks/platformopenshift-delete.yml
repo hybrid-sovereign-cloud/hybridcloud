@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle PlatformOpenshift Delete
-      condition: event.payload.reason | default(event.message.reason | default('')) == "PlatformOpenshiftDeleteRequested" and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "PlatformOpenshift"
+      condition: event.payload.reason in ["PlatformOpenshiftDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "PlatformOpenshiftDeleteRequested"
       action:
         run_playbook:
           name: platformopenshift-teardown-playbook.yml

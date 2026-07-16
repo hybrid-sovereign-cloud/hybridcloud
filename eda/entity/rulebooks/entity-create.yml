@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Entity Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["EntityCreateRequested", "EntityReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "Entity"
+      condition: event.payload.reason in ["EntityCreateRequested", "EntityReconcileRequested"] and event.payload.regarding.kind == "Entity"
       action:
         run_playbook:
           name: entity-provision-playbook.yml

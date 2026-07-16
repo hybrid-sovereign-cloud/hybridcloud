@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle PlatformOpenshift Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["PlatformOpenshiftCreateRequested", "PlatformOpenshiftReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "PlatformOpenshift"
+      condition: event.payload.reason in ["PlatformOpenshiftCreateRequested", "PlatformOpenshiftReconcileRequested"] and event.payload.regarding.kind == "PlatformOpenshift"
       action:
         run_playbook:
           name: platformopenshift-provision-playbook.yml

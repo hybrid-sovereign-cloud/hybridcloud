@@ -1,65 +1,53 @@
 # Platform Overview
 
+For the authoritative topology model see **[C4 Level 1 — Context](../c4/context.md)**.
+
 ## What is this?
 
-A two-cluster OpenShift platform that bootstraps itself using GitOps.
+A two-cluster OpenShift platform that bootstraps with GitOps. `make` targets publish charts and images; `make init-central-argo` hands control to ArgoCD. After that, all configuration changes flow through Git → ArgoCD.
 
-Multiple `make` commands build the artifacts, then one final command hands control to ArgoCD. After that, ArgoCD keeps everything in sync automatically.
-
-## The Two Clusters
+## The two clusters
 
 ```mermaid
 graph LR
     Central["Central Cluster<br/>(management)"]
     Services["Services Cluster<br/>(workloads)"]
-    Central -->|manages via ArgoCD| Services
+    Central -->|ArgoCD remote sync| Services
 ```
 
 | Cluster | Role |
-|---|---|
-| **Central** | Runs ArgoCD, RHACM, Vault, Gitea, Sovereign Jobs. Makes decisions. |
-| **Services** | Runs AAP, Keycloak, platform operators, dashboards, and tenant-facing control plane. |
+|---------|------|
+| **Central** | ArgoCD, RHACM, Vault HA, Gitea, Keycloak, AMQ Streams, AAP Controller **+ EDA**, CNV/MTV, Sovereign Jobs |
+| **Services** | Primary + namespace operators, dashboards, console plugins, AAP Controller (no EDA), Vault HA, Keycloak, IAAC git-sync |
 
-## Key Components
+## Key components
 
 | Component | What it does | Where |
-|---|---|---|
-| ArgoCD | Keeps clusters in sync with Git | Central |
+|-----------|--------------|-------|
+| ArgoCD | Keeps clusters in sync with Git | Central only |
 | RHACM | Multi-cluster management | Central |
-| Vault | Secrets management | Central |
-| External Secrets | Vault → Kubernetes secret sync | Central |
-| Keycloak | Identity and SSO | Central & Services |
-| Entity Operator | Provisions entity namespaces from `Entity` CRs | Services |
-| Persona Operator | RBAC persona management and Keycloak group sync | Services |
-| Tenancy operators | `Team`, `Assignment`, `Project`, `PlatformOpenshift`, `CloudOSO`, `CloudAWS` CR controllers | Services |
-| Plugin operators | RBAC, Vault, AAP, Quay (`plugin_*` Ansible operators) | Services |
-| Sovereign Dashboard | Entity UI | Services |
-| Tenancy Dashboard | Tenancy + Vault/AAP/Quay UI | Services |
-| ACS | Security scanning | *(disabled)* |
-| Crunchy Postgres | Database operator | Both |
-| ODF / Noobaa | Object storage for Quay | Both |
-| Quay (registry) | In-cluster registry workload | Both |
-| OCI Registry (Quay) | External charts + images for GitOps | External |
+| Vault | Secrets (HA Raft ×3) | Both (`central-vault`, `services-vault`) |
+| External Secrets | Vault → Kubernetes Secrets | Both |
+| Keycloak | Identity and SSO | Both (separate realms) |
+| AMQ Streams | Event bus for operators → EDA | Central |
+| AAP + EDA | Automation + rulebook activations | Central (EDA); both Controllers |
+| Primary / namespace operators | `hybridsovereign.redhat` CRs | Services |
+| IAAC git-sync | CR snapshots → Gitea | Services |
+| Admin / tenant dashboards | PatternFly UIs | Services |
+| Console plugins | OCP dynamic plugins | Services |
+| ACS | Security scanning | Central (lab) |
+| Crunchy Postgres / ODF / Quay | Data plane building blocks | Both |
 
-## How it works
+**Retired:** Event Forwarder (operators publish to Kafka directly).
 
-```mermaid
-graph TD
-    You["Platform team"]
-    Make["make commands<br/>(build + upload)"]
-    ArgoCD["ArgoCD<br/>(central cluster)"]
-    Operators["Operator layer<br/>Entity • tenancy ×5 • plugins ×4"]
-    Central["Central workloads"]
-    Services["Services workloads"]
-    OCI["OCI registry"]
+## Non-negotiables
 
-    You -->|run| Make
-    Make -->|upload charts/images| OCI
-    Make -->|bootstrap| ArgoCD
-    ArgoCD -->|deploys| Central
-    ArgoCD -->|deploys| Services
-    Services --> Operators
-    OCI -->|pulls artifacts| ArgoCD
-```
+1. No secrets in Git  
+2. Never delete `sovereign-*` namespaces  
+3. After bootstrap, GitOps only  
 
-After bootstrap, you only change Git. ArgoCD handles the rest.
+## Next
+
+- [C4 containers](../c4/containers.md)  
+- [How it works](02-how-it-works.md)  
+- [Security model](03-security-model.md)  

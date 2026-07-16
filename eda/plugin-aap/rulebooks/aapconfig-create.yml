@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle AAPConfig Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "AAPConfig"
+      condition: event.payload.reason in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.payload.regarding.kind == "AAPConfig"
       action:
         run_playbook:
           name: aapconfig-provision-playbook.yml

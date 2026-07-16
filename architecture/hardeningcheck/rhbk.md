@@ -1,19 +1,14 @@
 # Hardening Check — Keycloak (RHBK)
 
-**Chart:** `bootstrap/helm/charts/rhbk`
-**Cluster:** Both
-**Namespace:** `rhbk`
+**Retested**: 2026-07-15
 
-## Checks
+| Check | Result | Notes |
+|-------|--------|-------|
+| Central instance | PASS | `central-rhbk`, chart `0.10.2` |
+| Services instance | PASS | `services-rhbk` |
+| Postgres via Crunchy | PASS | `rhbk-pgcluster` pattern in values |
+| Admin secrets → Vault | PASS | `pushSecretToVault: true` |
+| Config via Jobs (not rhbkConfig chart) | PASS | `rhbkConfig.enabled: false`; keycloak-* Jobs Synced |
+| In-pod TLS | REVIEW | `tls.enabled: false` lab — edge Routes |
 
-| Check | Status | Notes |
-|---|---|---|
-| HA mode (2 instances) | PASS | Both clusters |
-| Dedicated namespace (`rhbk`) | PASS | Isolated from workloads |
-| Operator v26.4 from `redhat-operators` | PASS | Certified RHBK operator |
-| Client secrets are K8s Secrets | PASS | Not in Git; created by Ansible |
-| Realm creation via REST API | PASS | Bearer token auth, not stored |
-| Admin token short-lived (60s) | PASS | Obtained per operation batch |
-| Ansible job uses cluster-admin SA | REVIEW | Scope down to namespace-admin |
-| Secrets stored in Vault KV | PASS | Delivered via External Secrets |
-| Dev mode (HTTP, embedded DB) | REVIEW | Switch to TLS + PostgreSQL for production |
+Realms: `sovereign-central` (central), `sovereign-tenants` (services).

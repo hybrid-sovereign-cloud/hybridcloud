@@ -13,7 +13,7 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle CloudOSO Create
-      condition: event.payload.reason | default(event.message.reason | default('')) in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "CloudOSO"
+      condition: event.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.payload.regarding.kind == "CloudOSO"
       action:
         run_playbook:
           name: cloudoso-provision-playbook.yml
