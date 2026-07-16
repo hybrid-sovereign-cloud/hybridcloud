@@ -1011,13 +1011,14 @@ vaultCentralNamespace:
       aap-central-cluster-sa:
         enabled: true
         namespace: sovereign-cloud-jobs
+        # Used by AAP platformopenshift jobs on central (Hive/ACM/Helm/ESO).
+        # Lab scope: cluster-admin equivalent; tighten for production.
         clusterRoleRules:
-          - apiGroups: ["external-secrets.io"]
-            resources: ["externalsecrets"]
-            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-          - apiGroups: [""]
-            resources: ["secrets", "namespaces"]
-            verbs: ["get", "list", "watch"]
+          - apiGroups: ["*"]
+            resources: ["*"]
+            verbs: ["*"]
+          - nonResourceURLs: ["*"]
+            verbs: ["*"]
 
 # ─── ArgoCD Repo Secret: cluster_builds (Gitea → Vault → ESO) ────────────────
 argocdClusterBuildsRepo:
