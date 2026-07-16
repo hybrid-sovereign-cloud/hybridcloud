@@ -4,46 +4,10 @@
   when: not (amq_kafka_enabled | default(true) | bool)
 
 - name: Publish operator event to AMQ Streams Kafka topic
-  ansible.builtin.shell: |
-    python3 << 'PYEOF'
-    import json, os, ssl, sys
-    from kafka import KafkaProducer
-
-    payload = json.loads(os.environ["AMQ_EVENT_PAYLOAD"])
-    bootstrap = os.environ["KAFKA_BOOTSTRAP_SERVERS"]
-    topic = os.environ.get("KAFKA_TOPIC", "hybridsovereign-events")
-    username = os.environ.get("KAFKA_USERNAME", "")
-    password = os.environ.get("KAFKA_PASSWORD", "")
-
-    kwargs = {
-        "bootstrap_servers": bootstrap.split(","),
-        "value_serializer": lambda v: json.dumps(v).encode("utf-8"),
-        "key_serializer": lambda k: k.encode("utf-8") if k else None,
-        "acks": "all",
-        "retries": 3,
-        "request_timeout_ms": 15000,
-    }
-
-    if username and password:
-        kwargs["security_protocol"] = os.environ.get("KAFKA_SECURITY_PROTOCOL", "SASL_SSL")
-        kwargs["sasl_mechanism"] = os.environ.get("KAFKA_SASL_MECHANISM", "SCRAM-SHA-512")
-        kwargs["sasl_plain_username"] = username
-        kwargs["sasl_plain_password"] = password
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        # Strimzi passthrough route presents broker cert; hostname won't match route DNS.
-        ctx.verify_mode = ssl.CERT_NONE
-        kwargs["ssl_context"] = ctx
-
-    producer = KafkaProducer(**kwargs)
-    regarding = payload.get("regarding", {})
-    key = "{}/{}".format(regarding.get("kind", "unknown"), regarding.get("name", "unknown"))
-    future = producer.send(topic, key=key, value=payload)
-    future.get(timeout=15)
-    producer.flush()
-    producer.close()
-    print("published", key)
-    PYEOF
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ role_path | default('/opt/ansible/roles/_common') }}/files/amq_publish.py"
   environment:
     AMQ_EVENT_PAYLOAD: "{{ amq_event_payload | to_json }}"
     KAFKA_BOOTSTRAP_SERVERS: "{{ lookup('env', 'KAFKA_BOOTSTRAP_SERVERS') | default('', true) }}"
@@ -60,5 +24,5 @@
 
 - name: Log AMQ publish failure
   ansible.builtin.debug:
-    msg: "AMQ publish failed (non-fatal): {{ amq_publish_result.stderr | default('unknown') }}"
+    msg: "AMQ publish failed (non-fatal): {{ amq_publish_result.stderr | default(amq_publish_result.msg | default('unknown')) }}"
   when: amq_publish_result.rc | default(0) != 0
