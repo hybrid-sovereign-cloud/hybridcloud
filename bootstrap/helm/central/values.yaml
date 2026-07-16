@@ -2601,11 +2601,11 @@ hybridsovereignPrimaryOperator:
     pluginsNamespace: sovereign-cloud-plugins
     image:
       repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
-      tag: "0.1.10"
+      tag: "0.1.11"
     namespaceOperator:
       image:
         repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
-        tag: "0.1.4"
+        tag: "0.1.5"
     amqKafka:
       enabled: true
       vaultPath: amq-producer

@@ -203,8 +203,8 @@
                     drop: [ALL]
                 resources:
                   requests:
-                    cpu: 100m
-                    memory: 768Mi
+                    cpu: 200m
+                    memory: 1Gi
                   limits:
-                    cpu: "1"
-                    memory: 2Gi
+                    cpu: "2"
+                    memory: 4Gi
