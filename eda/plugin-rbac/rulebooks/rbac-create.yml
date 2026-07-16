@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Rbac Create
-      condition: event.payload.reason in ["RbacCreateRequested", "RbacReconcileRequested"] and event.payload.regarding.kind == "Rbac"
+      condition: event.body.payload.reason in ["RbacCreateRequested", "RbacReconcileRequested"] and event.body.payload.regarding.kind == "Rbac"
       action:
         run_playbook:
           name: rbac-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

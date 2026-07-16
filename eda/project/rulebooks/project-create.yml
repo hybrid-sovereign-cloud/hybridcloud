@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Project Create
-      condition: event.payload.reason in ["ProjectCreateRequested", "ProjectReconcileRequested"] and event.payload.regarding.kind == "Project"
+      condition: event.body.payload.reason in ["ProjectCreateRequested", "ProjectReconcileRequested"] and event.body.payload.regarding.kind == "Project"
       action:
         run_playbook:
           name: project-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

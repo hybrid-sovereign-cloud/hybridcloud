@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle Team Create
-      condition: event.payload.reason in ["TeamCreateRequested", "TeamReconcileRequested"] and event.payload.regarding.kind == "Team"
+      condition: event.body.payload.reason in ["TeamCreateRequested", "TeamReconcileRequested"] and event.body.payload.regarding.kind == "Team"
       action:
         run_job_template:
           name: team-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

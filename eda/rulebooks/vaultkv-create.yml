@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle VaultKV Create
-      condition: event.payload.reason in ["VaultKVCreateRequested", "VaultKVReconcileRequested"] and event.payload.regarding.kind == "VaultKV"
+      condition: event.body.payload.reason in ["VaultKVCreateRequested", "VaultKVReconcileRequested"] and event.body.payload.regarding.kind == "VaultKV"
       action:
         run_job_template:
           name: vaultkv-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle Assignment Create
-      condition: event.payload.reason in ["AssignmentCreateRequested", "AssignmentReconcileRequested"] and event.payload.regarding.kind == "Assignment"
+      condition: event.body.payload.reason in ["AssignmentCreateRequested", "AssignmentReconcileRequested"] and event.body.payload.regarding.kind == "Assignment"
       action:
         run_job_template:
           name: assignment-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Entity Delete
-      condition: event.payload.reason in ["EntityDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "EntityDeleteRequested"
+      condition: event.body.payload.reason in ["EntityDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "EntityDeleteRequested"
       action:
         run_playbook:
           name: entity-teardown-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

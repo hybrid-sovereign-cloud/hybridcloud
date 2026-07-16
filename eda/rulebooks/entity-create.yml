@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle Entity Create
-      condition: event.payload.reason in ["EntityCreateRequested", "EntityReconcileRequested"] and event.payload.regarding.kind == "Entity"
+      condition: event.body.payload.reason in ["EntityCreateRequested", "EntityReconcileRequested"] and event.body.payload.regarding.kind == "Entity"
       action:
         run_job_template:
           name: entity-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

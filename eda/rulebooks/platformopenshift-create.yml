@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle PlatformOpenshift Create
-      condition: event.payload.reason in ["PlatformOpenshiftCreateRequested", "PlatformOpenshiftReconcileRequested"] and event.payload.regarding.kind == "PlatformOpenshift"
+      condition: event.body.payload.reason in ["PlatformOpenshiftCreateRequested", "PlatformOpenshiftReconcileRequested"] and event.body.payload.regarding.kind == "PlatformOpenshift"
       action:
         run_job_template:
           name: platformopenshift-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

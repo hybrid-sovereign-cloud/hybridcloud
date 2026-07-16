@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle Assignment Delete
-      condition: event.payload.reason in ["AssignmentDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "AssignmentDeleteRequested"
+      condition: event.body.payload.reason in ["AssignmentDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "AssignmentDeleteRequested"
       action:
         run_job_template:
           name: assignment-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

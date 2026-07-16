@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle Entity Delete
-      condition: event.payload.reason in ["EntityDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "EntityDeleteRequested"
+      condition: event.body.payload.reason in ["EntityDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "EntityDeleteRequested"
       action:
         run_job_template:
           name: entity-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

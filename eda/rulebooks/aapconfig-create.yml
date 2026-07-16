@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle AAPConfig Create
-      condition: event.payload.reason in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.payload.regarding.kind == "AAPConfig"
+      condition: event.body.payload.reason in ["AAPConfigCreateRequested", "AAPConfigReconcileRequested"] and event.body.payload.regarding.kind == "AAPConfig"
       action:
         run_job_template:
           name: aapconfig-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

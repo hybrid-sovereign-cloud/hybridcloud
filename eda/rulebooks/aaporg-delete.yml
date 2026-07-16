@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle AAPOrg Delete
-      condition: event.payload.reason in ["AAPOrgDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "AAPOrgDeleteRequested"
+      condition: event.body.payload.reason in ["AAPOrgDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "AAPOrgDeleteRequested"
       action:
         run_job_template:
           name: aaporg-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

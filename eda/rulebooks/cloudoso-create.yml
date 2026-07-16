@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle CloudOSO Create
-      condition: event.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.payload.regarding.kind == "CloudOSO"
+      condition: event.body.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.body.payload.regarding.kind == "CloudOSO"
       action:
         run_job_template:
           name: cloudoso-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

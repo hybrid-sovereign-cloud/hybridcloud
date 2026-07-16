@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle CloudOSO Delete
-      condition: event.payload.reason in ["CloudOSODeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "CloudOSODeleteRequested"
+      condition: event.body.payload.reason in ["CloudOSODeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "CloudOSODeleteRequested"
       action:
         run_job_template:
           name: cloudoso-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

@@ -38,8 +38,8 @@ def main() -> int:
     producer = KafkaProducer(**kwargs)
     regarding = payload.get("regarding", {})
     key = "{}/{}".format(regarding.get("kind", "unknown"), regarding.get("name", "unknown"))
-    # Rulebooks match event.payload.reason / event.payload.regarding.*
-    # ansible.eda.kafka deserializes the message value as the event root.
+    # ansible.eda.kafka puts the message JSON under event.body.
+    # Wrap so rulebooks can match event.body.payload.reason / regarding.
     message = payload if "payload" in payload else {"payload": payload}
     future = producer.send(topic, key=key, value=message)
     future.get(timeout=15)

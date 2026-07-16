@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle CloudOSO Create
-      condition: event.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.payload.regarding.kind == "CloudOSO"
+      condition: event.body.payload.reason in ["CloudOSOCreateRequested", "CloudOSOReconcileRequested"] and event.body.payload.regarding.kind == "CloudOSO"
       action:
         run_playbook:
           name: cloudoso-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

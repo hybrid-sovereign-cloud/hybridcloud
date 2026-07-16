@@ -8,10 +8,10 @@
 
   rules:
     - name: Handle Persona Delete
-      condition: event.payload.reason == "PersonaDeleteRequested" and event.payload.regarding.kind == "Persona"
+      condition: event.body.payload.reason == "PersonaDeleteRequested" and event.body.payload.regarding.kind == "Persona"
       action:
         run_playbook:
           name: playbooks/persona-teardown-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"
           set_facts: true

@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle VaultKV Delete
-      condition: event.payload.reason in ["VaultKVDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "VaultKVDeleteRequested"
+      condition: event.body.payload.reason in ["VaultKVDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "VaultKVDeleteRequested"
       action:
         run_job_template:
           name: vaultkv-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

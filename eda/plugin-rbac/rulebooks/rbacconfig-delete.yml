@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle RbacConfig Delete
-      condition: event.payload.reason in ["RbacConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "RbacConfigDeleteRequested"
+      condition: event.body.payload.reason in ["RbacConfigDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "RbacConfigDeleteRequested"
       action:
         run_playbook:
           name: rbacconfig-teardown-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

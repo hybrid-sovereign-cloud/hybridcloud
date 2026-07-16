@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle OpenStackMigration Request
-      condition: event.payload.reason in ["OpenStackMigrationCreateRequested", "OpenStackMigrationReconcileRequested"] and event.payload.regarding.kind == "OpenStackMigration"
+      condition: event.body.payload.reason in ["OpenStackMigrationCreateRequested", "OpenStackMigrationReconcileRequested"] and event.body.payload.regarding.kind == "OpenStackMigration"
       action:
         run_job_template:
           name: openstack-migration-dummy
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

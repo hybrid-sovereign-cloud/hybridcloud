@@ -8,19 +8,19 @@
 
   rules:
     - name: Handle Persona Create
-      condition: event.payload.reason == "PersonaCreateRequested" and event.payload.regarding.kind == "Persona"
+      condition: event.body.payload.reason == "PersonaCreateRequested" and event.body.payload.regarding.kind == "Persona"
       action:
         run_playbook:
           name: playbooks/persona-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"
           set_facts: true
 
     - name: Handle Persona Reconcile
-      condition: event.payload.reason == "PersonaReconcileRequested" and event.payload.regarding.kind == "Persona"
+      condition: event.body.payload.reason == "PersonaReconcileRequested" and event.body.payload.regarding.kind == "Persona"
       action:
         run_playbook:
           name: playbooks/persona-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"
           set_facts: true

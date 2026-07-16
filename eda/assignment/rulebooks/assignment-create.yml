@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Assignment Create
-      condition: event.payload.reason in ["AssignmentCreateRequested", "AssignmentReconcileRequested"] and event.payload.regarding.kind == "Assignment"
+      condition: event.body.payload.reason in ["AssignmentCreateRequested", "AssignmentReconcileRequested"] and event.body.payload.regarding.kind == "Assignment"
       action:
         run_playbook:
           name: assignment-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

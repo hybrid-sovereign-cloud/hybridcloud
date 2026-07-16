@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle AAPConfig Delete
-      condition: event.payload.reason in ["AAPConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "AAPConfigDeleteRequested"
+      condition: event.body.payload.reason in ["AAPConfigDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "AAPConfigDeleteRequested"
       action:
         run_job_template:
           name: aapconfig-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

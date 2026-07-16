@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle RbacConfig Delete
-      condition: event.payload.reason in ["RbacConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "RbacConfigDeleteRequested"
+      condition: event.body.payload.reason in ["RbacConfigDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "RbacConfigDeleteRequested"
       action:
         run_job_template:
           name: rbacconfig-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

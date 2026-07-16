@@ -13,13 +13,13 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle OpenStackMigration Request
-      condition: event.payload.reason in ["OpenStackMigrationCreateRequested"] and event.payload.regarding.kind == "OpenStackMigration"
-        event.payload.reason | default(event.message.reason | default('')) in ["OpenStackMigrationRequested", "OpenStackMigrationReconcileRequested"]
-        and event.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "OpenStackMigration"
+      condition: event.body.payload.reason in ["OpenStackMigrationCreateRequested"] and event.body.payload.regarding.kind == "OpenStackMigration"
+        event.body.payload.reason | default(event.message.reason | default('')) in ["OpenStackMigrationRequested", "OpenStackMigrationReconcileRequested"]
+        and event.body.payload.regarding.kind | default(event.message.regarding.kind | default('')) == "OpenStackMigration"
       action:
         run_job_template:
           name: openstack-migration-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

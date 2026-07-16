@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Team Delete
-      condition: event.payload.reason in ["TeamDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "TeamDeleteRequested"
+      condition: event.body.payload.reason in ["TeamDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "TeamDeleteRequested"
       action:
         run_playbook:
           name: team-teardown-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

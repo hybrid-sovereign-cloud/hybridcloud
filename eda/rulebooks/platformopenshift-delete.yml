@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle PlatformOpenshift Delete
-      condition: event.payload.reason in ["PlatformOpenshiftDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "PlatformOpenshiftDeleteRequested"
+      condition: event.body.payload.reason in ["PlatformOpenshiftDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "PlatformOpenshiftDeleteRequested"
       action:
         run_job_template:
           name: platformopenshift-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

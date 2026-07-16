@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle RbacConfig Create
-      condition: event.payload.reason in ["RbacConfigCreateRequested", "RbacConfigReconcileRequested"] and event.payload.regarding.kind == "RbacConfig"
+      condition: event.body.payload.reason in ["RbacConfigCreateRequested", "RbacConfigReconcileRequested"] and event.body.payload.regarding.kind == "RbacConfig"
       action:
         run_job_template:
           name: rbacconfig-provision
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"

@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle Team Create
-      condition: event.payload.reason in ["TeamCreateRequested", "TeamReconcileRequested"] and event.payload.regarding.kind == "Team"
+      condition: event.body.payload.reason in ["TeamCreateRequested", "TeamReconcileRequested"] and event.body.payload.regarding.kind == "Team"
       action:
         run_playbook:
           name: team-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

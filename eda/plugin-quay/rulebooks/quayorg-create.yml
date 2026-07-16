@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle QuayOrg Create
-      condition: event.payload.reason in ["QuayOrgCreateRequested", "QuayOrgReconcileRequested"] and event.payload.regarding.kind == "QuayOrg"
+      condition: event.body.payload.reason in ["QuayOrgCreateRequested", "QuayOrgReconcileRequested"] and event.body.payload.regarding.kind == "QuayOrg"
       action:
         run_playbook:
           name: quayorg-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

@@ -13,9 +13,9 @@
         sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
   rules:
     - name: Handle CloudAWS Create
-      condition: event.payload.reason in ["CloudAWSCreateRequested", "CloudAWSReconcileRequested"] and event.payload.regarding.kind == "CloudAWS"
+      condition: event.body.payload.reason in ["CloudAWSCreateRequested", "CloudAWSReconcileRequested"] and event.body.payload.regarding.kind == "CloudAWS"
       action:
         run_playbook:
           name: cloudaws-provision-playbook.yml
           extra_vars:
-            event_payload: "{{ event.payload }}"
+            event_payload: "{{ event.body.payload }}"

@@ -15,11 +15,11 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle QuayConfig Delete
-      condition: event.payload.reason in ["QuayConfigDeleteRequestedDeleteRequested"] and event.payload.regarding.kind == "QuayConfigDeleteRequested"
+      condition: event.body.payload.reason in ["QuayConfigDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "QuayConfigDeleteRequested"
       action:
         run_job_template:
           name: quayconfig-teardown
           organization: sovereign
           job_args:
             extra_vars:
-              event_payload: "{{ event.payload }}"
+              event_payload: "{{ event.body.payload }}"
