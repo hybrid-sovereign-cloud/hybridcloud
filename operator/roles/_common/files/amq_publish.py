@@ -38,7 +38,10 @@ def main() -> int:
     producer = KafkaProducer(**kwargs)
     regarding = payload.get("regarding", {})
     key = "{}/{}".format(regarding.get("kind", "unknown"), regarding.get("name", "unknown"))
-    future = producer.send(topic, key=key, value=payload)
+    # Rulebooks match event.payload.reason / event.payload.regarding.*
+    # ansible.eda.kafka deserializes the message value as the event root.
+    message = payload if "payload" in payload else {"payload": payload}
+    future = producer.send(topic, key=key, value=message)
     future.get(timeout=15)
     producer.flush()
     producer.close()
