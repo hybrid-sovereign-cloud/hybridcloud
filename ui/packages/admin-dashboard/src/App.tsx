@@ -6,35 +6,38 @@ import {
   Nav,
   NavList,
   NavItem,
+  NavGroup,
   PageSection,
-  Title,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
   Button,
-  Spinner,
   EmptyState,
   EmptyStateBody,
+  Title,
 } from '@patternfly/react-core';
 import { MoonIcon, SunIcon } from '@patternfly/react-icons';
-import { NavLink, Routes, Route } from 'react-router-dom';
+import { NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { SovereignThemeProvider, useTheme } from '@hybridsovereign/shared';
 import { OverviewPage } from './pages/OverviewPage';
 import { ResourceListPage } from './pages/ResourceListPage';
 import { ServicesPage } from './pages/ServicesPage';
 
-const NAV_ITEMS = [
-  { path: '/', label: 'Overview', end: true },
-  { path: '/entities', label: 'Entities', kind: 'Entity' as const },
-  { path: '/teams', label: 'Teams', kind: 'Team' as const },
-  { path: '/assignments', label: 'Assignments', kind: 'Assignment' as const },
-  { path: '/projects', label: 'Projects', kind: 'Project' as const },
-  { path: '/personas', label: 'Personas', kind: 'Persona' as const },
-  { path: '/platforms', label: 'Platforms', kind: 'PlatformOpenshift' as const },
-  { path: '/clouds', label: 'Clouds', kinds: ['CloudOSO', 'CloudAWS'] as const },
-  { path: '/migrations', label: 'Migrations', kind: 'OpenStackMigration' as const },
-  { path: '/operators', label: 'Operators', kinds: ['Rbac', 'RbacConfig'] as const },
-  { path: '/services', label: 'Services' },
+type NavEntry =
+  | { type: 'link'; path: string; label: string; end?: boolean }
+  | { type: 'sep'; label: string };
+
+const NAV: NavEntry[] = [
+  { type: 'link', path: '/', label: 'Overview', end: true },
+  { type: 'link', path: '/entities', label: 'Entities' },
+  { type: 'link', path: '/personas', label: 'Personas' },
+  { type: 'sep', label: 'Platform' },
+  { type: 'link', path: '/services', label: 'Service URLs' },
+  { type: 'link', path: '/operators', label: 'Operators' },
+  { type: 'sep', label: 'Tenancy' },
+  { type: 'link', path: '/teams', label: 'Teams' },
+  { type: 'link', path: '/projects', label: 'Projects' },
+  { type: 'link', path: '/platforms', label: 'Platform Openshift' },
+  { type: 'link', path: '/clouds', label: 'Cloud Environments' },
+  { type: 'link', path: '/assignments', label: 'Assignments' },
+  { type: 'link', path: '/migrations', label: 'Migrate to OpenStack' },
 ];
 
 function ThemeToggle(): React.ReactElement {
@@ -45,7 +48,53 @@ function ThemeToggle(): React.ReactElement {
       aria-label="Toggle theme"
       onClick={toggleTheme}
       icon={mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+      style={{ color: 'inherit' }}
     />
+  );
+}
+
+function Masthead(): React.ReactElement {
+  return (
+    <header className="sc-masthead">
+      <NavLink to="/" className="sc-masthead__brand">
+        <span className="sc-masthead__mark" aria-hidden />
+        Sovereign Cloud
+        <span className="sc-masthead__subtitle">Admin</span>
+      </NavLink>
+      <div style={{ marginLeft: 'auto' }}>
+        <ThemeToggle />
+      </div>
+    </header>
+  );
+}
+
+function AdminNav(): React.ReactElement {
+  const location = useLocation();
+  return (
+    <Nav className="sc-nav" aria-label="Sovereign Cloud admin navigation">
+      <NavList>
+        {NAV.map((item, idx) => {
+          if (item.type === 'sep') {
+            return (
+              <div key={`sep-${item.label}-${idx}`} className="sc-nav-separator" role="presentation">
+                {item.label}
+              </div>
+            );
+          }
+          const active =
+            item.end
+              ? location.pathname === item.path
+              : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+          return (
+            <NavItem key={item.path} isActive={active}>
+              <NavLink to={item.path} end={item.end}>
+                {item.label}
+              </NavLink>
+            </NavItem>
+          );
+        })}
+      </NavList>
+    </Nav>
   );
 }
 
@@ -53,94 +102,73 @@ function AdminLayout(): React.ReactElement {
   const sidebar = (
     <PageSidebar>
       <PageSidebarBody>
-        <Nav aria-label="Admin navigation">
-          <NavList>
-            {NAV_ITEMS.map((item) => (
-              <NavItem key={item.path}>
-                <NavLink
-                  to={item.path}
-                  end={item.end}
-                  style={({ isActive }) => ({
-                    color: 'inherit',
-                    textDecoration: 'none',
-                    fontWeight: isActive ? 700 : 400,
-                  })}
-                >
-                  {item.label}
-                </NavLink>
-              </NavItem>
-            ))}
-          </NavList>
-        </Nav>
+        <NavGroup title="Sovereign Cloud">
+          <AdminNav />
+        </NavGroup>
       </PageSidebarBody>
     </PageSidebar>
   );
 
-  const header = (
-    <PageSection variant="light" isWidthLimited>
-      <Toolbar>
-        <ToolbarContent>
-          <ToolbarItem>
-            <Title headingLevel="h1" size="2xl">
-              Hybrid Sovereign Admin
-            </Title>
-          </ToolbarItem>
-          <ToolbarItem align={{ default: 'alignEnd' }}>
-            <ThemeToggle />
-          </ToolbarItem>
-        </ToolbarContent>
-      </Toolbar>
-    </PageSection>
-  );
-
   return (
-    <Page sidebar={sidebar}>
-      {header}
-      <PageSection isFilled>
-        <Routes>
-          <Route path="/" element={<OverviewPage />} />
-          <Route path="/entities" element={<ResourceListPage kind="Entity" title="Entities" />} />
-          <Route path="/teams" element={<ResourceListPage kind="Team" title="Teams" />} />
-          <Route path="/assignments" element={<ResourceListPage kind="Assignment" title="Assignments" />} />
-          <Route path="/projects" element={<ResourceListPage kind="Project" title="Projects" />} />
-          <Route path="/personas" element={<ResourceListPage kind="Persona" title="Personas" />} />
-          <Route path="/platforms" element={<ResourceListPage kind="PlatformOpenshift" title="Platforms" />} />
-          <Route
-            path="/clouds"
-            element={
-              <ResourceListPage
-                kind="CloudOSO"
-                title="Cloud Environments"
-                subtitle="CloudOSO and CloudAWS resources"
-                secondaryKind="CloudAWS"
+    <>
+      <Masthead />
+      <Page sidebar={sidebar} isManagedSidebar>
+        <PageSection isFilled className="sc-page-section">
+          <div className="sc-page">
+            <Routes>
+              <Route path="/" element={<OverviewPage />} />
+              <Route path="/entities" element={<ResourceListPage kind="Entity" title="Entities" />} />
+              <Route path="/teams" element={<ResourceListPage kind="Team" title="Teams" />} />
+              <Route path="/assignments" element={<ResourceListPage kind="Assignment" title="Assignments" />} />
+              <Route path="/projects" element={<ResourceListPage kind="Project" title="Projects" />} />
+              <Route path="/personas" element={<ResourceListPage kind="Persona" title="Personas" />} />
+              <Route
+                path="/platforms"
+                element={<ResourceListPage kind="PlatformOpenshift" title="Platform Openshift" />}
               />
-            }
-          />
-          <Route path="/migrations" element={<ResourceListPage kind="OpenStackMigration" title="Migrations" />} />
-          <Route
-            path="/operators"
-            element={
-              <ResourceListPage
-                kind="Rbac"
-                title="Operators"
-                subtitle="RBAC roles and configs"
-                secondaryKind="RbacConfig"
+              <Route
+                path="/clouds"
+                element={
+                  <ResourceListPage
+                    kind="CloudOSO"
+                    title="Cloud Environments"
+                    subtitle="CloudOSO and CloudAWS resources"
+                    secondaryKind="CloudAWS"
+                  />
+                }
               />
-            }
-          />
-          <Route path="/services" element={<ServicesPage />} />
-          <Route
-            path="*"
-            element={
-              <EmptyState>
-                <Title headingLevel="h4" size="lg">Page not found</Title>
-                <EmptyStateBody>Select a resource from the sidebar.</EmptyStateBody>
-              </EmptyState>
-            }
-          />
-        </Routes>
-      </PageSection>
-    </Page>
+              <Route
+                path="/migrations"
+                element={<ResourceListPage kind="OpenStackMigration" title="Migrate to OpenStack" />}
+              />
+              <Route
+                path="/operators"
+                element={
+                  <ResourceListPage
+                    kind="Rbac"
+                    title="Operators"
+                    subtitle="RBAC roles and platform operator configs"
+                    secondaryKind="RbacConfig"
+                  />
+                }
+              />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route
+                path="*"
+                element={
+                  <EmptyState>
+                    <Title headingLevel="h4" size="lg">
+                      Page not found
+                    </Title>
+                    <EmptyStateBody>Select a resource from the Sovereign Cloud navigation.</EmptyStateBody>
+                  </EmptyState>
+                }
+              />
+            </Routes>
+          </div>
+        </PageSection>
+      </Page>
+    </>
   );
 }
 
@@ -151,5 +179,3 @@ export function App(): React.ReactElement {
     </SovereignThemeProvider>
   );
 }
-
-export { Spinner };

@@ -2426,7 +2426,7 @@ sovereignDashboard:
     clusterDomain: apps.services.example.com
     image:
       repository: quay.example.com/hybrid-sovereign/sovereign-cloud-dashboard
-      tag: "1.9.4"
+      tag: "2.0.0"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2458,7 +2458,7 @@ tenancyDashboard:
     clusterDomain: apps.services.example.com
     image:
       repository: quay.example.com/hybrid-sovereign/tenancy-dashboard
-      tag: "4.1.8"
+      tag: "5.0.0"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2481,40 +2481,40 @@ tenancyDashboard:
 # ─── Sovereign Admin Console Plugin (services cluster) ───────────────────────
 sovereignAdminPlugin:
   enabled: true
-  chartVersion: "0.1.11"
+  chartVersion: "0.1.12"
   syncWave: "42"
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
     image:
       repository: quay.example.com/hybrid-sovereign/sovereign-admin-plugin
-      tag: "1.1.5"
+      tag: "1.2.0"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     plugin:
       name: sovereign-admin-plugin
-      displayName: "Sovereign Admin"
+      displayName: "Sovereign Cloud"
     service:
       port: 9001
 
 # ─── Sovereign Tenant Console Plugin (services cluster) ──────────────────────
 sovereignTenantPlugin:
   enabled: true
-  chartVersion: "0.1.10"
+  chartVersion: "0.1.11"
   syncWave: "42"
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
     image:
       repository: quay.example.com/hybrid-sovereign/sovereign-tenant-plugin
-      tag: "1.1.7"
+      tag: "1.2.0"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     plugin:
       name: sovereign-tenant-plugin
-      displayName: "Sovereign Tenant"
+      displayName: "Sovereign Cloud Tenancy"
     service:
       port: 9001
 

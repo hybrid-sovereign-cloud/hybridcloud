@@ -1,23 +1,19 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Title,
-  Spinner,
-  Alert,
-  Label,
-  Toolbar,
-  ToolbarContent,
-  ToolbarItem,
-  Button,
-} from '@patternfly/react-core';
-import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
+import { Spinner, Alert, Button } from '@patternfly/react-core';
 import { PlusCircleIcon, SyncIcon } from '@patternfly/react-icons';
+import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   HybridSovereignKind,
   useK8sResourceList,
   useCanI,
   K8sResource,
   KIND_PLURALS,
+  PageHeader,
+  StatusBadge,
+  FilterToolbar,
+  StatusFilter,
+  normalizeHealth,
 } from '@hybridsovereign/shared';
 
 type FormType = 'team' | 'project' | 'assignment' | 'cloudoso' | 'cloudaws';
@@ -36,21 +32,32 @@ export function TenantResourcePage({
   formType,
 }: TenantResourcePageProps): React.ReactElement {
   const navigate = useNavigate();
-  const plural = KIND_PLURALS[kind].replace(/s$/, '') + 's';
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const plural = KIND_PLURALS[kind];
   const { allowed: canCreate } = useCanI(namespace, plural, 'create');
   const { items, loading, error, refresh } = useK8sResourceList<K8sResource>(kind, {
     namespace,
     pollIntervalMs: 30000,
   });
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return items.filter((item) => {
+      if (q && !item.metadata.name.toLowerCase().includes(q)) return false;
+      if (statusFilter === 'all') return true;
+      return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
+    });
+  }, [items, search, statusFilter]);
+
   return (
     <>
-      <Toolbar>
-        <ToolbarContent>
-          <ToolbarItem>
-            <Title headingLevel="h2" size="xl">{title}</Title>
-          </ToolbarItem>
-          <ToolbarItem align={{ default: 'alignEnd' }}>
+      <PageHeader
+        title={title}
+        subtitle={`Namespaced ${kind} resources in ${namespace}`}
+        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Tenancy' }, { label: title }]}
+        actions={
+          <>
             <Button variant="secondary" icon={<SyncIcon />} onClick={refresh}>
               Refresh
             </Button>
@@ -59,14 +66,20 @@ export function TenantResourcePage({
                 variant="primary"
                 icon={<PlusCircleIcon />}
                 onClick={() => navigate(`/create/${formType}`)}
-                style={{ marginLeft: '0.5rem' }}
               >
                 Create
               </Button>
             )}
-          </ToolbarItem>
-        </ToolbarContent>
-      </Toolbar>
+          </>
+        }
+      />
+      <FilterToolbar
+        search={search}
+        onSearchChange={setSearch}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        onRefresh={refresh}
+      />
       {error && (
         <Alert variant="warning" title="K8s proxy unavailable" isInline style={{ marginBottom: '1rem' }}>
           {error.message}
@@ -75,34 +88,39 @@ export function TenantResourcePage({
       {loading && items.length === 0 ? (
         <Spinner aria-label={`Loading ${kind}`} />
       ) : (
-        <Table aria-label={`${kind} table`} variant="compact">
-          <Thead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Status</Th>
-              <Th>Last Reconciled</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {items.length === 0 ? (
+        <div className="sc-table-wrap">
+          <Table aria-label={`${kind} table`} variant="compact">
+            <Thead>
               <Tr>
-                <Td colSpan={3}>No resources in {namespace}</Td>
+                <Th>Name</Th>
+                <Th>Status</Th>
+                <Th>Last Reconciled</Th>
               </Tr>
-            ) : (
-              items.map((item) => (
-                <Tr key={item.metadata.name}>
-                  <Td>{item.metadata.name}</Td>
-                  <Td>
-                    <Label color={item.status?.status === 'ready' ? 'green' : 'orange'}>
-                      {item.status?.status ?? 'pending'}
-                    </Label>
-                  </Td>
-                  <Td>{item.status?.lastReconciledAt ?? '—'}</Td>
+            </Thead>
+            <Tbody>
+              {filtered.length === 0 ? (
+                <Tr>
+                  <Td colSpan={3}>No {kind} resources match the current filters</Td>
                 </Tr>
-              ))
-            )}
-          </Tbody>
-        </Table>
+              ) : (
+                filtered.map((item) => (
+                  <Tr key={item.metadata.name}>
+                    <Td>{item.metadata.name}</Td>
+                    <Td>
+                      <StatusBadge
+                        status={item.status?.status}
+                        ready={item.status?.ready}
+                        message={item.status?.message}
+                        lastTransition={item.status?.lastReconciledAt}
+                      />
+                    </Td>
+                    <Td>{item.status?.lastReconciledAt ?? '—'}</Td>
+                  </Tr>
+                ))
+              )}
+            </Tbody>
+          </Table>
+        </div>
       )}
     </>
   );

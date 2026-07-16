@@ -1,37 +1,72 @@
 [
   {
-    "type": "console.navigation/section",
+    "type": "console.perspective",
     "properties": {
-      "id": "hybridsovereign-admin",
-      "perspective": "admin",
-      "name": "%plugin__hybridsovereign-admin~Hybrid Sovereign%"
+      "id": "hybridsovereign",
+      "name": "Sovereign Cloud",
+      "icon": { "$codeRef": "perspective.perspectiveIcon" },
+      "landingPageURL": { "$codeRef": "perspective.perspectiveLandingPage" },
+      "importRedirectURL": { "$codeRef": "perspective.perspectiveImportRedirect" }
     }
   },
   {
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-overview",
-      "perspective": "admin",
-      "section": "hybridsovereign-admin",
-      "name": "%plugin__hybridsovereign-admin~Overview%",
-      "href": "/hybridsovereign/admin/overview"
+      "perspective": "hybridsovereign",
+      "name": "Overview",
+      "href": "/hybridsovereign/overview"
     }
   },
   {
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-entities",
-      "perspective": "admin",
-      "section": "hybridsovereign-admin",
-      "name": "%plugin__hybridsovereign-admin~Entities%",
-      "href": "/hybridsovereign/admin/entities"
+      "perspective": "hybridsovereign",
+      "name": "Entities",
+      "href": "/hybridsovereign/entities"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-personas",
+      "perspective": "hybridsovereign",
+      "name": "Personas",
+      "href": "/hybridsovereign/personas"
+    }
+  },
+  {
+    "type": "console.navigation/separator",
+    "properties": {
+      "id": "hybridsovereign-platform-sep",
+      "perspective": "hybridsovereign",
+      "name": "Platform"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-services",
+      "perspective": "hybridsovereign",
+      "name": "Service URLs",
+      "href": "/hybridsovereign/services"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-operators",
+      "perspective": "hybridsovereign",
+      "name": "Operators",
+      "href": "/hybridsovereign/operators"
     }
   },
   {
     "type": "console.page/route",
     "properties": {
       "exact": true,
-      "path": "/hybridsovereign/admin/overview",
+      "path": "/hybridsovereign/overview",
       "component": { "$codeRef": "AdminOverviewPage" }
     }
   },
@@ -39,8 +74,40 @@
     "type": "console.page/route",
     "properties": {
       "exact": true,
-      "path": "/hybridsovereign/admin/entities",
+      "path": "/hybridsovereign",
+      "component": { "$codeRef": "AdminOverviewPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/entities",
       "component": { "$codeRef": "AdminEntitiesPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/personas",
+      "component": { "$codeRef": "AdminPersonasPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/services",
+      "component": { "$codeRef": "AdminServicesPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/operators",
+      "component": { "$codeRef": "AdminOperatorsPage" }
     }
   }
 ]

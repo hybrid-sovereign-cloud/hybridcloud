@@ -1,19 +1,18 @@
 [
   {
-    "type": "console.navigation/section",
+    "type": "console.navigation/separator",
     "properties": {
-      "id": "hybridsovereign-tenant",
-      "perspective": "admin",
-      "name": "%plugin__hybridsovereign-tenant~My Sovereign Cloud%"
+      "id": "hybridsovereign-tenancy-sep",
+      "perspective": "hybridsovereign",
+      "name": "Tenancy"
     }
   },
   {
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-overview",
-      "perspective": "admin",
-      "section": "hybridsovereign-tenant",
-      "name": "%plugin__hybridsovereign-tenant~Overview%",
+      "perspective": "hybridsovereign",
+      "name": "Entity Overview",
       "href": "/hybridsovereign/tenant/overview"
     }
   },
@@ -21,10 +20,36 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-teams",
-      "perspective": "admin",
-      "section": "hybridsovereign-tenant",
-      "name": "%plugin__hybridsovereign-tenant~My Teams%",
+      "perspective": "hybridsovereign",
+      "name": "Teams",
       "href": "/hybridsovereign/tenant/teams"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-projects",
+      "perspective": "hybridsovereign",
+      "name": "Projects",
+      "href": "/hybridsovereign/tenant/projects"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-platforms",
+      "perspective": "hybridsovereign",
+      "name": "Platform Openshift",
+      "href": "/hybridsovereign/tenant/platforms"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-assignments",
+      "perspective": "hybridsovereign",
+      "name": "Assignments",
+      "href": "/hybridsovereign/tenant/assignments"
     }
   },
   {
@@ -41,6 +66,30 @@
       "exact": true,
       "path": "/hybridsovereign/tenant/teams",
       "component": { "$codeRef": "TenantTeamsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/projects",
+      "component": { "$codeRef": "TenantProjectsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/platforms",
+      "component": { "$codeRef": "TenantPlatformsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/assignments",
+      "component": { "$codeRef": "TenantAssignmentsPage" }
     }
   }
 ]

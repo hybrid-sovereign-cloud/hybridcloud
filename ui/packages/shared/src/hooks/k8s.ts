@@ -7,10 +7,12 @@ import {
 } from '../types';
 
 export interface K8sClientConfig {
-  /** Base URL for the dashboard K8s proxy (e.g. /api/k8s) */
+  /** Base URL for the dashboard K8s proxy (e.g. /api/k8s) or console (/api/kubernetes) */
   baseUrl?: string;
   /** Bearer token for SubjectAccessReview-authenticated requests */
   token?: string;
+  /** Optional fetch implementation (consoleFetch in OCP plugins) */
+  fetchFn?: typeof fetch;
 }
 
 export interface UseK8sResourceListOptions {
@@ -80,7 +82,8 @@ async function k8sFetch<T>(url: string): Promise<T> {
   if (globalK8sConfig.token) {
     headers.Authorization = `Bearer ${globalK8sConfig.token}`;
   }
-  const response = await fetch(url, { headers });
+  const fetchImpl = globalK8sConfig.fetchFn ?? fetch;
+  const response = await fetchImpl(url, { headers });
   if (!response.ok) {
     throw new Error(`K8s API error ${response.status}: ${response.statusText}`);
   }

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Tabs, Tab, TabTitleText, Title } from '@patternfly/react-core';
+import { Tabs, Tab, TabTitleText } from '@patternfly/react-core';
+import { PageHeader } from '@hybridsovereign/shared';
 import { ResourceListPage } from './ResourceListPage';
 
 export function ServicesPage(): React.ReactElement {
@@ -7,9 +8,11 @@ export function ServicesPage(): React.ReactElement {
 
   return (
     <>
-      <Title headingLevel="h2" size="xl" style={{ marginBottom: '1rem' }}>
-        Platform Services
-      </Title>
+      <PageHeader
+        title="Service URLs"
+        subtitle="Platform service resources and configuration health"
+        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Platform' }, { label: 'Service URLs' }]}
+      />
       <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
         <Tab eventKey={0} title={<TabTitleText>AAP</TabTitleText>}>
           <ResourceListPage kind="AAPOrg" title="AAP Organizations" secondaryKind="AAPConfig" />

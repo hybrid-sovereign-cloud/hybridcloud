@@ -1,20 +1,13 @@
 import React, { useMemo } from 'react';
-import {
-  Card,
-  CardTitle,
-  CardBody,
-  Spinner,
-  Alert,
-  Label,
-} from '@patternfly/react-core';
+import { Spinner, Alert } from '@patternfly/react-core';
 import {
   HybridSovereignKind,
   KIND_PLURALS,
   K8sResource,
-  OperatorStatus,
 } from '../types';
 import { useK8sResourceList } from '../hooks/k8s';
 import { useCanListKind } from '../hooks/permissions';
+import { StatusBadge, normalizeHealth } from './StatusBadge';
 
 export interface TopologyNode {
   id: string;
@@ -32,22 +25,7 @@ export interface EntityTopologyProps {
 }
 
 function statusFromReady(ready?: boolean, status?: string): TopologyNode['status'] {
-  if (ready) return 'ready';
-  if (status === 'failed') return 'failed';
-  if (status === 'reconciling') return 'reconciling';
-  if (status === 'pending') return 'pending';
-  return 'unknown';
-}
-
-function statusColor(status: TopologyNode['status']): 'green' | 'orange' | 'red' | 'blue' | 'grey' {
-  const map: Record<TopologyNode['status'], 'green' | 'orange' | 'red' | 'blue' | 'grey'> = {
-    ready: 'green',
-    pending: 'orange',
-    failed: 'red',
-    reconciling: 'blue',
-    unknown: 'grey',
-  };
-  return map[status];
+  return normalizeHealth(ready, status);
 }
 
 function TopologySection({
@@ -59,19 +37,25 @@ function TopologySection({
 }): React.ReactElement | null {
   if (nodes.length === 0) return null;
   return (
-    <Card isCompact style={{ marginBottom: '1rem' }}>
-      <CardTitle>{title}</CardTitle>
-      <CardBody>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          {nodes.map((node) => (
-            <Label key={node.id} color={statusColor(node.status)}>
-              {node.label}
-              {node.namespace ? ` (${node.namespace})` : ''}
-            </Label>
-          ))}
-        </div>
-      </CardBody>
-    </Card>
+    <div className="sc-topology__layer">
+      <div className="sc-topology__layer-title">{title}</div>
+      <div className="sc-topology__nodes">
+        {nodes.map((node) => (
+          <div
+            key={node.id}
+            className={`sc-topo-node sc-topo-node--${node.status}`}
+            aria-label={`${node.kind} ${node.label} ${node.status}`}
+          >
+            <div className="sc-topo-node__kind">{node.kind}</div>
+            <div className="sc-topo-node__name">{node.label}</div>
+            <div className="sc-topo-node__status">
+              <StatusBadge status={node.status} ready={node.status === 'ready'} />
+              {node.namespace ? ` · ${node.namespace}` : ''}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -176,15 +160,15 @@ export function EntityTopology({
   }
 
   return (
-    <div aria-label="Entity topology">
-      <TopologySection title="Entities" nodes={nodes.entities} />
-      <TopologySection title="Cloud Environments" nodes={nodes.clouds} />
-      <TopologySection title="Platforms" nodes={nodes.platforms} />
-      <TopologySection title="Teams" nodes={nodes.teams} />
-      <TopologySection title="Projects" nodes={nodes.projects} />
-      <TopologySection title="Assignments" nodes={nodes.assignments} />
+    <div className="sc-topology" aria-label="Entity topology">
+      <TopologySection title="Layer 1 · Entities" nodes={nodes.entities} />
+      <TopologySection title="Layer 2 · Cloud Environments" nodes={nodes.clouds} />
+      <TopologySection title="Layer 3 · Platforms" nodes={nodes.platforms} />
+      <TopologySection title="Layer 4 · Teams" nodes={nodes.teams} />
+      <TopologySection title="Layer 5 · Projects" nodes={nodes.projects} />
+      <TopologySection title="Layer 6 · Assignments" nodes={nodes.assignments} />
       <p style={{ fontSize: '0.85rem', opacity: 0.7 }}>
-        API resources: {Object.entries(KIND_PLURALS).slice(0, 5).map(([, p]) => p).join(', ')}…
+        Live CR graph · {Object.values(KIND_PLURALS).slice(0, 6).join(', ')}…
       </p>
     </div>
   );

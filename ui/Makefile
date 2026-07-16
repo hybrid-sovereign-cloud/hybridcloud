@@ -2,9 +2,15 @@
 
 SHELL := /bin/bash
 NPM := npm
+REGISTRY ?= quay.example.com/hybrid-sovereign
+ADMIN_DASH_TAG ?= 2.0.0
+TENANT_DASH_TAG ?= 5.0.0
+ADMIN_PLUGIN_TAG ?= 1.2.0
+TENANT_PLUGIN_TAG ?= 1.2.0
 
 .PHONY: help install build build-shared build-admin build-tenant \
-        build-admin-plugin build-tenant-plugin typecheck dev-admin dev-tenant clean
+        build-admin-plugin build-tenant-plugin typecheck dev-admin dev-tenant clean \
+        images push-images image-admin-dash image-tenant-dash image-admin-plugin image-tenant-plugin
 
 help: ## Show available targets
 	@grep -E '^[a-zA-Z0-9_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':|##' '{printf "  %-22s %s\n", $$1, $$3}'
@@ -37,6 +43,34 @@ dev-admin: ## Start admin dashboard dev server (port 3000)
 
 dev-tenant: ## Start tenant dashboard dev server (port 3001)
 	$(NPM) run dev -w @hybridsovereign/tenant-dashboard
+
+image-admin-plugin: build-admin-plugin ## Build admin console plugin image
+	podman build -f Containerfile.plugin \
+	  --build-arg PLUGIN_DIST=packages/admin-console-plugin/dist \
+	  -t $(REGISTRY)/sovereign-admin-plugin:$(ADMIN_PLUGIN_TAG) .
+
+image-tenant-plugin: build-tenant-plugin ## Build tenant console plugin image
+	podman build -f Containerfile.plugin \
+	  --build-arg PLUGIN_DIST=packages/tenant-console-plugin/dist \
+	  -t $(REGISTRY)/sovereign-tenant-plugin:$(TENANT_PLUGIN_TAG) .
+
+image-admin-dash: build-admin ## Build admin dashboard image
+	podman build -f Containerfile.dashboard \
+	  --build-arg APP_PACKAGE=admin-dashboard \
+	  -t $(REGISTRY)/sovereign-cloud-dashboard:$(ADMIN_DASH_TAG) .
+
+image-tenant-dash: build-tenant ## Build tenant dashboard image
+	podman build -f Containerfile.dashboard \
+	  --build-arg APP_PACKAGE=tenant-dashboard \
+	  -t $(REGISTRY)/tenancy-dashboard:$(TENANT_DASH_TAG) .
+
+images: image-admin-plugin image-tenant-plugin image-admin-dash image-tenant-dash ## Build all UI images
+
+push-images: images ## Push all UI images to Quay
+	podman push $(REGISTRY)/sovereign-admin-plugin:$(ADMIN_PLUGIN_TAG)
+	podman push $(REGISTRY)/sovereign-tenant-plugin:$(TENANT_PLUGIN_TAG)
+	podman push $(REGISTRY)/sovereign-cloud-dashboard:$(ADMIN_DASH_TAG)
+	podman push $(REGISTRY)/tenancy-dashboard:$(TENANT_DASH_TAG)
 
 clean: ## Remove build artifacts and node_modules
 	rm -rf node_modules packages/*/node_modules packages/*/dist

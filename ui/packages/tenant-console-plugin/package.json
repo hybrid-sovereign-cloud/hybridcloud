@@ -2,21 +2,24 @@
   "name": "@hybridsovereign/tenant-console-plugin",
   "version": "0.1.0",
   "private": true,
-  "description": "OpenShift Console dynamic plugin for Hybrid Sovereign tenant self-service",
-  "main": "dist/index.js",
+  "description": "OpenShift Console dynamic plugin for Hybrid Sovereign tenant views",
+  "main": "dist/plugin-entry.js",
   "scripts": {
     "build": "webpack --mode production",
     "build:dev": "webpack --mode development",
     "typecheck": "tsc --noEmit"
   },
   "consolePlugin": {
-    "name": "hybridsovereign-tenant",
-    "version": "0.1.0",
-    "displayName": "Hybrid Sovereign Tenant",
-    "description": "Tenant console plugin for Hybrid Sovereign Cloud self-service",
+    "name": "sovereign-tenant-plugin",
+    "version": "1.2.0",
+    "displayName": "Sovereign Cloud Tenancy",
+    "description": "Tenant pages in the Sovereign Cloud perspective",
     "exposedModules": {
       "TenantOverviewPage": "./src/components/TenantOverviewPage.tsx",
-      "TenantTeamsPage": "./src/components/TenantTeamsPage.tsx"
+      "TenantTeamsPage": "./src/components/TenantTeamsPage.tsx",
+      "TenantProjectsPage": "./src/components/TenantProjectsPage.tsx",
+      "TenantPlatformsPage": "./src/components/TenantPlatformsPage.tsx",
+      "TenantAssignmentsPage": "./src/components/TenantAssignmentsPage.tsx"
     }
   },
   "dependencies": {
@@ -24,6 +27,7 @@
     "@openshift-console/dynamic-plugin-sdk": "^1.8.0",
     "@patternfly/react-core": "^5.4.1",
     "@patternfly/react-icons": "^5.4.0",
+    "@patternfly/react-table": "^5.4.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-router-dom": "^5.3.4"
