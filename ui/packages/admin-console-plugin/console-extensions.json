@@ -4,7 +4,7 @@
     "properties": {
       "id": "hybridsovereign",
       "name": "Sovereign Cloud",
-      "icon": { "$codeRef": "perspective.perspectiveIcon" },
+      "icon": { "$codeRef": "PerspectiveIcon" },
       "landingPageURL": { "$codeRef": "perspective.perspectiveLandingPage" },
       "importRedirectURL": { "$codeRef": "perspective.perspectiveImportRedirect" }
     }

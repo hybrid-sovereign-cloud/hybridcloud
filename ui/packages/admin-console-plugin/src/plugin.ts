@@ -11,8 +11,8 @@ export { default as AdminEntitiesPage } from './components/AdminEntitiesPage';
 export { default as AdminPersonasPage } from './components/AdminPersonasPage';
 export { default as AdminServicesPage } from './components/AdminServicesPage';
 export { default as AdminOperatorsPage } from './components/AdminOperatorsPage';
+export { default as PerspectiveIcon } from './PerspectiveIcon';
 export {
-  perspectiveIcon,
   perspectiveLandingPage,
   perspectiveImportRedirect,
 } from './perspective';

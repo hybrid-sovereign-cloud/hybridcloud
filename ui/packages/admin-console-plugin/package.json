@@ -11,7 +11,7 @@
   },
   "consolePlugin": {
     "name": "sovereign-admin-plugin",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "displayName": "Sovereign Cloud",
     "description": "Sovereign Cloud admin perspective — Entities, Personas, Services, Operators",
     "exposedModules": {
@@ -20,6 +20,7 @@
       "AdminPersonasPage": "./src/components/AdminPersonasPage.tsx",
       "AdminServicesPage": "./src/components/AdminServicesPage.tsx",
       "AdminOperatorsPage": "./src/components/AdminOperatorsPage.tsx",
+      "PerspectiveIcon": "./src/PerspectiveIcon.tsx",
       "perspective": "./src/perspective.tsx"
     }
   },
