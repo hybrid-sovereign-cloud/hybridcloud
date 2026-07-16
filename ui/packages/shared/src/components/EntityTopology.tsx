@@ -62,12 +62,19 @@ function TopologySection({
 /** RBAC-aware entity → clouds → platforms → teams → projects → assignments topology */
 export function EntityTopology({
   entityNamespace,
-  filterByPermissions = true,
+  filterByPermissions = false,
 }: EntityTopologyProps): React.ReactElement {
   const ns = entityNamespace ?? '';
-  const listOpts = entityNamespace ? { namespace: entityNamespace } : {};
+  // Stable options — avoid new object identity each render
+  const listOpts = useMemo(
+    () => (entityNamespace ? { namespace: entityNamespace, pollIntervalMs: 60000 } : { pollIntervalMs: 60000 }),
+    [entityNamespace],
+  );
 
-  const entities = useK8sResourceList<K8sResource>('Entity', { enabled: !entityNamespace });
+  const entities = useK8sResourceList<K8sResource>('Entity', {
+    enabled: !entityNamespace,
+    pollIntervalMs: 60000,
+  });
   const teams = useK8sResourceList<K8sResource>('Team', listOpts);
   const projects = useK8sResourceList<K8sResource>('Project', listOpts);
   const assignments = useK8sResourceList<K8sResource>('Assignment', listOpts);
@@ -77,10 +84,18 @@ export function EntityTopology({
 
   const teamPerm = useCanListKind(ns || 'default', 'Team', { enabled: filterByPermissions && !!ns });
   const projectPerm = useCanListKind(ns || 'default', 'Project', { enabled: filterByPermissions && !!ns });
-  const assignmentPerm = useCanListKind(ns || 'default', 'Assignment', { enabled: filterByPermissions && !!ns });
-  const platformPerm = useCanListKind(ns || 'default', 'PlatformOpenshift', { enabled: filterByPermissions && !!ns });
-  const cloudOsoPerm = useCanListKind(ns || 'default', 'CloudOSO', { enabled: filterByPermissions && !!ns });
-  const cloudAwsPerm = useCanListKind(ns || 'default', 'CloudAWS', { enabled: filterByPermissions && !!ns });
+  const assignmentPerm = useCanListKind(ns || 'default', 'Assignment', {
+    enabled: filterByPermissions && !!ns,
+  });
+  const platformPerm = useCanListKind(ns || 'default', 'PlatformOpenshift', {
+    enabled: filterByPermissions && !!ns,
+  });
+  const cloudOsoPerm = useCanListKind(ns || 'default', 'CloudOSO', {
+    enabled: filterByPermissions && !!ns,
+  });
+  const cloudAwsPerm = useCanListKind(ns || 'default', 'CloudAWS', {
+    enabled: filterByPermissions && !!ns,
+  });
 
   const loading =
     entities.loading ||

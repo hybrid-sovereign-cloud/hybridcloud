@@ -265,7 +265,7 @@ export const KIND_PLURALS: Record<HybridSovereignKind, string> = {
   Persona: 'personas',
   PlatformOpenshift: 'platformopenshifts',
   CloudOSO: 'cloudosos',
-  CloudAWS: 'cloudawses',
+  CloudAWS: 'cloudawss',
   OpenStackMigration: 'openstackmigrations',
   Rbac: 'rbacs',
   RbacConfig: 'rbacconfigs',

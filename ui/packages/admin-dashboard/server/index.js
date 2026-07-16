@@ -44,7 +44,7 @@ app.use((_req, res, next) => {
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 120,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later" },
@@ -52,7 +52,7 @@ const apiLimiter = rateLimit({
 
 const mutationLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 20,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many write requests, please try again later" },

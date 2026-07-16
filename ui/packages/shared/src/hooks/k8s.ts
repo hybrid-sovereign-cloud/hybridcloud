@@ -6,13 +6,18 @@ import {
   K8sResource,
 } from '../types';
 
+export type K8sApiStyle = 'raw' | 'dashboard';
+
 export interface K8sClientConfig {
-  /** Base URL for the dashboard K8s proxy (e.g. /api/k8s) or console (/api/kubernetes) */
+  /** Base URL for raw proxy (e.g. /api/k8s) or unused when apiStyle=dashboard */
   baseUrl?: string;
-  /** Bearer token for SubjectAccessReview-authenticated requests */
   token?: string;
-  /** Optional fetch implementation (consoleFetch in OCP plugins) */
   fetchFn?: typeof fetch;
+  /**
+   * raw = Kubernetes API proxy (/api/k8s/apis/...)
+   * dashboard = curated Express routes (/api/teams?namespace=...) returning item arrays
+   */
+  apiStyle?: K8sApiStyle;
 }
 
 export interface UseK8sResourceListOptions {
@@ -43,14 +48,42 @@ export interface UseK8sResourceResult<T extends K8sResource> {
   refresh: () => void;
 }
 
-let globalK8sConfig: K8sClientConfig = { baseUrl: '/api/k8s' };
+/** Curated dashboard list paths (tenant + admin Express servers) */
+const DASHBOARD_LIST_PATH: Partial<Record<HybridSovereignKind, string>> = {
+  Entity: '/api/entities',
+  Team: '/api/teams',
+  Project: '/api/projects',
+  Assignment: '/api/assignments',
+  PlatformOpenshift: '/api/platformopenshifts',
+  CloudOSO: '/api/cloudosos',
+  CloudAWS: '/api/cloudawss',
+  OpenStackMigration: '/api/openstackmigrations',
+  Persona: '/api/personas',
+  Rbac: '/api/rbacs',
+  Vault: '/api/vaults',
+  VaultKV: '/api/vaultkvs',
+  AAPOrg: '/api/aaporgs',
+  QuayOrg: '/api/quayorgs',
+  RbacConfig: '/api/rbacconfigs',
+  AAPConfig: '/api/aapconfigs',
+  QuayConfig: '/api/quayconfigs',
+};
 
-/** Configure the K8s proxy client used by all hooks */
+const DASHBOARD_CREATE_PATH: Partial<Record<HybridSovereignKind, string>> = {
+  ...DASHBOARD_LIST_PATH,
+};
+
+let globalK8sConfig: K8sClientConfig = { baseUrl: '/api/k8s', apiStyle: 'raw' };
+
 export function configureK8sClient(config: K8sClientConfig): void {
   globalK8sConfig = { ...globalK8sConfig, ...config };
 }
 
-function buildListUrl(kind: HybridSovereignKind, options: UseK8sResourceListOptions): string {
+export function getK8sClientConfig(): K8sClientConfig {
+  return globalK8sConfig;
+}
+
+function buildRawListUrl(kind: HybridSovereignKind, options: UseK8sResourceListOptions): string {
   const plural = KIND_PLURALS[kind];
   const base = globalK8sConfig.baseUrl ?? '/api/k8s';
   const params = new URLSearchParams();
@@ -58,36 +91,109 @@ function buildListUrl(kind: HybridSovereignKind, options: UseK8sResourceListOpti
   if (options.fieldSelector) params.set('fieldSelector', options.fieldSelector);
   const query = params.toString() ? `?${params.toString()}` : '';
 
-  if (options.namespace) {
+  if (options.namespace && kind !== 'Entity') {
     return `${base}/apis/${API_VERSION_FULL}/namespaces/${options.namespace}/${plural}${query}`;
   }
   return `${base}/apis/${API_VERSION_FULL}/${plural}${query}`;
 }
 
-function buildResourceUrl(
-  kind: HybridSovereignKind,
-  name: string,
-  namespace?: string,
-): string {
+function buildDashboardListUrl(kind: HybridSovereignKind, options: UseK8sResourceListOptions): string {
+  const path = DASHBOARD_LIST_PATH[kind];
+  if (!path) {
+    // Fallback to raw for kinds without curated routes (e.g. admin-only)
+    return buildRawListUrl(kind, options);
+  }
+  if (kind === 'Entity' || kind === 'RbacConfig' || kind === 'AAPConfig' || kind === 'QuayConfig') {
+    return path;
+  }
+  if (!options.namespace) {
+    return path;
+  }
+  return `${path}?namespace=${encodeURIComponent(options.namespace)}`;
+}
+
+function buildListUrl(kind: HybridSovereignKind, options: UseK8sResourceListOptions): string {
+  return globalK8sConfig.apiStyle === 'dashboard'
+    ? buildDashboardListUrl(kind, options)
+    : buildRawListUrl(kind, options);
+}
+
+function buildResourceUrl(kind: HybridSovereignKind, name: string, namespace?: string): string {
   const plural = KIND_PLURALS[kind];
   const base = globalK8sConfig.baseUrl ?? '/api/k8s';
-  if (namespace) {
+  if (namespace && kind !== 'Entity') {
     return `${base}/apis/${API_VERSION_FULL}/namespaces/${namespace}/${plural}/${name}`;
   }
   return `${base}/apis/${API_VERSION_FULL}/${plural}/${name}`;
 }
 
-async function k8sFetch<T>(url: string): Promise<T> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+async function k8sFetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  };
   if (globalK8sConfig.token) {
     headers.Authorization = `Bearer ${globalK8sConfig.token}`;
   }
   const fetchImpl = globalK8sConfig.fetchFn ?? fetch;
-  const response = await fetchImpl(url, { headers });
+  const response = await fetchImpl(url, { ...init, headers });
   if (!response.ok) {
-    throw new Error(`K8s API error ${response.status}: ${response.statusText}`);
+    let detail = response.statusText;
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) detail = body.message;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`K8s API error ${response.status}: ${detail}`);
   }
   return response.json() as Promise<T>;
+}
+
+function normalizeListPayload<T>(data: unknown): T[] {
+  if (Array.isArray(data)) return data as T[];
+  if (data && typeof data === 'object' && Array.isArray((data as { items?: T[] }).items)) {
+    return (data as { items: T[] }).items;
+  }
+  return [];
+}
+
+/** Create a Hybrid Sovereign CR via curated dashboard API when available */
+export async function createDashboardResource(
+  kind: HybridSovereignKind,
+  body: { name: string; namespace?: string; spec?: unknown } | unknown,
+  namespace?: string,
+): Promise<unknown> {
+  const path = DASHBOARD_CREATE_PATH[kind];
+  if (globalK8sConfig.apiStyle === 'dashboard' && path) {
+    // Curated Express handlers expect { name, namespace, spec } — not a full K8s object
+    let payload = body as { name?: string; namespace?: string; spec?: unknown; metadata?: { name?: string; namespace?: string } };
+    if (payload && typeof payload === 'object' && 'metadata' in payload && payload.metadata?.name) {
+      payload = {
+        name: payload.metadata.name,
+        namespace: payload.metadata.namespace ?? namespace,
+        spec: (body as { spec?: unknown }).spec,
+      };
+    }
+    const ns = payload.namespace ?? namespace;
+    const url = ns && kind !== 'Entity' ? `${path}?namespace=${encodeURIComponent(ns)}` : path;
+    return k8sFetchJson(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+  const plural = KIND_PLURALS[kind];
+  const base = globalK8sConfig.baseUrl ?? '/api/k8s';
+  const url =
+    namespace && kind !== 'Entity'
+      ? `${base}/apis/${API_VERSION_FULL}/namespaces/${namespace}/${plural}`
+      : `${base}/apis/${API_VERSION_FULL}/${plural}`;
+  return k8sFetchJson(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 /** List Hybrid Sovereign CRs of a given kind */
@@ -95,13 +201,16 @@ export function useK8sResourceList<T extends K8sResource>(
   kind: HybridSovereignKind,
   options: UseK8sResourceListOptions = {},
 ): UseK8sResourceListResult<T> {
-  const { namespace, pollIntervalMs, enabled = true } = options;
+  const { namespace, pollIntervalMs, enabled = true, labelSelector, fieldSelector } = options;
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   const [tick, setTick] = useState(0);
 
-  const url = useMemo(() => buildListUrl(kind, options), [kind, namespace, options.labelSelector, options.fieldSelector]);
+  const url = useMemo(
+    () => buildListUrl(kind, { namespace, labelSelector, fieldSelector }),
+    [kind, namespace, labelSelector, fieldSelector],
+  );
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
@@ -114,10 +223,10 @@ export function useK8sResourceList<T extends K8sResource>(
     let cancelled = false;
     setLoading(true);
 
-    k8sFetch<{ items: T[] }>(url)
+    k8sFetchJson<unknown>(url)
       .then((data) => {
         if (!cancelled) {
-          setItems(data.items ?? []);
+          setItems(normalizeListPayload<T>(data));
           setError(null);
         }
       })
@@ -128,7 +237,9 @@ export function useK8sResourceList<T extends K8sResource>(
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [url, enabled, tick]);
 
   useEffect(() => {
@@ -152,10 +263,7 @@ export function useK8sResource<T extends K8sResource>(
   const [error, setError] = useState<Error | null>(null);
   const [tick, setTick] = useState(0);
 
-  const url = useMemo(
-    () => buildResourceUrl(kind, name, namespace),
-    [kind, name, namespace],
-  );
+  const url = useMemo(() => buildResourceUrl(kind, name, namespace), [kind, name, namespace]);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
@@ -168,7 +276,7 @@ export function useK8sResource<T extends K8sResource>(
     let cancelled = false;
     setLoading(true);
 
-    k8sFetch<T>(url)
+    k8sFetchJson<T>(url)
       .then((data) => {
         if (!cancelled) {
           setResource(data);
@@ -182,7 +290,9 @@ export function useK8sResource<T extends K8sResource>(
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [url, enabled, name, tick]);
 
   useEffect(() => {
@@ -194,29 +304,13 @@ export function useK8sResource<T extends K8sResource>(
   return { resource, loading, error, refresh };
 }
 
-/** Check if the current user can perform a verb on a resource (SubjectAccessReview) */
+/** Check if the current user can perform a verb on a resource */
 export function useCanI(
-  namespace: string,
-  resource: string,
-  verb: 'create' | 'get' | 'list' | 'update' | 'patch' | 'delete',
+  _namespace: string,
+  _resource: string,
+  _verb: 'create' | 'get' | 'list' | 'update' | 'patch' | 'delete',
 ): { allowed: boolean; loading: boolean } {
-  const [allowed, setAllowed] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const base = globalK8sConfig.baseUrl ?? '/api/k8s';
-    const url = `${base}/can-i/${namespace}/${resource}/${verb}`;
-    const headers: Record<string, string> = { Accept: 'application/json' };
-    if (globalK8sConfig.token) {
-      headers.Authorization = `Bearer ${globalK8sConfig.token}`;
-    }
-
-    fetch(url, { headers })
-      .then((r) => r.json())
-      .then((data: { allowed?: boolean }) => setAllowed(!!data.allowed))
-      .catch(() => setAllowed(false))
-      .finally(() => setLoading(false));
-  }, [namespace, resource, verb]);
-
-  return { allowed, loading };
+  // Standalone dashboards: avoid /api/permissions (36 SSARs) which caused 429s.
+  // Show Create optimistically; the POST handler enforces RBAC.
+  return { allowed: true, loading: false };
 }

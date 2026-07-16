@@ -1,3 +1,5 @@
+export { HealthDonut } from './HealthDonut';
+export type { HealthDonutProps } from './HealthDonut';
 export { EntityTopology } from './EntityTopology';
 export type { EntityTopologyProps, TopologyNode } from './EntityTopology';
 export { RbacGroupsEditor } from './RbacGroupsEditor';
