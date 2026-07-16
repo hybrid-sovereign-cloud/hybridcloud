@@ -1,5 +1,12 @@
 {{- if .Values.registry.enabled }}
 {{- if .Values.registry.configBundle }}
+{{- $crunchyName := .Values.crunchy.name | default "quay-pgcluster" }}
+{{- $dbSecretName := printf "%s-pguser-quay" $crunchyName }}
+{{- $dbSecret := lookup "v1" "Secret" .Values.namespace $dbSecretName }}
+{{- $dbUri := "" }}
+{{- if and $dbSecret $dbSecret.data (hasKey $dbSecret.data "uri") }}
+{{- $dbUri = index $dbSecret.data "uri" | b64dec }}
+{{- end }}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -11,5 +18,8 @@ type: Opaque
 stringData:
   config.yaml: |
     {{- .Values.registry.configBundle | nindent 4 }}
+    {{- if $dbUri }}
+    DB_URI: {{ $dbUri }}
+    {{- end }}
 {{- end }}
 {{- end }}

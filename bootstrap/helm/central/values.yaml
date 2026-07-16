@@ -615,7 +615,7 @@ quay:
 # ─── Quay (services) ────────────────────────────────────────────────────────
 quayServices:
   enabled: true
-  chartVersion: "0.6.3"
+  chartVersion: "0.6.4"
   syncWave: "35"
   destinationNamespace: services-quay
   values:
