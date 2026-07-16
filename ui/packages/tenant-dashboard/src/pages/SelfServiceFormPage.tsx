@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Form,
@@ -11,6 +11,8 @@ import {
   Switch,
   Card,
   CardBody,
+  FormSelect,
+  FormSelectOption,
 } from '@patternfly/react-core';
 import {
   HybridSovereignKind,
@@ -83,6 +85,52 @@ const LIST_PATH: Record<FormType, string> = {
   quayorg: '/quayorgs',
 };
 
+const PERSONA_TYPES = [
+  'entityAdmin',
+  'identityAdmin',
+  'auditor',
+  'teamAdmin',
+  'teamView',
+  'projectAdmin',
+  'projectView',
+  'assignmentAdmin',
+  'platformOpenshiftAdmin',
+  'platformOpenshiftView',
+  'cloudOSOAdmin',
+  'cloudOSOView',
+  'cloudAWSAdmin',
+  'cloudAWSView',
+];
+
+function RefSelect({
+  id,
+  label,
+  value,
+  onChange,
+  options,
+  isRequired,
+  placeholder = 'Select…',
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  isRequired?: boolean;
+  placeholder?: string;
+}): React.ReactElement {
+  return (
+    <FormGroup label={label} isRequired={isRequired} fieldId={id}>
+      <FormSelect id={id} value={value} onChange={(_e, v) => onChange(v)} isRequired={isRequired}>
+        <FormSelectOption value="" label={placeholder} isDisabled={isRequired} />
+        {options.map((o) => (
+          <FormSelectOption key={o.value} value={o.value} label={o.label} />
+        ))}
+      </FormSelect>
+    </FormGroup>
+  );
+}
+
 export function SelfServiceFormPage({ namespace }: SelfServiceFormPageProps): React.ReactElement {
   const { formType } = useParams<{ formType: FormType }>();
   const navigate = useNavigate();
@@ -91,16 +139,17 @@ export function SelfServiceFormPage({ namespace }: SelfServiceFormPageProps): Re
   const [teamRef, setTeamRef] = useState('');
   const [projectRef, setProjectRef] = useState('');
   const [platformRef, setPlatformRef] = useState('');
+  const [cloudAwsRef, setCloudAwsRef] = useState('');
   const [argoEnabled, setArgoEnabled] = useState(true);
   const [rbacRef, setRbacRef] = useState('');
-  const [personaType, setPersonaType] = useState('platform-admin');
-  const [rbacConfig, setRbacConfig] = useState('rhbk-services');
+  const [personaType, setPersonaType] = useState('entityAdmin');
+  const [rbacConfig, setRbacConfig] = useState('');
   const [vaultRef, setVaultRef] = useState('');
   const [cloudosoRef, setCloudosoRef] = useState('');
   const [vmName, setVmName] = useState('');
   const [source, setSource] = useState('vmware');
-  const [aapConfig, setAapConfig] = useState('aap-services');
-  const [quayConfig, setQuayConfig] = useState('quay-services');
+  const [aapConfig, setAapConfig] = useState('');
+  const [quayConfig, setQuayConfig] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -108,36 +157,67 @@ export function SelfServiceFormPage({ namespace }: SelfServiceFormPageProps): Re
   const title = FORM_TITLES[type] ?? 'Create Resource';
   const kind = FORM_KINDS[type];
 
-  const teams = useK8sResourceList<K8sResource>('Team', {
-    namespace,
-    enabled: type === 'assignment',
-  });
-  const projects = useK8sResourceList<K8sResource>('Project', {
-    namespace,
-    enabled: type === 'assignment',
-  });
+  const teams = useK8sResourceList<K8sResource>('Team', { namespace, enabled: type === 'assignment' });
+  const projects = useK8sResourceList<K8sResource>('Project', { namespace, enabled: type === 'assignment' });
   const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', {
     namespace,
     enabled: type === 'assignment',
   });
-  const vaults = useK8sResourceList<K8sResource>('Vault', {
+  const cloudAwss = useK8sResourceList<K8sResource>('CloudAWS', {
     namespace,
-    enabled: type === 'vaultkv',
+    enabled: type === 'assignment',
   });
+  const vaults = useK8sResourceList<K8sResource>('Vault', { namespace, enabled: type === 'vaultkv' });
   const cloudosos = useK8sResourceList<K8sResource>('CloudOSO', {
     namespace,
     enabled: type === 'migration',
   });
   const rbacs = useK8sResourceList<K8sResource>('Rbac', {
     namespace,
-    enabled: type === 'persona',
+    enabled: type === 'persona' || type === 'vaultkv',
   });
+  const rbacConfigs = useK8sResourceList<K8sResource>('RbacConfig', {
+    enabled: type === 'team' || type === 'rbac' || type === 'vault',
+  });
+  const aapConfigs = useK8sResourceList<K8sResource>('AAPConfig', { enabled: type === 'aaporg' });
+  const quayConfigs = useK8sResourceList<K8sResource>('QuayConfig', { enabled: type === 'quayorg' });
+
+  const names = (items: K8sResource[]) => items.map((i) => ({ value: i.metadata.name, label: i.metadata.name }));
+
+  // Auto-select first option when lists load
+  useEffect(() => {
+    if (type === 'team' || type === 'rbac' || type === 'vault') {
+      if (!rbacConfig && rbacConfigs.items[0]) setRbacConfig(rbacConfigs.items[0].metadata.name);
+    }
+    if (type === 'aaporg' && !aapConfig && aapConfigs.items[0]) setAapConfig(aapConfigs.items[0].metadata.name);
+    if (type === 'quayorg' && !quayConfig && quayConfigs.items[0]) setQuayConfig(quayConfigs.items[0].metadata.name);
+    if (type === 'assignment' && !teamRef && teams.items[0]) setTeamRef(teams.items[0].metadata.name);
+    if (type === 'persona' && !rbacRef && rbacs.items[0]) setRbacRef(rbacs.items[0].metadata.name);
+    if (type === 'vaultkv' && !vaultRef && vaults.items[0]) setVaultRef(vaults.items[0].metadata.name);
+    if (type === 'migration' && !cloudosoRef && cloudosos.items[0]) setCloudosoRef(cloudosos.items[0].metadata.name);
+  }, [
+    type,
+    rbacConfigs.items,
+    aapConfigs.items,
+    quayConfigs.items,
+    teams.items,
+    rbacs.items,
+    vaults.items,
+    cloudosos.items,
+    rbacConfig,
+    aapConfig,
+    quayConfig,
+    teamRef,
+    rbacRef,
+    vaultRef,
+    cloudosoRef,
+  ]);
 
   const buildSpec = (): Record<string, unknown> => {
     switch (type) {
       case 'team':
         return {
-          rbacConfig: 'rhbk-services',
+          rbacConfig: rbacConfig || 'rhbk-services',
           features: { argo: argoEnabled, istio: false },
           teamAdmin: [],
         };
@@ -148,6 +228,7 @@ export function SelfServiceFormPage({ namespace }: SelfServiceFormPageProps): Re
           team: teamRef,
           projects: projectRef ? [projectRef] : [],
           openshift: platformRef || undefined,
+          aws: cloudAwsRef || undefined,
         };
       case 'cloudoso':
         return { vaultPath: 'oso/accounts/shc_admin', baseDomain: 'lab.example.com' };
@@ -177,9 +258,12 @@ export function SelfServiceFormPage({ namespace }: SelfServiceFormPageProps): Re
   const canSubmit = (): boolean => {
     if (!name) return false;
     if (type === 'assignment' && !teamRef) return false;
-    if (type === 'persona' && !rbacRef) return false;
+    if (type === 'persona' && (!rbacRef || !personaType)) return false;
     if (type === 'vaultkv' && !vaultRef) return false;
     if (type === 'migration' && (!vmName || !cloudosoRef)) return false;
+    if ((type === 'team' || type === 'vault' || type === 'rbac') && !rbacConfig) return false;
+    if (type === 'aaporg' && !aapConfig) return false;
+    if (type === 'quayorg' && !quayConfig) return false;
     return true;
   };
 
@@ -237,117 +321,142 @@ export function SelfServiceFormPage({ namespace }: SelfServiceFormPageProps): Re
               )}
 
               {type === 'team' && (
-                <FormGroup label="Enable Argo CD" fieldId="argo">
-                  <Switch
-                    id="argo"
-                    isChecked={argoEnabled}
-                    onChange={(_e, checked) => setArgoEnabled(checked)}
+                <>
+                  <RefSelect
+                    id="rbac-config"
+                    label="RBAC Config"
+                    value={rbacConfig}
+                    onChange={setRbacConfig}
+                    options={names(rbacConfigs.items)}
+                    isRequired
                   />
-                </FormGroup>
+                  <FormGroup label="Enable Argo CD" fieldId="argo">
+                    <Switch
+                      id="argo"
+                      isChecked={argoEnabled}
+                      onChange={(_e, checked) => setArgoEnabled(checked)}
+                    />
+                  </FormGroup>
+                </>
               )}
 
               {type === 'assignment' && (
                 <>
-                  <FormGroup label="Team" isRequired fieldId="team">
-                    <TextInput id="team" list="team-options" value={teamRef} onChange={(_e, v) => setTeamRef(v)} isRequired />
-                    <datalist id="team-options">
-                      {teams.items.map((t) => (
-                        <option key={t.metadata.name} value={t.metadata.name} />
-                      ))}
-                    </datalist>
-                  </FormGroup>
-                  <FormGroup label="Project" fieldId="project">
-                    <TextInput id="project" list="project-options" value={projectRef} onChange={(_e, v) => setProjectRef(v)} />
-                    <datalist id="project-options">
-                      {projects.items.map((t) => (
-                        <option key={t.metadata.name} value={t.metadata.name} />
-                      ))}
-                    </datalist>
-                  </FormGroup>
-                  <FormGroup label="Platform Openshift" fieldId="platform">
-                    <TextInput id="platform" list="platform-options" value={platformRef} onChange={(_e, v) => setPlatformRef(v)} />
-                    <datalist id="platform-options">
-                      {platforms.items.map((t) => (
-                        <option key={t.metadata.name} value={t.metadata.name} />
-                      ))}
-                    </datalist>
-                  </FormGroup>
+                  <RefSelect id="team" label="Team" value={teamRef} onChange={setTeamRef} options={names(teams.items)} isRequired />
+                  <RefSelect
+                    id="project"
+                    label="Project"
+                    value={projectRef}
+                    onChange={setProjectRef}
+                    options={names(projects.items)}
+                    placeholder="Optional"
+                  />
+                  <RefSelect
+                    id="platform"
+                    label="Platform Openshift"
+                    value={platformRef}
+                    onChange={setPlatformRef}
+                    options={names(platforms.items)}
+                    placeholder="Optional"
+                  />
+                  <RefSelect
+                    id="cloudaws"
+                    label="Cloud AWS"
+                    value={cloudAwsRef}
+                    onChange={setCloudAwsRef}
+                    options={names(cloudAwss.items)}
+                    placeholder="Optional"
+                  />
                 </>
               )}
 
               {type === 'persona' && (
                 <>
-                  <FormGroup label="RBAC" isRequired fieldId="rbac">
-                    <TextInput id="rbac" list="rbac-options" value={rbacRef} onChange={(_e, v) => setRbacRef(v)} isRequired />
-                    <datalist id="rbac-options">
-                      {rbacs.items.map((t) => (
-                        <option key={t.metadata.name} value={t.metadata.name} />
-                      ))}
-                    </datalist>
-                  </FormGroup>
-                  <FormGroup label="Type" isRequired fieldId="persona-type">
-                    <TextInput id="persona-type" value={personaType} onChange={(_e, v) => setPersonaType(v)} isRequired />
-                  </FormGroup>
+                  <RefSelect id="rbac" label="RBAC" value={rbacRef} onChange={setRbacRef} options={names(rbacs.items)} isRequired />
+                  <RefSelect
+                    id="persona-type"
+                    label="Type"
+                    value={personaType}
+                    onChange={setPersonaType}
+                    options={PERSONA_TYPES.map((t) => ({ value: t, label: t }))}
+                    isRequired
+                  />
                 </>
               )}
 
               {type === 'rbac' && (
-                <FormGroup label="Config" isRequired fieldId="rbac-config">
-                  <TextInput id="rbac-config" value={rbacConfig} onChange={(_e, v) => setRbacConfig(v)} isRequired />
-                </FormGroup>
+                <RefSelect
+                  id="rbac-config"
+                  label="Config"
+                  value={rbacConfig}
+                  onChange={setRbacConfig}
+                  options={names(rbacConfigs.items)}
+                  isRequired
+                />
               )}
 
               {type === 'vault' && (
-                <FormGroup label="RBAC Config" isRequired fieldId="vault-rbac-config">
-                  <TextInput id="vault-rbac-config" value={rbacConfig} onChange={(_e, v) => setRbacConfig(v)} isRequired />
-                </FormGroup>
+                <RefSelect
+                  id="vault-rbac-config"
+                  label="RBAC Config"
+                  value={rbacConfig}
+                  onChange={setRbacConfig}
+                  options={names(rbacConfigs.items)}
+                  isRequired
+                />
               )}
 
               {type === 'vaultkv' && (
-                <FormGroup label="Vault" isRequired fieldId="vault-ref">
-                  <TextInput id="vault-ref" list="vault-options" value={vaultRef} onChange={(_e, v) => setVaultRef(v)} isRequired />
-                  <datalist id="vault-options">
-                    {vaults.items.map((t) => (
-                      <option key={t.metadata.name} value={t.metadata.name} />
-                    ))}
-                  </datalist>
-                </FormGroup>
+                <RefSelect id="vault-ref" label="Vault" value={vaultRef} onChange={setVaultRef} options={names(vaults.items)} isRequired />
               )}
 
               {type === 'aaporg' && (
-                <FormGroup label="AAP Config" isRequired fieldId="aap-config">
-                  <TextInput id="aap-config" value={aapConfig} onChange={(_e, v) => setAapConfig(v)} isRequired />
-                </FormGroup>
+                <RefSelect
+                  id="aap-config"
+                  label="AAP Config"
+                  value={aapConfig}
+                  onChange={setAapConfig}
+                  options={names(aapConfigs.items)}
+                  isRequired
+                />
               )}
 
               {type === 'quayorg' && (
-                <FormGroup label="Quay Config" isRequired fieldId="quay-config">
-                  <TextInput id="quay-config" value={quayConfig} onChange={(_e, v) => setQuayConfig(v)} isRequired />
-                </FormGroup>
+                <RefSelect
+                  id="quay-config"
+                  label="Quay Config"
+                  value={quayConfig}
+                  onChange={setQuayConfig}
+                  options={names(quayConfigs.items)}
+                  isRequired
+                />
               )}
 
               {type === 'migration' && (
                 <>
-                  <FormGroup label="Source" fieldId="source">
-                    <TextInput id="source" value={source} onChange={(_e, v) => setSource(v)} />
-                  </FormGroup>
+                  <RefSelect
+                    id="source"
+                    label="Source"
+                    value={source}
+                    onChange={setSource}
+                    options={[
+                      { value: 'vmware', label: 'VMware' },
+                      { value: 'ovirt', label: 'oVirt' },
+                      { value: 'openstack', label: 'OpenStack' },
+                    ]}
+                    isRequired
+                  />
                   <FormGroup label="VM Name" isRequired fieldId="vm">
                     <TextInput id="vm" value={vmName} onChange={(_e, v) => setVmName(v)} isRequired />
                   </FormGroup>
-                  <FormGroup label="CloudOSO" isRequired fieldId="cloudoso">
-                    <TextInput
-                      id="cloudoso"
-                      list="cloudoso-options"
-                      value={cloudosoRef}
-                      onChange={(_e, v) => setCloudosoRef(v)}
-                      isRequired
-                    />
-                    <datalist id="cloudoso-options">
-                      {cloudosos.items.map((t) => (
-                        <option key={t.metadata.name} value={t.metadata.name} />
-                      ))}
-                    </datalist>
-                  </FormGroup>
+                  <RefSelect
+                    id="cloudoso"
+                    label="CloudOSO"
+                    value={cloudosoRef}
+                    onChange={setCloudosoRef}
+                    options={names(cloudosos.items)}
+                    isRequired
+                  />
                 </>
               )}
 

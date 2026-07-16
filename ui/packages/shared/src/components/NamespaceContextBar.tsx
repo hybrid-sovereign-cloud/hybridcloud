@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Title } from '@patternfly/react-core';
+import { Button, FormSelect, FormSelectOption, Title } from '@patternfly/react-core';
 import { TopologyIcon } from '@patternfly/react-icons';
 import { K8sResource } from '../types';
 
@@ -16,7 +16,7 @@ export interface NamespaceContextBarProps {
   onSelectEntity?: (entityName: string) => void;
 }
 
-/** Tenant namespace context strip — compact entity switcher (DESIGN_UI_Existing §5.1) */
+/** Tenant namespace context strip — entity dropdown switcher (DESIGN_UI_Existing §5.1) */
 export function NamespaceContextBar({
   namespace,
   entityName,
@@ -30,53 +30,46 @@ export function NamespaceContextBar({
 }: NamespaceContextBarProps): React.ReactElement {
   const displayEntity = entityName ?? namespace.replace(/^entity-/, '');
   const currentSlug = namespace.replace(/^entity-/, '');
+  const options =
+    entities.length > 0
+      ? entities
+      : currentSlug
+        ? [{ metadata: { name: currentSlug } } as K8sResource]
+        : [];
 
   return (
     <div className="sc-ns-bar" aria-label="Entity namespace context">
       <div className="sc-ns-bar__main">
         <div className="sc-ns-bar__title-row">
-          <Title headingLevel="h2" size="md" className="sc-ns-bar__title">
-            Entity namespace
-          </Title>
-          {onSelectEntity && entities.length > 0 ? (
-            <div className="sc-entity-switcher" role="group" aria-label="Switch entity">
-              {entities.slice(0, 6).map((ent) => {
-                const slug = ent.metadata.name;
-                const active = slug === currentSlug;
-                return (
-                  <Button
-                    key={slug}
-                    variant={active ? 'primary' : 'secondary'}
-                    size="sm"
-                    className={active ? 'sc-entity-chip sc-entity-chip--active' : 'sc-entity-chip'}
-                    onClick={() => onSelectEntity(slug)}
-                  >
-                    {slug}
-                  </Button>
-                );
-              })}
-              {entities.length > 6 && (
-                <select
-                  className="sc-entity-select"
-                  aria-label="More entities"
-                  value={currentSlug}
-                  onChange={(e) => onSelectEntity(e.target.value)}
-                >
-                  {entities.map((ent) => (
-                    <option key={ent.metadata.name} value={ent.metadata.name}>
-                      {ent.metadata.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+          <label htmlFor="sc-entity-select" className="sc-ns-bar__label">
+            Entity
+          </label>
+          {onSelectEntity ? (
+            <FormSelect
+              id="sc-entity-select"
+              className="sc-entity-select"
+              value={currentSlug || displayEntity}
+              onChange={(_e, value) => onSelectEntity(value)}
+              aria-label="Switch entity"
+            >
+              {options.map((ent) => (
+                <FormSelectOption
+                  key={ent.metadata.name}
+                  value={ent.metadata.name}
+                  label={ent.metadata.name}
+                />
+              ))}
+            </FormSelect>
           ) : (
             <strong className="sc-ns-bar__entity">{displayEntity}</strong>
           )}
+          <Title headingLevel="h2" size="md" className="sc-ns-bar__title pf-v5-u-screen-reader">
+            Entity namespace · {displayEntity}
+          </Title>
         </div>
         <div className="sc-ns-bar__meta">
           <span>
-            <strong>{namespace}</strong>
+            Namespace <strong>{namespace}</strong>
           </span>
           {billingId && (
             <span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Form,
@@ -10,6 +10,8 @@ import {
   Alert,
   Card,
   CardBody,
+  FormSelect,
+  FormSelectOption,
 } from '@patternfly/react-core';
 import { PageHeader, useK8sResourceList, K8sResource } from '@hybridsovereign/shared';
 
@@ -19,6 +21,23 @@ const TITLES: Record<CreateKind, string> = {
   entity: 'Create Entity',
   persona: 'Create Persona',
 };
+
+const PERSONA_TYPES = [
+  'entityAdmin',
+  'identityAdmin',
+  'auditor',
+  'teamAdmin',
+  'teamView',
+  'projectAdmin',
+  'projectView',
+  'assignmentAdmin',
+  'platformOpenshiftAdmin',
+  'platformOpenshiftView',
+  'cloudOSOAdmin',
+  'cloudOSOView',
+  'cloudAWSAdmin',
+  'cloudAWSView',
+];
 
 export function CreateResourcePage(): React.ReactElement {
   const { kind } = useParams<{ kind: CreateKind }>();
@@ -30,11 +49,28 @@ export function CreateResourcePage(): React.ReactElement {
   const [websiteLink, setWebsiteLink] = useState('');
   const [entityName, setEntityName] = useState('');
   const [rbac, setRbac] = useState('');
-  const [personaType, setPersonaType] = useState('platform-admin');
+  const [personaType, setPersonaType] = useState('entityAdmin');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const entities = useK8sResourceList<K8sResource>('Entity', { enabled: type === 'persona' });
+  const entityNs = entityName ? `entity-${entityName}` : '';
+  const rbacs = useK8sResourceList<K8sResource>('Rbac', {
+    namespace: entityNs || 'default',
+    enabled: type === 'persona' && !!entityName,
+  });
+
+  useEffect(() => {
+    if (type === 'persona' && !entityName && entities.items[0]) {
+      setEntityName(entities.items[0].metadata.name);
+    }
+  }, [type, entityName, entities.items]);
+
+  useEffect(() => {
+    if (type === 'persona' && rbacs.items[0] && !rbacs.items.some((r) => r.metadata.name === rbac)) {
+      setRbac(rbacs.items[0].metadata.name);
+    }
+  }, [type, rbacs.items, rbac]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,18 +141,20 @@ export function CreateResourcePage(): React.ReactElement {
           <Form onSubmit={handleSubmit}>
             {type === 'persona' && (
               <FormGroup label="Entity" isRequired fieldId="entity">
-                <TextInput
+                <FormSelect
                   id="entity"
-                  list="entity-options"
                   value={entityName}
-                  onChange={(_e, v) => setEntityName(v)}
+                  onChange={(_e, v) => {
+                    setEntityName(v);
+                    setRbac('');
+                  }}
                   isRequired
-                />
-                <datalist id="entity-options">
+                >
+                  <FormSelectOption value="" label="Select entity…" isDisabled />
                   {entities.items.map((ent) => (
-                    <option key={ent.metadata.name} value={ent.metadata.name} />
+                    <FormSelectOption key={ent.metadata.name} value={ent.metadata.name} label={ent.metadata.name} />
                   ))}
-                </datalist>
+                </FormSelect>
               </FormGroup>
             )}
             <FormGroup label="Name" isRequired fieldId="name">
@@ -138,10 +176,19 @@ export function CreateResourcePage(): React.ReactElement {
             {type === 'persona' && (
               <>
                 <FormGroup label="RBAC" isRequired fieldId="rbac">
-                  <TextInput id="rbac" value={rbac} onChange={(_e, v) => setRbac(v)} isRequired />
+                  <FormSelect id="rbac" value={rbac} onChange={(_e, v) => setRbac(v)} isRequired>
+                    <FormSelectOption value="" label={entityName ? 'Select RBAC…' : 'Select entity first'} isDisabled />
+                    {rbacs.items.map((r) => (
+                      <FormSelectOption key={r.metadata.name} value={r.metadata.name} label={r.metadata.name} />
+                    ))}
+                  </FormSelect>
                 </FormGroup>
                 <FormGroup label="Type" isRequired fieldId="ptype">
-                  <TextInput id="ptype" value={personaType} onChange={(_e, v) => setPersonaType(v)} isRequired />
+                  <FormSelect id="ptype" value={personaType} onChange={(_e, v) => setPersonaType(v)} isRequired>
+                    {PERSONA_TYPES.map((t) => (
+                      <FormSelectOption key={t} value={t} label={t} />
+                    ))}
+                  </FormSelect>
                 </FormGroup>
               </>
             )}

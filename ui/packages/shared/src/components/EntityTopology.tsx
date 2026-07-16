@@ -137,6 +137,14 @@ export function EntityTopology({
       status: statusFromReady(item.status?.ready, item.status?.status),
     });
 
+    type AssignSpec = {
+      team?: string;
+      projects?: string[];
+      openshift?: string;
+      aws?: string;
+      cloudoso?: string;
+    };
+
     const entityNodes: TopologyNode[] = entityNamespace
       ? [
           {
@@ -164,74 +172,173 @@ export function EntityTopology({
       ...(allow(cloudAwsPerm.allowed) ? cloudAws.items.map((i) => toNode(i, 'CloudAWS')) : []),
     ];
 
-    // Tenant view: Entity → Teams → Projects → Assignments (+ clouds linked)
-    // Admin view: Entities → Platforms → Assignments
-    const columns: TopologyNode[][] = entityNamespace
-      ? [entityNodes, teamNodes, projectNodes, assignmentNodes, cloudNodes.length ? cloudNodes : platformNodes]
-      : [entityNodes, platformNodes, assignmentNodes];
-
-    const { nodes, width, height } = layoutColumns(columns.filter((c) => c.length > 0));
-    const byKey = new Map(nodes.map((n) => [n.id, n]));
-    const byKindName = new Map(nodes.map((n) => [`${n.kind}:${n.label}`, n]));
-
-    const edges: TopologyEdge[] = [];
-    const link = (fromId: string, toId: string, failed?: boolean) => {
-      if (byKey.has(fromId) && byKey.has(toId)) {
-        edges.push({ id: `${fromId}->${toId}`, from: fromId, to: toId, failed });
-      }
-    };
-
-    if (entityNamespace && entityNodes[0]) {
-      for (const t of teamNodes) link(entityNodes[0].id, t.id, t.status === 'failed');
-      for (const t of teamNodes) {
-        // heuristic: projects share prefix or all under entity
-        for (const p of projectNodes.slice(0, 8)) {
-          link(t.id, p.id, p.status === 'failed');
-        }
-      }
-    }
+    // Build edges ONLY from real CR references (no mesh heuristics)
+    const edgePairs: Array<{ fromKind: string; fromName: string; toKind: string; toName: string; failed?: boolean }> =
+      [];
 
     for (const a of assignments.items) {
-      const aNode = byKindName.get(`Assignment:${a.metadata.name}`);
-      if (!aNode) continue;
-      const spec = (a.spec || {}) as {
-        team?: string;
-        projects?: string[];
-        openshift?: string;
-        aws?: string;
-      };
+      if (!allow(assignmentPerm.allowed)) break;
+      const spec = (a.spec || {}) as AssignSpec;
+      const failed = statusFromReady(a.status?.ready, a.status?.status) === 'failed';
       if (spec.team) {
-        const t = byKindName.get(`Team:${spec.team}`);
-        if (t) link(t.id, aNode.id, aNode.status === 'failed');
+        edgePairs.push({ fromKind: 'Team', fromName: spec.team, toKind: 'Assignment', toName: a.metadata.name, failed });
       }
       for (const pName of spec.projects ?? []) {
-        const p = byKindName.get(`Project:${pName}`);
-        if (p) link(p.id, aNode.id, aNode.status === 'failed');
+        edgePairs.push({
+          fromKind: 'Project',
+          fromName: pName,
+          toKind: 'Assignment',
+          toName: a.metadata.name,
+          failed,
+        });
       }
       if (spec.openshift) {
-        const p = byKindName.get(`PlatformOpenshift:${spec.openshift}`);
-        if (p) link(p.id, aNode.id, aNode.status === 'failed');
+        edgePairs.push({
+          fromKind: 'PlatformOpenshift',
+          fromName: spec.openshift,
+          toKind: 'Assignment',
+          toName: a.metadata.name,
+          failed,
+        });
       }
       if (spec.aws) {
-        const c = byKindName.get(`CloudAWS:${spec.aws}`);
-        if (c) link(c.id, aNode.id, aNode.status === 'failed');
+        edgePairs.push({
+          fromKind: 'CloudAWS',
+          fromName: spec.aws,
+          toKind: 'Assignment',
+          toName: a.metadata.name,
+          failed,
+        });
+      }
+      if (spec.cloudoso) {
+        edgePairs.push({
+          fromKind: 'CloudOSO',
+          fromName: spec.cloudoso,
+          toKind: 'Assignment',
+          toName: a.metadata.name,
+          failed,
+        });
       }
     }
 
-    // Admin: entity → platform heuristic (same namespace entity-*)
-    if (!entityNamespace) {
+    // Platform → CloudOSO/CloudAWS when platform.spec.cloudRef matches
+    for (const p of platforms.items) {
+      const cloudRef = (p.spec as { cloudRef?: string } | undefined)?.cloudRef;
+      if (!cloudRef) continue;
+      const cloud =
+        cloudOso.items.find((c) => c.metadata.name === cloudRef) ||
+        cloudAws.items.find((c) => c.metadata.name === cloudRef);
+      if (cloud) {
+        const kind: HybridSovereignKind = cloudAws.items.some((c) => c.metadata.name === cloud.metadata.name)
+          ? 'CloudAWS'
+          : 'CloudOSO';
+        edgePairs.push({
+          fromKind: kind,
+          fromName: cloud.metadata.name,
+          toKind: 'PlatformOpenshift',
+          toName: p.metadata.name,
+          failed: statusFromReady(p.status?.ready, p.status?.status) === 'failed',
+        });
+      }
+    }
+
+    // Entity → Team / Entity → Platform only for scoped ownership (namespace membership)
+    if (entityNamespace && entityNodes[0]) {
+      for (const t of teamNodes) {
+        edgePairs.push({
+          fromKind: 'Entity',
+          fromName: entityNodes[0].label,
+          toKind: 'Team',
+          toName: t.label,
+          failed: t.status === 'failed',
+        });
+      }
+    } else {
       for (const e of entityNodes) {
         for (const p of platformNodes) {
-          if (p.namespace === `entity-${e.label}` || p.label.includes(e.label)) {
-            link(e.id, p.id, p.status === 'failed');
+          if (p.namespace === `entity-${e.label}`) {
+            edgePairs.push({
+              fromKind: 'Entity',
+              fromName: e.label,
+              toKind: 'PlatformOpenshift',
+              toName: p.label,
+              failed: p.status === 'failed',
+            });
+          }
+        }
+        for (const a of assignmentNodes) {
+          if (a.namespace === `entity-${e.label}`) {
+            // Prefer linking entity → assignment only when no team edge exists
+            const hasTeam = edgePairs.some(
+              (ep) => ep.toKind === 'Assignment' && ep.toName === a.label && ep.fromKind === 'Team',
+            );
+            if (!hasTeam) {
+              edgePairs.push({
+                fromKind: 'Entity',
+                fromName: e.label,
+                toKind: 'Assignment',
+                toName: a.label,
+                failed: a.status === 'failed',
+              });
+            }
           }
         }
       }
-      for (const p of platformNodes) {
-        for (const a of assignmentNodes) {
-          if (a.namespace === p.namespace) link(p.id, a.id, a.status === 'failed');
-        }
-      }
+    }
+
+    // Only keep nodes that are entities/teams/projects OR appear in an edge
+    const referenced = new Set<string>();
+    for (const ep of edgePairs) {
+      referenced.add(`${ep.fromKind}:${ep.fromName}`);
+      referenced.add(`${ep.toKind}:${ep.toName}`);
+    }
+    const keep = (n: TopologyNode) =>
+      n.kind === 'Entity' || referenced.has(`${n.kind}:${n.label}`);
+
+    const filteredTeams = teamNodes.filter(keep);
+    const filteredProjects = projectNodes.filter(keep);
+    const filteredAssignments = assignmentNodes.filter(keep);
+    const filteredPlatforms = platformNodes.filter(keep);
+    const filteredClouds = cloudNodes.filter(keep);
+
+    // Order columns by dependency flow; sort rows to reduce crossings
+    const teamOrder = new Map(filteredTeams.map((t, i) => [t.label, i]));
+    filteredAssignments.sort((a, b) => {
+      const aTeam = edgePairs.find((e) => e.toName === a.label && e.fromKind === 'Team')?.fromName;
+      const bTeam = edgePairs.find((e) => e.toName === b.label && e.fromKind === 'Team')?.fromName;
+      return (teamOrder.get(aTeam ?? '') ?? 99) - (teamOrder.get(bTeam ?? '') ?? 99);
+    });
+    filteredProjects.sort((a, b) => {
+      const aTeam = edgePairs.find(
+        (e) => e.fromName === a.label && e.fromKind === 'Project',
+      );
+      const bTeam = edgePairs.find(
+        (e) => e.fromName === b.label && e.fromKind === 'Project',
+      );
+      const aAssign = aTeam?.toName;
+      const bAssign = bTeam?.toName;
+      return (aAssign ?? '').localeCompare(bAssign ?? '');
+    });
+
+    const columns: TopologyNode[][] = (
+      entityNamespace
+        ? [entityNodes, filteredTeams, filteredProjects, filteredClouds, filteredPlatforms, filteredAssignments]
+        : [entityNodes, filteredPlatforms, filteredAssignments]
+    ).filter((c) => c.length > 0);
+
+    const { nodes, width, height } = layoutColumns(columns);
+    const byKindName = new Map(nodes.map((n) => [`${n.kind}:${n.label}`, n]));
+
+    const edges: TopologyEdge[] = [];
+    const seen = new Set<string>();
+    for (const ep of edgePairs) {
+      const from = byKindName.get(`${ep.fromKind}:${ep.fromName}`);
+      const to = byKindName.get(`${ep.toKind}:${ep.toName}`);
+      if (!from || !to) continue;
+      const id = `${from.id}->${to.id}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      edges.push({ id, from: from.id, to: to.id, failed: ep.failed });
     }
 
     return { nodes, edges, width: Math.max(width, 640), height: Math.max(height, 200) };

@@ -154,13 +154,22 @@
   padding: 0.125rem 0.5rem !important;
 }
 
-.sc-entity-select {
+.sc-ns-bar__label {
   font-size: var(--sc-font-sm);
-  padding: 0.125rem 0.35rem;
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius);
-  background: var(--sc-surface);
-  color: var(--sc-text);
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  margin-right: 0.35rem;
+}
+
+.sc-entity-select.pf-v5-c-form-control,
+select.sc-entity-select,
+.sc-ns-bar .pf-v5-c-form-control {
+  width: auto;
+  min-width: 12rem;
+  max-width: 20rem;
+  font-size: var(--sc-font-sm);
+  padding-block: 0.15rem;
+  padding-inline: 0.5rem;
 }
 
 .sc-topology-graph__toolbar {
