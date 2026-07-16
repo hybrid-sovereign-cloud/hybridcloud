@@ -2426,7 +2426,7 @@ sovereignDashboard:
     clusterDomain: apps.services.example.com
     image:
       repository: quay.example.com/hybrid-sovereign/sovereign-cloud-dashboard
-      tag: "2.0.1"
+      tag: "2.0.2"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2458,7 +2458,7 @@ tenancyDashboard:
     clusterDomain: apps.services.example.com
     image:
       repository: quay.example.com/hybrid-sovereign/tenancy-dashboard
-      tag: "5.0.1"
+      tag: "5.0.2"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret

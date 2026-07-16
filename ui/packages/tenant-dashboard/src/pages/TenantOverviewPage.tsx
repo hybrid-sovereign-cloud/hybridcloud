@@ -4,20 +4,34 @@ import {
   Card,
   CardTitle,
   CardBody,
+  CardHeader,
   Button,
   Spinner,
   Alert,
+  Label,
+  Flex,
+  FlexItem,
   Progress,
   ProgressSize,
 } from '@patternfly/react-core';
-import { SyncIcon, PlusCircleIcon } from '@patternfly/react-icons';
+import {
+  SyncIcon,
+  PlusCircleIcon,
+  ExclamationTriangleIcon,
+  UsersIcon,
+  CubesIcon,
+  ClusterIcon,
+  ProjectDiagramIcon,
+  CloudIcon,
+  TopologyIcon,
+} from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   EntityTopology,
   PageHeader,
   HealthDonut,
-  HealthStrip,
+  InventoryCard,
   StatusBadge,
   normalizeHealth,
   useK8sResourceList,
@@ -27,15 +41,6 @@ import {
 interface TenantOverviewPageProps {
   namespace: string;
 }
-
-const KIND_ROWS: { kind: 'Team' | 'Project' | 'PlatformOpenshift' | 'Assignment' | 'CloudOSO' | 'CloudAWS'; path: string; label: string; form?: string }[] = [
-  { kind: 'Team', path: '/teams', label: 'Teams', form: 'team' },
-  { kind: 'Project', path: '/projects', label: 'Projects', form: 'project' },
-  { kind: 'PlatformOpenshift', path: '/platforms', label: 'Platforms' },
-  { kind: 'Assignment', path: '/assignments', label: 'Assignments', form: 'assignment' },
-  { kind: 'CloudOSO', path: '/cloudoso', label: 'Cloud OSO', form: 'cloudoso' },
-  { kind: 'CloudAWS', path: '/cloudaws', label: 'Cloud AWS', form: 'cloudaws' },
-];
 
 function bucket(items: K8sResource[]) {
   let ready = 0;
@@ -84,7 +89,6 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
     cloudaws.loading;
   const firstError =
     teams.error || projects.error || platforms.error || assignments.error || cloudoso.error || cloudaws.error;
-
   const failedItems = all
     .filter((i) => normalizeHealth(i.status?.ready, i.status?.status) === 'failed')
     .slice(0, 8);
@@ -98,12 +102,20 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
     cloudaws.refresh();
   };
 
+  const kindRows = [
+    { kind: 'Team', label: 'Teams', path: '/teams', icon: <UsersIcon /> },
+    { kind: 'Project', label: 'Projects', path: '/projects', icon: <CubesIcon /> },
+    { kind: 'PlatformOpenshift', label: 'Platforms', path: '/platforms', icon: <ClusterIcon /> },
+    { kind: 'Assignment', label: 'Assignments', path: '/assignments', icon: <ProjectDiagramIcon /> },
+    { kind: 'CloudOSO', label: 'Cloud OSO', path: '/cloudoso', icon: <CloudIcon /> },
+    { kind: 'CloudAWS', label: 'Cloud AWS', path: '/cloudaws', icon: <CloudIcon /> },
+  ];
+
   return (
     <>
       <PageHeader
-        title="Entity Overview"
-        subtitle={`Live topology and health for ${namespace}`}
-        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Overview' }]}
+        title="Overview"
+        subtitle={`Entity namespace ${namespace}`}
         actions={
           <Button variant="secondary" icon={<SyncIcon />} onClick={refreshAll}>
             Refresh
@@ -112,7 +124,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
       />
 
       {firstError && (
-        <Alert variant="warning" isInline title="Some resources failed to load" style={{ marginBottom: '1rem' }}>
+        <Alert variant="warning" isInline title="Some resources failed to load" className="sc-mb">
           {firstError.message}
         </Alert>
       )}
@@ -121,75 +133,88 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
         <Spinner />
       ) : (
         <>
-          <div className="sc-overview-grid">
-            <Card className="sc-overview-card">
+          <div className="sc-overview-top">
+            <Card className="sc-panel">
               <CardTitle>Health summary</CardTitle>
               <CardBody>
                 <HealthDonut ready={overall.ready} failed={overall.failed} pending={overall.pending} />
               </CardBody>
             </Card>
-            <Card className="sc-overview-card">
-              <CardTitle>Resource counts</CardTitle>
-              <CardBody>
-                <HealthStrip
-                  tiles={[
-                    {
-                      label: 'Teams',
-                      value: teams.items.length,
-                      hint: `${bucket(teams.items).ready} ready`,
-                      href: '/teams',
-                    },
-                    {
-                      label: 'Projects',
-                      value: projects.items.length,
-                      hint: `${bucket(projects.items).ready} ready`,
-                      href: '/projects',
-                    },
-                    {
-                      label: 'Platforms',
-                      value: platforms.items.length,
-                      hint: `${bucket(platforms.items).ready} ready`,
-                      href: '/platforms',
-                    },
-                    {
-                      label: 'Assignments',
-                      value: assignments.items.length,
-                      hint: `${bucket(assignments.items).ready} ready`,
-                      href: '/assignments',
-                    },
-                  ]}
-                />
-              </CardBody>
-            </Card>
+            <div className="sc-inventory-grid">
+              <InventoryCard
+                title="Teams"
+                count={teams.items.length}
+                hint={`${bucket(teams.items).ready} ready`}
+                icon={<UsersIcon />}
+                href="/teams"
+              />
+              <InventoryCard
+                title="Platforms"
+                count={platforms.items.length}
+                hint={`${bucket(platforms.items).ready} ready`}
+                icon={<ClusterIcon />}
+                href="/platforms"
+              />
+              <InventoryCard
+                title="Assignments"
+                count={assignments.items.length}
+                hint={`${bucket(assignments.items).ready} ready`}
+                icon={<ProjectDiagramIcon />}
+                href="/assignments"
+              />
+              <InventoryCard
+                title="Projects"
+                count={projects.items.length}
+                hint={`${bucket(projects.items).ready} ready`}
+                icon={<CubesIcon />}
+                href="/projects"
+              />
+            </div>
           </div>
 
-          <Title headingLevel="h2" size="lg" style={{ margin: '0 0 0.75rem' }}>
+          <Title headingLevel="h2" size="lg" className="sc-section-title">
             Quick actions
           </Title>
-          <div className="sc-card-grid" style={{ marginBottom: '1.5rem' }}>
+          <div className="sc-card-grid sc-mb">
             {[
-              { label: 'Create Team', path: '/create/team', hint: 'Team CR' },
-              { label: 'Create Project', path: '/create/project', hint: 'Project CR' },
-              { label: 'Request CloudOSO', path: '/create/cloudoso', hint: 'OpenStack env' },
-              { label: 'Request Cloud AWS', path: '/create/cloudaws', hint: 'AWS env' },
-              { label: 'Create Assignment', path: '/create/assignment', hint: 'Bind stack' },
-            ].map((action) => (
-              <Card key={action.path} isSelectable onClick={() => navigate(action.path)} className="sc-action-card">
+              { label: 'Create Team', path: '/create/team' },
+              { label: 'Create Project', path: '/create/project' },
+              { label: 'Request CloudOSO', path: '/create/cloudoso' },
+              { label: 'Request Cloud AWS', path: '/create/cloudaws' },
+              { label: 'Create Assignment', path: '/create/assignment' },
+            ].map((a) => (
+              <Card
+                key={a.path}
+                isSelectable
+                isCompact
+                className="sc-action-card"
+                onClick={() => navigate(a.path)}
+              >
                 <CardTitle>
-                  <PlusCircleIcon style={{ marginRight: '0.5rem' }} />
-                  {action.label}
+                  <PlusCircleIcon className="sc-inline-icon" />
+                  {a.label}
                 </CardTitle>
-                <CardBody>{action.hint}</CardBody>
               </Card>
             ))}
           </div>
 
           {failedItems.length > 0 && (
-            <Card className="sc-overview-card sc-overview-card--alert" style={{ marginBottom: '1.5rem' }}>
-              <CardTitle>Issues ({failedItems.length})</CardTitle>
+            <Card className="sc-failed-panel sc-mb">
+              <CardHeader>
+                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                  <FlexItem>
+                    <ExclamationTriangleIcon className="sc-failed-panel__icon" />
+                  </FlexItem>
+                  <FlexItem>
+                    <CardTitle component="span">
+                      Issues <Label color="orange">{failedItems.length}</Label>
+                    </CardTitle>
+                  </FlexItem>
+                </Flex>
+              </CardHeader>
               <CardBody>
                 <div className="sc-table-wrap">
-                  <Table variant="compact" aria-label="Failed tenant resources">
+                  <Table variant="compact" aria-label="Failed resources">
                     <Thead>
                       <Tr>
                         <Th>Kind</Th>
@@ -218,10 +243,10 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
             </Card>
           )}
 
-          <Title headingLevel="h2" size="lg" style={{ marginBottom: '0.75rem' }}>
+          <Title headingLevel="h2" size="lg" className="sc-section-title">
             Tenancy resources
           </Title>
-          <div className="sc-table-wrap" style={{ marginBottom: '1.5rem' }}>
+          <div className="sc-table-wrap sc-mb">
             <Table variant="compact" aria-label="Tenancy kind status">
               <Thead>
                 <Tr>
@@ -234,12 +259,17 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                 </Tr>
               </Thead>
               <Tbody>
-                {KIND_ROWS.map((row) => {
+                {kindRows.map((row) => {
                   const b = bucket(lists[row.kind] ?? []);
                   const health = b.total === 0 ? 0 : Math.round((b.ready / b.total) * 100);
                   return (
                     <Tr key={row.kind}>
-                      <Td>{row.label}</Td>
+                      <Td>
+                        <span className="sc-kind-cell">
+                          {row.icon}
+                          {row.label}
+                        </span>
+                      </Td>
                       <Td>{b.total}</Td>
                       <Td>
                         <span className="sc-text-success">{b.ready}</span>
@@ -260,11 +290,22 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
             </Table>
           </div>
 
-          <Title headingLevel="h2" size="lg" style={{ marginBottom: '0.75rem' }}>
-            Live entity topology
+          <Title headingLevel="h2" size="lg" className="sc-section-title">
+            <TopologyIcon className="sc-inline-icon" /> Live entity topology
           </Title>
-          <Card>
+          <Card className="sc-panel">
             <CardBody>
+              <div className="sc-topo-legend">
+                <span>
+                  <i className="sc-dot sc-dot--ready" /> Healthy
+                </span>
+                <span>
+                  <i className="sc-dot sc-dot--failed" /> Failed
+                </span>
+                <span>
+                  <i className="sc-dot sc-dot--pending" /> Pending
+                </span>
+              </div>
               <EntityTopology entityNamespace={namespace} filterByPermissions={false} />
             </CardBody>
           </Card>

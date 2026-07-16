@@ -1,6 +1,14 @@
 import React, { useMemo } from 'react';
 import { Spinner, Alert } from '@patternfly/react-core';
 import {
+  BuildingIcon,
+  UsersIcon,
+  CubesIcon,
+  ProjectDiagramIcon,
+  ClusterIcon,
+  CloudIcon,
+} from '@patternfly/react-icons';
+import {
   HybridSovereignKind,
   KIND_PLURALS,
   K8sResource,
@@ -18,11 +26,19 @@ export interface TopologyNode {
 }
 
 export interface EntityTopologyProps {
-  /** Entity namespace to scope tenant view; omit for platform-wide admin view */
   entityNamespace?: string;
-  /** Hide kinds the user cannot list (RBAC-safe topology) */
   filterByPermissions?: boolean;
 }
+
+const KIND_ICON: Partial<Record<HybridSovereignKind | 'Group', React.ComponentType>> = {
+  Entity: BuildingIcon,
+  Team: UsersIcon,
+  Project: CubesIcon,
+  Assignment: ProjectDiagramIcon,
+  PlatformOpenshift: ClusterIcon,
+  CloudOSO: CloudIcon,
+  CloudAWS: CloudIcon,
+};
 
 function statusFromReady(ready?: boolean, status?: string): TopologyNode['status'] {
   return normalizeHealth(ready, status);
@@ -40,20 +56,27 @@ function TopologySection({
     <div className="sc-topology__layer">
       <div className="sc-topology__layer-title">{title}</div>
       <div className="sc-topology__nodes">
-        {nodes.map((node) => (
-          <div
-            key={node.id}
-            className={`sc-topo-node sc-topo-node--${node.status}`}
-            aria-label={`${node.kind} ${node.label} ${node.status}`}
-          >
-            <div className="sc-topo-node__kind">{node.kind}</div>
-            <div className="sc-topo-node__name">{node.label}</div>
-            <div className="sc-topo-node__status">
-              <StatusBadge status={node.status} ready={node.status === 'ready'} />
-              {node.namespace ? ` · ${node.namespace}` : ''}
+        {nodes.map((node) => {
+          const Icon = KIND_ICON[node.kind] ?? CubesIcon;
+          return (
+            <div
+              key={node.id}
+              className={`sc-topo-node sc-topo-node--${node.status}`}
+              aria-label={`${node.kind} ${node.label} ${node.status}`}
+            >
+              <div className="sc-topo-node__head">
+                <span className="sc-topo-node__icon">
+                  <Icon />
+                </span>
+                <span className="sc-topo-node__kind">{node.kind}</span>
+              </div>
+              <div className="sc-topo-node__name">{node.label}</div>
+              <div className="sc-topo-node__status">
+                <StatusBadge status={node.status} ready={node.status === 'ready'} />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

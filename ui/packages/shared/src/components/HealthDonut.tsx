@@ -58,8 +58,11 @@ export function HealthDonut({
           <text x="60" y="56" textAnchor="middle" className="sc-health-donut__total">
             {total}
           </text>
-          <text x="60" y="74" textAnchor="middle" className="sc-health-donut__sub">
-            {total === 0 ? 'No data' : `${pct}% healthy`}
+          <text x="60" y="72" textAnchor="middle" className="sc-health-donut__sub">
+            Total
+          </text>
+          <text x="60" y="86" textAnchor="middle" className="sc-health-donut__pct">
+            {total === 0 ? '' : `${pct}% healthy`}
           </text>
         </svg>
       </div>
