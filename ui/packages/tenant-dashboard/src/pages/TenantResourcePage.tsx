@@ -16,7 +16,19 @@ import {
   normalizeHealth,
 } from '@hybridsovereign/shared';
 
-type FormType = 'team' | 'project' | 'assignment' | 'cloudoso' | 'cloudaws';
+type FormType =
+  | 'team'
+  | 'project'
+  | 'assignment'
+  | 'cloudoso'
+  | 'cloudaws'
+  | 'migration'
+  | 'persona'
+  | 'rbac'
+  | 'vault'
+  | 'vaultkv'
+  | 'aaporg'
+  | 'quayorg';
 
 interface TenantResourcePageProps {
   kind: HybridSovereignKind;

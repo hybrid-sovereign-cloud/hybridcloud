@@ -46,10 +46,81 @@
   {
     "type": "console.navigation/href",
     "properties": {
+      "id": "hybridsovereign-tenant-cloudoso",
+      "perspective": "hybridsovereign",
+      "name": "Cloud OSO",
+      "href": "/hybridsovereign/tenant/cloudoso"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-cloudaws",
+      "perspective": "hybridsovereign",
+      "name": "Cloud AWS",
+      "href": "/hybridsovereign/tenant/cloudaws"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-migrations",
+      "perspective": "hybridsovereign",
+      "name": "Migrate to OpenStack",
+      "href": "/hybridsovereign/tenant/migrations"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
       "id": "hybridsovereign-tenant-assignments",
       "perspective": "hybridsovereign",
       "name": "Assignments",
       "href": "/hybridsovereign/tenant/assignments"
+    }
+  },
+  {
+    "type": "console.navigation/separator",
+    "properties": {
+      "id": "hybridsovereign-access-sep",
+      "perspective": "hybridsovereign",
+      "name": "Access Control"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-vaults",
+      "perspective": "hybridsovereign",
+      "name": "Vaults",
+      "href": "/hybridsovereign/tenant/vaults"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-vaultkvs",
+      "perspective": "hybridsovereign",
+      "name": "Vault KVs",
+      "href": "/hybridsovereign/tenant/vaultkvs"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-aaporgs",
+      "perspective": "hybridsovereign",
+      "name": "AAP Orgs",
+      "href": "/hybridsovereign/tenant/aaporgs"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-quayorgs",
+      "perspective": "hybridsovereign",
+      "name": "Quay Orgs",
+      "href": "/hybridsovereign/tenant/quayorgs"
     }
   },
   {
@@ -90,6 +161,62 @@
       "exact": true,
       "path": "/hybridsovereign/tenant/assignments",
       "component": { "$codeRef": "TenantAssignmentsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/cloudoso",
+      "component": { "$codeRef": "TenantCloudOSOPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/cloudaws",
+      "component": { "$codeRef": "TenantCloudAWSPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/migrations",
+      "component": { "$codeRef": "TenantMigrationsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/vaults",
+      "component": { "$codeRef": "TenantVaultsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/vaultkvs",
+      "component": { "$codeRef": "TenantVaultKVsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/aaporgs",
+      "component": { "$codeRef": "TenantAAPOrgsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/quayorgs",
+      "component": { "$codeRef": "TenantQuayOrgsPage" }
     }
   }
 ]

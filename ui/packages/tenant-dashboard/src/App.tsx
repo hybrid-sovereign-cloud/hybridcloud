@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import {
   Page,
   PageSidebar,
@@ -33,6 +33,10 @@ import {
   UserIcon,
   ProjectDiagramIcon,
   BarsIcon,
+  KeyIcon,
+  ProcessAutomationIcon,
+  DatabaseIcon,
+  ModuleIcon,
 } from '@patternfly/react-icons';
 import { NavLink, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -75,12 +79,27 @@ const NAV: NavEntry[] = [
   { type: 'link', path: '/cloudaws', label: 'Cloud AWS', icon: CloudIcon, kind: 'CloudAWS', form: 'cloudaws' },
   {
     type: 'link',
+    path: '/migrations',
+    label: 'Migrate to OpenStack',
+    icon: ProcessAutomationIcon,
+    kind: 'OpenStackMigration',
+    form: 'migration',
+  },
+  {
+    type: 'link',
     path: '/assignments',
     label: 'Assignments',
     icon: ProjectDiagramIcon,
     kind: 'Assignment',
     form: 'assignment',
   },
+  { type: 'link', path: '/personas', label: 'Personas', icon: UsersIcon, kind: 'Persona', form: 'persona' },
+  { type: 'sep', label: 'Access Control' },
+  { type: 'link', path: '/rbac', label: 'RBAC', icon: KeyIcon, kind: 'Rbac', form: 'rbac' },
+  { type: 'link', path: '/vaults', label: 'Vaults', icon: DatabaseIcon, kind: 'Vault', form: 'vault' },
+  { type: 'link', path: '/vaultkvs', label: 'Vault KVs', icon: DatabaseIcon, kind: 'VaultKV', form: 'vaultkv' },
+  { type: 'link', path: '/aaporgs', label: 'AAP Orgs', icon: ModuleIcon, kind: 'AAPOrg', form: 'aaporg' },
+  { type: 'link', path: '/quayorgs', label: 'Quay Orgs', icon: CubesIcon, kind: 'QuayOrg', form: 'quayorg' },
 ];
 
 function ThemeToggle(): React.ReactElement {
@@ -88,6 +107,7 @@ function ThemeToggle(): React.ReactElement {
   return (
     <Button
       variant="plain"
+      size="sm"
       aria-label="Toggle theme"
       onClick={toggleTheme}
       icon={mode === 'dark' ? <SunIcon /> : <MoonIcon />}
@@ -98,8 +118,13 @@ function ThemeToggle(): React.ReactElement {
 function TenantLayout(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const { namespace: tenantNamespace } = useEntityNamespace({
+  const [isSidebarOpen, setSidebarOpen] = React.useState(true);
+  const {
+    namespace: tenantNamespace,
+    entity,
+    entities,
+    selectEntity,
+  } = useEntityNamespace({
     userGroups: DEV_USER_GROUPS,
   });
 
@@ -129,16 +154,16 @@ function TenantLayout(): React.ReactElement {
           <ToolbarContent>
             <ToolbarGroup align={{ default: 'alignRight' }}>
               <ToolbarItem>
-                <Button variant="plain" aria-label="Notifications" icon={<OutlinedBellIcon />} />
+                <Button variant="plain" size="sm" aria-label="Notifications" icon={<OutlinedBellIcon />} />
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="plain" aria-label="Help" icon={<QuestionCircleIcon />} />
+                <Button variant="plain" size="sm" aria-label="Help" icon={<QuestionCircleIcon />} />
               </ToolbarItem>
               <ToolbarItem>
                 <ThemeToggle />
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="plain" aria-label="User" icon={<UserIcon />}>
+                <Button variant="plain" size="sm" aria-label="User" icon={<UserIcon />}>
                   tenant
                 </Button>
               </ToolbarItem>
@@ -184,7 +209,7 @@ function TenantLayout(): React.ReactElement {
     </PageSidebar>
   );
 
-  const resourceRoutes = useMemo(
+  const resourceRoutes = React.useMemo(
     () => NAV.filter((i): i is Extract<NavEntry, { type: 'link' }> => i.type === 'link' && !!i.kind),
     [],
   );
@@ -195,6 +220,10 @@ function TenantLayout(): React.ReactElement {
         <div className="sc-page">
           <NamespaceContextBar
             namespace={tenantNamespace}
+            entityName={entity?.metadata.name}
+            billingId={(entity?.spec as { billingID?: string } | undefined)?.billingID}
+            entities={entities}
+            onSelectEntity={selectEntity}
             onTopologyClick={() => navigate('/')}
           />
         </div>

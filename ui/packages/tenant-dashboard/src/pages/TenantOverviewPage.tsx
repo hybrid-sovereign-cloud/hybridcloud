@@ -295,17 +295,6 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
           </Title>
           <Card className="sc-panel">
             <CardBody>
-              <div className="sc-topo-legend">
-                <span>
-                  <i className="sc-dot sc-dot--ready" /> Healthy
-                </span>
-                <span>
-                  <i className="sc-dot sc-dot--failed" /> Failed
-                </span>
-                <span>
-                  <i className="sc-dot sc-dot--pending" /> Pending
-                </span>
-              </div>
               <EntityTopology entityNamespace={namespace} filterByPermissions={false} />
             </CardBody>
           </Card>

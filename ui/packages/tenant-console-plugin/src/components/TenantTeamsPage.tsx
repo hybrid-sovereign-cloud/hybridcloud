@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { PageSection, Spinner, Alert } from '@patternfly/react-core';
+import { PageSection, Spinner, Alert, Button } from '@patternfly/react-core';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   PageHeader,
@@ -8,6 +8,8 @@ import {
   StatusFilter,
   normalizeHealth,
   useK8sResourceList,
+  useEntityNamespace,
+  NamespaceContextBar,
   K8sResource,
   HybridSovereignKind,
   configureK8sClient,
@@ -20,16 +22,9 @@ configureK8sClient({
   fetchFn: consoleFetch as unknown as typeof fetch,
 });
 
-function useTenantNs(): string {
-  return (
-    (typeof window !== 'undefined' && sessionStorage.getItem('hybridsovereign-entity-ns')) ||
-    'entity-acme-corp'
-  );
-}
-
 export function makeTenantKindPage(kind: HybridSovereignKind, title: string): React.FC {
   const Page: React.FC = () => {
-    const namespace = useTenantNs();
+    const { namespace, entities, selectEntity, entity } = useEntityNamespace();
     const [search, setSearch] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
     const { items, loading, error, refresh } = useK8sResourceList<K8sResource>(kind, {
@@ -48,6 +43,12 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
     return (
       <PageSection className="sc-console-page">
         <div className="sc-page">
+          <NamespaceContextBar
+            namespace={namespace}
+            entityName={entity?.metadata.name}
+            entities={entities}
+            onSelectEntity={selectEntity}
+          />
           <PageHeader
             title={title}
             subtitle={`${kind} in ${namespace}`}
@@ -56,6 +57,11 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
               { label: 'Tenancy' },
               { label: title },
             ]}
+            actions={
+              <Button variant="secondary" size="sm" onClick={refresh}>
+                Refresh
+              </Button>
+            }
           />
           <FilterToolbar
             search={search}

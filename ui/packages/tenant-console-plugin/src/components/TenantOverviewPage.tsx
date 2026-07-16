@@ -1,14 +1,21 @@
 import * as React from 'react';
-import { PageSection, Title, Card, CardTitle, CardBody } from '@patternfly/react-core';
+import { PageSection, Title, Card, CardBody } from '@patternfly/react-core';
 import {
   EntityTopology,
   PageHeader,
   NamespaceContextBar,
-  HealthStrip,
+  InventoryCard,
   useK8sResourceList,
+  useEntityNamespace,
   K8sResource,
   configureK8sClient,
 } from '@hybridsovereign/shared';
+import {
+  UsersIcon,
+  CubesIcon,
+  ClusterIcon,
+  ProjectDiagramIcon,
+} from '@patternfly/react-icons';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
 
@@ -18,22 +25,19 @@ configureK8sClient({
 });
 
 const TenantOverviewPage: React.FC = () => {
-  const ns =
-    (typeof window !== 'undefined' &&
-      (sessionStorage.getItem('hybridsovereign-entity-ns') || '')) ||
-    'entity-acme-corp';
+  const { namespace, entities, selectEntity, entity } = useEntityNamespace();
 
-  const teams = useK8sResourceList<K8sResource>('Team', { namespace: ns, pollIntervalMs: 30000 });
+  const teams = useK8sResourceList<K8sResource>('Team', { namespace, pollIntervalMs: 30000 });
   const projects = useK8sResourceList<K8sResource>('Project', {
-    namespace: ns,
+    namespace,
     pollIntervalMs: 30000,
   });
   const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', {
-    namespace: ns,
+    namespace,
     pollIntervalMs: 30000,
   });
   const assignments = useK8sResourceList<K8sResource>('Assignment', {
-    namespace: ns,
+    namespace,
     pollIntervalMs: 30000,
   });
   const ready = (items: K8sResource[]) => items.filter((i) => i.status?.ready).length;
@@ -41,62 +45,56 @@ const TenantOverviewPage: React.FC = () => {
   return (
     <PageSection className="sc-console-page">
       <div className="sc-page">
+        <NamespaceContextBar
+          namespace={namespace}
+          entityName={entity?.metadata.name}
+          billingId={(entity?.spec as { billingID?: string } | undefined)?.billingID}
+          entities={entities}
+          onSelectEntity={selectEntity}
+        />
         <PageHeader
           title="Entity Overview"
           subtitle="Tenant-scoped health and live topology"
           breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Tenancy' }, { label: 'Overview' }]}
         />
-        <NamespaceContextBar namespace={ns} />
-        <HealthStrip
-          tiles={[
-            {
-              label: 'Teams',
-              value: teams.items.length,
-              hint: `${ready(teams.items)} ready`,
-              href: '/hybridsovereign/tenant/teams',
-            },
-            {
-              label: 'Projects',
-              value: projects.items.length,
-              hint: `${ready(projects.items)} ready`,
-              href: '/hybridsovereign/tenant/projects',
-            },
-            {
-              label: 'Platforms',
-              value: platforms.items.length,
-              hint: `${ready(platforms.items)} ready`,
-              href: '/hybridsovereign/tenant/platforms',
-            },
-            {
-              label: 'Assignments',
-              value: assignments.items.length,
-              hint: `${ready(assignments.items)} ready`,
-              href: '/hybridsovereign/tenant/assignments',
-            },
-          ]}
-        />
-        <Title headingLevel="h2" size="lg" style={{ marginBottom: '1rem' }}>
+        <div className="sc-inventory-grid sc-mb">
+          <InventoryCard
+            title="Teams"
+            count={teams.items.length}
+            hint={`${ready(teams.items)} ready`}
+            icon={<UsersIcon />}
+            href="/hybridsovereign/tenant/teams"
+          />
+          <InventoryCard
+            title="Projects"
+            count={projects.items.length}
+            hint={`${ready(projects.items)} ready`}
+            icon={<CubesIcon />}
+            href="/hybridsovereign/tenant/projects"
+          />
+          <InventoryCard
+            title="Platforms"
+            count={platforms.items.length}
+            hint={`${ready(platforms.items)} ready`}
+            icon={<ClusterIcon />}
+            href="/hybridsovereign/tenant/platforms"
+          />
+          <InventoryCard
+            title="Assignments"
+            count={assignments.items.length}
+            hint={`${ready(assignments.items)} ready`}
+            icon={<ProjectDiagramIcon />}
+            href="/hybridsovereign/tenant/assignments"
+          />
+        </div>
+        <Title headingLevel="h2" size="lg" className="sc-section-title">
           Live entity topology
         </Title>
-        <EntityTopology entityNamespace={ns} filterByPermissions={false} />
-        <Title headingLevel="h2" size="lg" style={{ margin: '1.5rem 0 1rem' }}>
-          Tenancy entry points
-        </Title>
-        <div className="sc-card-grid">
-          {[
-            { title: 'Teams', href: '/hybridsovereign/tenant/teams' },
-            { title: 'Projects', href: '/hybridsovereign/tenant/projects' },
-            { title: 'Platform Openshift', href: '/hybridsovereign/tenant/platforms' },
-            { title: 'Assignments', href: '/hybridsovereign/tenant/assignments' },
-          ].map((c) => (
-            <a key={c.href} href={c.href} className="sc-card-link">
-              <Card isFullHeight isSelectable>
-                <CardTitle>{c.title}</CardTitle>
-                <CardBody>Open {c.title.toLowerCase()} list</CardBody>
-              </Card>
-            </a>
-          ))}
-        </div>
+        <Card isCompact className="sc-panel">
+          <CardBody>
+            <EntityTopology entityNamespace={namespace} filterByPermissions={false} />
+          </CardBody>
+        </Card>
       </div>
     </PageSection>
   );

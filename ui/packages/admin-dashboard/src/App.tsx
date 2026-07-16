@@ -38,7 +38,6 @@ import {
   UserIcon,
   ProjectDiagramIcon,
   BuildingIcon,
-  ProcessAutomationIcon,
   BarsIcon,
   GlobeIcon,
 } from '@patternfly/react-icons';
@@ -47,6 +46,7 @@ import { SovereignThemeProvider, useTheme } from '@hybridsovereign/shared';
 import { OverviewPage } from './pages/OverviewPage';
 import { ResourceListPage } from './pages/ResourceListPage';
 import { ServicesPage } from './pages/ServicesPage';
+import { CreateResourcePage } from './pages/CreateResourcePage';
 
 type NavEntry =
   | { type: 'link'; path: string; label: string; icon: React.ComponentType; end?: boolean }
@@ -59,13 +59,12 @@ const NAV: NavEntry[] = [
   { type: 'sep', label: 'Platform' },
   { type: 'link', path: '/services', label: 'Service URLs', icon: GlobeIcon },
   { type: 'link', path: '/operators', label: 'Operators', icon: CogIcon },
-  { type: 'sep', label: 'Tenancy' },
+  { type: 'sep', label: 'Tenancy (read)' },
   { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon },
   { type: 'link', path: '/projects', label: 'Projects', icon: CubesIcon },
   { type: 'link', path: '/platforms', label: 'Platform Openshift', icon: ClusterIcon },
   { type: 'link', path: '/clouds', label: 'Cloud Environments', icon: CloudIcon },
   { type: 'link', path: '/assignments', label: 'Assignments', icon: ProjectDiagramIcon },
-  { type: 'link', path: '/migrations', label: 'Migrate to OpenStack', icon: ProcessAutomationIcon },
 ];
 
 function ThemeToggle(): React.ReactElement {
@@ -179,11 +178,17 @@ function AdminLayout(): React.ReactElement {
         <div className="sc-page">
           <Routes>
             <Route path="/" element={<OverviewPage />} />
-            <Route path="/entities" element={<ResourceListPage kind="Entity" title="Entities" />} />
+            <Route
+              path="/entities"
+              element={<ResourceListPage kind="Entity" title="Entities" createPath="/create/entity" />}
+            />
             <Route path="/teams" element={<ResourceListPage kind="Team" title="Teams" />} />
             <Route path="/assignments" element={<ResourceListPage kind="Assignment" title="Assignments" />} />
             <Route path="/projects" element={<ResourceListPage kind="Project" title="Projects" />} />
-            <Route path="/personas" element={<ResourceListPage kind="Persona" title="Personas" />} />
+            <Route
+              path="/personas"
+              element={<ResourceListPage kind="Persona" title="Personas" createPath="/create/persona" />}
+            />
             <Route
               path="/platforms"
               element={<ResourceListPage kind="PlatformOpenshift" title="Platform Openshift" />}
@@ -200,10 +205,6 @@ function AdminLayout(): React.ReactElement {
               }
             />
             <Route
-              path="/migrations"
-              element={<ResourceListPage kind="OpenStackMigration" title="Migrate to OpenStack" />}
-            />
-            <Route
               path="/operators"
               element={
                 <ResourceListPage
@@ -215,6 +216,7 @@ function AdminLayout(): React.ReactElement {
               }
             />
             <Route path="/services" element={<ServicesPage />} />
+            <Route path="/create/:kind" element={<CreateResourcePage />} />
             <Route
               path="*"
               element={

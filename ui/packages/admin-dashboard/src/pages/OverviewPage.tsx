@@ -249,17 +249,6 @@ export function OverviewPage(): React.ReactElement {
           </Flex>
           <Card className="sc-panel">
             <CardBody>
-              <div className="sc-topo-legend">
-                <span>
-                  <i className="sc-dot sc-dot--ready" /> Healthy
-                </span>
-                <span>
-                  <i className="sc-dot sc-dot--failed" /> Failed
-                </span>
-                <span>
-                  <i className="sc-dot sc-dot--pending" /> Pending
-                </span>
-              </div>
               <EntityTopology filterByPermissions={false} />
             </CardBody>
           </Card>

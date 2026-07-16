@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Spinner, Alert, Button } from '@patternfly/react-core';
-import { SyncIcon } from '@patternfly/react-icons';
+import { SyncIcon, PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   HybridSovereignKind,
@@ -18,6 +19,7 @@ interface ResourceListPageProps {
   title: string;
   subtitle?: string;
   secondaryKind?: HybridSovereignKind;
+  createPath?: string;
 }
 
 function matchesFilter(item: K8sResource, search: string, statusFilter: StatusFilter): boolean {
@@ -95,7 +97,9 @@ export function ResourceListPage({
   title,
   subtitle,
   secondaryKind,
+  createPath,
 }: ResourceListPageProps): React.ReactElement {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -126,9 +130,16 @@ export function ResourceListPage({
         subtitle={subtitle ?? `${kind} resources across the platform`}
         breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: title }]}
         actions={
-          <Button variant="secondary" icon={<SyncIcon />} onClick={refresh}>
-            Refresh
-          </Button>
+          <>
+            <Button variant="secondary" icon={<SyncIcon />} onClick={refresh}>
+              Refresh
+            </Button>
+            {createPath && (
+              <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => navigate(createPath)}>
+                Create
+              </Button>
+            )}
+          </>
         }
       />
       <FilterToolbar
@@ -145,7 +156,7 @@ export function ResourceListPage({
         error={primary.error}
       />
       {secondaryKind && (
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: '1rem' }}>
           <PageHeader title={secondaryKind} subtitle={`Secondary kind list`} />
           <ResourceTable
             kind={secondaryKind}
