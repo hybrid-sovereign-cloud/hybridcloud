@@ -79,6 +79,14 @@
     namespace: "{{ entity_tenant_namespace }}"
   ignore_errors: true
 
+- name: Remove namespace operator ClusterRoleBinding
+  kubernetes.core.k8s:
+    state: absent
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    name: "hybridsovereign-namespace-operator-{{ ansible_operator_meta.name }}"
+  ignore_errors: true
+
 - name: Remove namespace operator RoleBinding
   kubernetes.core.k8s:
     state: absent
@@ -94,6 +102,15 @@
     api_version: rbac.authorization.k8s.io/v1
     kind: Role
     name: hybridsovereign-namespace-operator
+    namespace: "{{ entity_tenant_namespace }}"
+  ignore_errors: true
+
+- name: Remove AMQ producer credentials from entity tenant namespace
+  kubernetes.core.k8s:
+    state: absent
+    api_version: v1
+    kind: Secret
+    name: amq-producer-credentials
     namespace: "{{ entity_tenant_namespace }}"
   ignore_errors: true
 

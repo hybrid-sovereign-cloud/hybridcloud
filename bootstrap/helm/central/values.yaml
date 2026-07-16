@@ -2593,7 +2593,7 @@ amqStreams:
 # ─── HybridSovereign Primary Operator (services) ─────────────────────────────
 hybridsovereignPrimaryOperator:
   enabled: true
-  chartVersion: "0.1.13"
+  chartVersion: "0.1.14"
   syncWave: "38"
   destinationNamespace: sovereign-cloud
   values:
@@ -2601,7 +2601,7 @@ hybridsovereignPrimaryOperator:
     pluginsNamespace: sovereign-cloud-plugins
     image:
       repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
-      tag: "0.1.9"
+      tag: "0.1.10"
     namespaceOperator:
       image:
         repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator

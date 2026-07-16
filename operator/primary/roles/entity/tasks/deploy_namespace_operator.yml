@@ -67,6 +67,29 @@
           name: hybridsovereign-namespace-operator
           namespace: "{{ entity_tenant_namespace }}"
 
+# Namespaces are cluster-scoped; Role cannot grant get. Shared ClusterRole is
+# created by the primary-operator chart; bind each entity SA to it.
+- name: Deploy namespace operator ClusterRoleBinding for namespace get
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: "hybridsovereign-namespace-operator-{{ ansible_operator_meta.name }}"
+        labels:
+          app.kubernetes.io/name: hybridsovereign-namespace-operator
+          hybridsovereign.redhat/entity: "{{ ansible_operator_meta.name }}"
+          app.kubernetes.io/managed-by: hybridsovereign-primary-operator
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: hybridsovereign-namespace-operator
+      subjects:
+        - kind: ServiceAccount
+          name: hybridsovereign-namespace-operator
+          namespace: "{{ entity_tenant_namespace }}"
+
 - name: Ensure Quay pull secret exists in entity tenant namespace
   kubernetes.core.k8s:
     state: present
@@ -79,6 +102,23 @@
       type: kubernetes.io/dockerconfigjson
       data:
         .dockerconfigjson: "{{ lookup('kubernetes.core.k8s', kind='Secret', namespace='sovereign-cloud', resource_name='quay-pull-secret').data['.dockerconfigjson'] }}"
+
+# Copy AMQ producer credentials from sovereign-cloud (same Vault-backed secret
+# the primary operator uses) so namespace operators can publish Kafka events.
+- name: Ensure AMQ producer credentials exist in entity tenant namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: amq-producer-credentials
+        namespace: "{{ entity_tenant_namespace }}"
+        labels:
+          app.kubernetes.io/name: hybridsovereign-namespace-operator
+          app.kubernetes.io/managed-by: hybridsovereign-primary-operator
+      type: Opaque
+      data: "{{ lookup('kubernetes.core.k8s', kind='Secret', namespace='sovereign-cloud', resource_name='amq-producer-credentials').data }}"
 
 - name: Deploy namespace operator Deployment
   kubernetes.core.k8s:
@@ -122,6 +162,41 @@
                     value: "{{ entity_tenant_namespace }}"
                   - name: ANSIBLE_GATHERING
                     value: explicit
+                  - name: KAFKA_BOOTSTRAP_SERVERS
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: bootstrap_servers
+                  - name: KAFKA_TOPIC
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: topic
+                  - name: KAFKA_USERNAME
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: username
+                  - name: KAFKA_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: password
+                  - name: KAFKA_CA_CERT
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: ca.crt
+                  - name: KAFKA_SECURITY_PROTOCOL
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: security_protocol
+                  - name: KAFKA_SASL_MECHANISM
+                    valueFrom:
+                      secretKeyRef:
+                        name: amq-producer-credentials
+                        key: sasl_mechanism
                 securityContext:
                   allowPrivilegeEscalation: false
                   capabilities:
