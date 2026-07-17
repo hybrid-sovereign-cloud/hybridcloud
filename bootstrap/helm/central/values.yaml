@@ -2483,6 +2483,13 @@ tenancyDashboard:
 sovereignAdminPlugin:
   enabled: true
   chartVersion: "0.1.14"
+  syncWave: "42"
+  destinationNamespace: sovereign-cloud
+  values:
+    namespace: sovereign-cloud
+    image:
+      repository: quay.example.com/hybrid-sovereign/sovereign-admin-plugin
+      tag: "1.2.4"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
