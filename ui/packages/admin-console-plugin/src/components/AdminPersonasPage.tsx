@@ -1,3 +1,6 @@
 import { makeKindListPage } from './AdminEntitiesPage';
 
-export default makeKindListPage('Persona', 'Personas');
+export default makeKindListPage('Persona', 'Personas', {
+  createKind: 'persona',
+  listPath: '/hybridsovereign/personas',
+});

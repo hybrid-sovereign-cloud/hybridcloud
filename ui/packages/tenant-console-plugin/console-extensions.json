@@ -147,8 +147,24 @@
     "type": "console.page/route",
     "properties": {
       "exact": true,
+      "path": "/hybridsovereign/tenant/create/:formType",
+      "component": { "$codeRef": "TenantCreatePage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
       "path": "/hybridsovereign/tenant/teams",
       "component": { "$codeRef": "TenantTeamsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/teams/:name",
+      "component": { "$codeRef": "TenantTeamDetailPage" }
     }
   },
   {
@@ -162,9 +178,25 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/projects/:name",
+      "component": { "$codeRef": "TenantProjectDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/platforms",
       "component": { "$codeRef": "TenantPlatformsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/platforms/:name",
+      "component": { "$codeRef": "TenantPlatformDetailPage" }
     }
   },
   {
@@ -178,9 +210,25 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/assignments/:name",
+      "component": { "$codeRef": "TenantAssignmentDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/cloudoso",
       "component": { "$codeRef": "TenantCloudOSOPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/cloudoso/:name",
+      "component": { "$codeRef": "TenantCloudOSODetailPage" }
     }
   },
   {
@@ -194,9 +242,25 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/cloudaws/:name",
+      "component": { "$codeRef": "TenantCloudAWSDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/migrations",
       "component": { "$codeRef": "TenantMigrationsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/migrations/:name",
+      "component": { "$codeRef": "TenantMigrationDetailPage" }
     }
   },
   {
@@ -210,9 +274,25 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/vaults/:name",
+      "component": { "$codeRef": "TenantVaultDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/vaultkvs",
       "component": { "$codeRef": "TenantVaultKVsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/vaultkvs/:name",
+      "component": { "$codeRef": "TenantVaultKVDetailPage" }
     }
   },
   {
@@ -226,9 +306,25 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/aaporgs/:name",
+      "component": { "$codeRef": "TenantAAPOrgDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/quayorgs",
       "component": { "$codeRef": "TenantQuayOrgsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/quayorgs/:name",
+      "component": { "$codeRef": "TenantQuayOrgDetailPage" }
     }
   }
 ]

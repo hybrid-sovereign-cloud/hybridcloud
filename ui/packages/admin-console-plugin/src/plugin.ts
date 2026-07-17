@@ -12,10 +12,10 @@ export { default as AdminEntitiesPage } from './components/AdminEntitiesPage';
 export { default as AdminPersonasPage } from './components/AdminPersonasPage';
 export { default as AdminServicesPage } from './components/AdminServicesPage';
 export { default as AdminOperatorsPage } from './components/AdminOperatorsPage';
-export {
-  icon,
-  getLandingPageURL,
-  getImportRedirectURL,
-  perspectiveLandingPage,
-  perspectiveImportRedirect,
-} from './perspective';
+export { default as AdminEntityDetailPage } from './components/AdminEntityDetailPage';
+export { default as AdminPersonaDetailPage } from './components/AdminPersonaDetailPage';
+export { default as AdminServiceDetailPage } from './components/AdminServiceDetailPage';
+export { default as AdminOperatorDetailPage } from './components/AdminOperatorDetailPage';
+export { default as AdminCreatePage } from './components/AdminCreatePage';
+export { default as PerspectiveIcon } from './PerspectiveIcon';
+export { getLandingPageURL, getImportRedirectURL } from './perspective';

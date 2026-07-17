@@ -1,5 +1,7 @@
 import * as React from 'react';
+import { useHistory } from 'react-router-dom';
 import { PageSection, Spinner, Alert, Button } from '@patternfly/react-core';
+import { PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   PageHeader,
@@ -13,6 +15,7 @@ import {
   K8sResource,
   HybridSovereignKind,
   configureK8sClient,
+  SelfServiceFormType,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
@@ -20,10 +23,31 @@ import '@hybridsovereign/shared/styles/openshift.css';
 configureK8sClient({
   baseUrl: '/api/kubernetes',
   fetchFn: consoleFetch as unknown as typeof fetch,
+  apiStyle: 'raw',
 });
 
+const KIND_META: Partial<
+  Record<HybridSovereignKind, { path: string; form?: SelfServiceFormType }>
+> = {
+  Team: { path: 'teams', form: 'team' },
+  Project: { path: 'projects', form: 'project' },
+  PlatformOpenshift: { path: 'platforms' },
+  CloudOSO: { path: 'cloudoso', form: 'cloudoso' },
+  CloudAWS: { path: 'cloudaws', form: 'cloudaws' },
+  OpenStackMigration: { path: 'migrations', form: 'migration' },
+  Assignment: { path: 'assignments', form: 'assignment' },
+  Vault: { path: 'vaults', form: 'vault' },
+  VaultKV: { path: 'vaultkvs', form: 'vaultkv' },
+  AAPOrg: { path: 'aaporgs', form: 'aaporg' },
+  QuayOrg: { path: 'quayorgs', form: 'quayorg' },
+};
+
 export function makeTenantKindPage(kind: HybridSovereignKind, title: string): React.FC {
+  const meta = KIND_META[kind] ?? { path: kind.toLowerCase() };
+  const listPath = `/hybridsovereign/tenant/${meta.path}`;
+
   const Page: React.FC = () => {
+    const history = useHistory();
     const { namespace, entities, selectEntity, entity } = useEntityNamespace();
     const [search, setSearch] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
@@ -51,16 +75,28 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
           />
           <PageHeader
             title={title}
-            subtitle={`${kind} in ${namespace}`}
+            subtitle={`${kind} in ${namespace || '—'}`}
             breadcrumbs={[
               { label: 'Sovereign Cloud' },
               { label: 'Tenancy' },
               { label: title },
             ]}
             actions={
-              <Button variant="secondary" size="sm" onClick={refresh}>
-                Refresh
-              </Button>
+              <>
+                <Button variant="secondary" size="sm" onClick={refresh}>
+                  Refresh
+                </Button>
+                {meta.form && namespace && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<PlusCircleIcon />}
+                    onClick={() => history.push(`/hybridsovereign/tenant/create/${meta.form}`)}
+                  >
+                    Create
+                  </Button>
+                )}
+              </>
             }
           />
           <FilterToolbar
@@ -90,7 +126,14 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
                 <Tbody>
                   {filtered.map((item) => (
                     <Tr key={item.metadata.name}>
-                      <Td>{item.metadata.name}</Td>
+                      <Td>
+                        <a
+                          className="sc-resource-link"
+                          href={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
+                        >
+                          {item.metadata.name}
+                        </a>
+                      </Td>
                       <Td>
                         <StatusBadge status={item.status?.status} ready={item.status?.ready} />
                       </Td>

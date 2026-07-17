@@ -4,7 +4,7 @@
     "properties": {
       "id": "hybridsovereign",
       "name": "Sovereign Cloud",
-      "icon": { "$codeRef": "perspective.icon" },
+      "icon": { "$codeRef": "PerspectiveIcon" },
       "landingPageURL": { "$codeRef": "perspective.getLandingPageURL" },
       "importRedirectURL": { "$codeRef": "perspective.getImportRedirectURL" }
     }
@@ -94,9 +94,33 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/entities/:name",
+      "component": { "$codeRef": "AdminEntityDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/create/:kind",
+      "component": { "$codeRef": "AdminCreatePage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/personas",
       "component": { "$codeRef": "AdminPersonasPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/personas/:namespace/:name",
+      "component": { "$codeRef": "AdminPersonaDetailPage" }
     }
   },
   {
@@ -110,9 +134,25 @@
   {
     "type": "console.page/route",
     "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/services/:namespace/:name",
+      "component": { "$codeRef": "AdminServiceDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
       "exact": true,
       "path": "/hybridsovereign/operators",
       "component": { "$codeRef": "AdminOperatorsPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/operators/:namespace/:name",
+      "component": { "$codeRef": "AdminOperatorDetailPage" }
     }
   }
 ]

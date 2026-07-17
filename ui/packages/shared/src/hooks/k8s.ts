@@ -143,7 +143,7 @@ function buildResourceUrl(kind: HybridSovereignKind, name: string, namespace?: s
   }
   const plural = KIND_PLURALS[kind];
   const base = globalK8sConfig.baseUrl ?? '/api/k8s';
-  if (namespace && kind !== 'Entity') {
+  if (namespace) {
     return `${base}/apis/${API_VERSION_FULL}/namespaces/${namespace}/${plural}/${encodeURIComponent(name)}`;
   }
   return `${base}/apis/${API_VERSION_FULL}/${plural}/${encodeURIComponent(name)}`;
@@ -171,17 +171,33 @@ export async function forceReconcile(
   name: string,
   namespace: string,
 ): Promise<unknown> {
-  return k8sFetchJson('/api/k8s/patch-annotation', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  if (globalK8sConfig.apiStyle === 'dashboard') {
+    return k8sFetchJson('/api/k8s/patch-annotation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        group: 'hybridsovereign.redhat',
+        version: 'v1alpha1',
+        kind,
+        name,
+        namespace,
+        annotation: RECONCILE_ANNOTATION,
+        value: 'true',
+      }),
+    });
+  }
+  const url = buildResourceUrl(kind, name, namespace);
+  const current = await k8sFetchJson<K8sResource>(url);
+  return k8sFetchJson(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/merge-patch+json' },
     body: JSON.stringify({
-      group: 'hybridsovereign.redhat',
-      version: 'v1alpha1',
-      kind,
-      name,
-      namespace,
-      annotation: RECONCILE_ANNOTATION,
-      value: 'true',
+      metadata: {
+        annotations: {
+          ...(current.metadata?.annotations ?? {}),
+          [RECONCILE_ANNOTATION]: new Date().toISOString(),
+        },
+      },
     }),
   });
 }
@@ -285,14 +301,38 @@ export async function createDashboardResource(
   }
   const plural = KIND_PLURALS[kind];
   const base = globalK8sConfig.baseUrl ?? '/api/k8s';
+  const incoming = body as {
+    apiVersion?: string;
+    kind?: string;
+    name?: string;
+    namespace?: string;
+    spec?: unknown;
+    metadata?: { name?: string; namespace?: string };
+  };
+  const metaName = incoming.metadata?.name ?? incoming.name;
+  const metaNs = incoming.metadata?.namespace ?? incoming.namespace ?? namespace;
+  const payload =
+    incoming.apiVersion && incoming.kind
+      ? body
+      : {
+          apiVersion: API_VERSION_FULL,
+          kind,
+          metadata: {
+            name: metaName,
+            ...(metaNs ? { namespace: metaNs } : {}),
+          },
+          spec: incoming.spec ?? {},
+        };
   const url =
-    namespace && kind !== 'Entity'
-      ? `${base}/apis/${API_VERSION_FULL}/namespaces/${namespace}/${plural}`
-      : `${base}/apis/${API_VERSION_FULL}/${plural}`;
+    metaNs && kind !== 'Entity'
+      ? `${base}/apis/${API_VERSION_FULL}/namespaces/${metaNs}/${plural}`
+      : metaNs && kind === 'Entity'
+        ? `${base}/apis/${API_VERSION_FULL}/namespaces/${metaNs}/${plural}`
+        : `${base}/apis/${API_VERSION_FULL}/${plural}`;
   return k8sFetchJson(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 }
 

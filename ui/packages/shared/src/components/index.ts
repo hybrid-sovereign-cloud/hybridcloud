@@ -18,3 +18,5 @@ export { NamespaceContextBar } from './NamespaceContextBar';
 export type { NamespaceContextBarProps } from './NamespaceContextBar';
 export { ResourceDetail } from './ResourceDetail';
 export type { ResourceDetailProps } from './ResourceDetail';
+export { CreateResourceForm } from './CreateResourceForm';
+export type { CreateResourceFormProps, SelfServiceFormType } from './CreateResourceForm';

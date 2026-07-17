@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { PageSection, Spinner, Alert } from '@patternfly/react-core';
+import { useHistory } from 'react-router-dom';
+import { PageSection, Spinner, Alert, Button } from '@patternfly/react-core';
+import { PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   K8sResourceCommon,
@@ -26,6 +28,7 @@ type SovereignResource = K8sResourceCommon & {
 const ENTITY_NS = 'sovereign-cloud';
 
 const AdminEntitiesPage: React.FC = () => {
+  const history = useHistory();
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
   const [items, loaded, loadError] = useK8sWatchResource<SovereignResource[]>({
@@ -62,6 +65,15 @@ const AdminEntitiesPage: React.FC = () => {
           title="Entities"
           subtitle="Top-level tenants — create and monitor entity namespaces"
           breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Entities' }]}
+          actions={
+            <Button
+              variant="primary"
+              icon={<PlusCircleIcon />}
+              onClick={() => history.push('/hybridsovereign/create/entity')}
+            >
+              Create
+            </Button>
+          }
         />
         <FilterToolbar
           search={search}
@@ -89,7 +101,14 @@ const AdminEntitiesPage: React.FC = () => {
               <Tbody>
                 {filtered.map((item) => (
                   <Tr key={item.metadata?.uid ?? item.metadata?.name}>
-                    <Td>{item.metadata?.name}</Td>
+                    <Td>
+                      <a
+                        className="sc-resource-link"
+                        href={`/hybridsovereign/entities/${encodeURIComponent(item.metadata?.name ?? '')}`}
+                      >
+                        {item.metadata?.name}
+                      </a>
+                    </Td>
                     <Td>
                       <StatusBadge status={item.status?.status} ready={item.status?.ready} />
                     </Td>
@@ -108,8 +127,14 @@ const AdminEntitiesPage: React.FC = () => {
 export default AdminEntitiesPage;
 
 /** Reusable list page for other admin kinds (cluster-wide or all-namespaces list) */
-export const makeKindListPage = (kind: HybridSovereignKind, title: string): React.FC => {
+export const makeKindListPage = (
+  kind: HybridSovereignKind,
+  title: string,
+  opts?: { createKind?: string; listPath?: string },
+): React.FC => {
+  const listPath = opts?.listPath ?? `/hybridsovereign/${KIND_PLURALS[kind] ?? kind.toLowerCase()}`;
   const Page: React.FC = () => {
+    const history = useHistory();
     const [search, setSearch] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
     const [items, loaded, loadError] = useK8sWatchResource<SovereignResource[]>({
@@ -139,12 +164,32 @@ export const makeKindListPage = (kind: HybridSovereignKind, title: string): Reac
           ? String(loadError)
           : null;
 
+    const detailHref = (item: SovereignResource) => {
+      const n = item.metadata?.name ?? '';
+      const ns = item.metadata?.namespace ?? '';
+      if (kind === 'Entity') {
+        return `/hybridsovereign/entities/${encodeURIComponent(n)}`;
+      }
+      return `${listPath}/${encodeURIComponent(ns)}/${encodeURIComponent(n)}`;
+    };
+
     return (
       <PageSection className="sc-console-page">
         <div className="sc-page">
           <PageHeader
             title={title}
             breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: title }]}
+            actions={
+              opts?.createKind ? (
+                <Button
+                  variant="primary"
+                  icon={<PlusCircleIcon />}
+                  onClick={() => history.push(`/hybridsovereign/create/${opts.createKind}`)}
+                >
+                  Create
+                </Button>
+              ) : undefined
+            }
           />
           <FilterToolbar
             search={search}
@@ -172,7 +217,11 @@ export const makeKindListPage = (kind: HybridSovereignKind, title: string): Reac
                 <Tbody>
                   {filtered.map((item) => (
                     <Tr key={item.metadata?.uid ?? `${item.metadata?.namespace}/${item.metadata?.name}`}>
-                      <Td>{item.metadata?.name}</Td>
+                      <Td>
+                        <a className="sc-resource-link" href={detailHref(item)}>
+                          {item.metadata?.name}
+                        </a>
+                      </Td>
                       <Td>{item.metadata?.namespace ?? '—'}</Td>
                       <Td>
                         <StatusBadge status={item.status?.status} ready={item.status?.ready} />
