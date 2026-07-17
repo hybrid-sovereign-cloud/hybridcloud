@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { HybridSovereignKind, KIND_PLURALS } from '../types';
+import { API_GROUP, HybridSovereignKind, KIND_PLURALS } from '../types';
 
 export type K8sVerb = 'create' | 'get' | 'list' | 'update' | 'patch' | 'delete';
 
@@ -15,10 +15,74 @@ export interface UsePermissionsResult {
   can: (resource: string, verb: K8sVerb) => boolean;
 }
 
-let permissionsBaseUrl = '/api/k8s';
+export type PermissionsClientStyle = 'can-i' | 'ssar';
 
-export function configurePermissionsClient(baseUrl: string): void {
+let permissionsBaseUrl = '/api/k8s';
+let permissionsStyle: PermissionsClientStyle = 'can-i';
+let permissionsFetch: typeof fetch = fetch;
+
+export function configurePermissionsClient(
+  baseUrl: string,
+  options?: { style?: PermissionsClientStyle; fetchFn?: typeof fetch },
+): void {
   permissionsBaseUrl = baseUrl;
+  if (options?.style) permissionsStyle = options.style;
+  if (options?.fetchFn) permissionsFetch = options.fetchFn;
+}
+
+async function fetchCanIProxy(
+  namespace: string,
+  resource: string,
+  verb: K8sVerb,
+  token?: string,
+): Promise<boolean> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const url = `${permissionsBaseUrl}/can-i/${encodeURIComponent(namespace)}/${resource}/${verb}`;
+  try {
+    const response = await permissionsFetch(url, { headers });
+    if (!response.ok) return false;
+    const data = (await response.json()) as { allowed?: boolean };
+    return !!data.allowed;
+  } catch {
+    return false;
+  }
+}
+
+async function fetchCanISSAR(
+  namespace: string | undefined,
+  resource: string,
+  verb: K8sVerb,
+  token?: string,
+): Promise<boolean> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const body = {
+    apiVersion: 'authorization.k8s.io/v1',
+    kind: 'SelfSubjectAccessReview',
+    spec: {
+      resourceAttributes: {
+        group: API_GROUP,
+        resource,
+        verb,
+        ...(namespace && namespace !== '*' ? { namespace } : {}),
+      },
+    },
+  };
+  try {
+    const response = await permissionsFetch(
+      `${permissionsBaseUrl}/apis/authorization.k8s.io/v1/selfsubjectaccessreviews`,
+      { method: 'POST', headers, body: JSON.stringify(body) },
+    );
+    if (!response.ok) return false;
+    const data = (await response.json()) as { status?: { allowed?: boolean } };
+    return !!data?.status?.allowed;
+  } catch {
+    return false;
+  }
 }
 
 async function fetchCanI(
@@ -27,17 +91,10 @@ async function fetchCanI(
   verb: K8sVerb,
   token?: string,
 ): Promise<boolean> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const url = `${permissionsBaseUrl}/can-i/${namespace}/${resource}/${verb}`;
-  try {
-    const response = await fetch(url, { headers });
-    if (!response.ok) return false;
-    const data = (await response.json()) as { allowed?: boolean };
-    return !!data.allowed;
-  } catch {
-    return false;
+  if (permissionsStyle === 'ssar') {
+    return fetchCanISSAR(namespace, resource, verb, token);
   }
+  return fetchCanIProxy(namespace, resource, verb, token);
 }
 
 /** Batch SubjectAccessReview checks for a namespace */
@@ -103,4 +160,40 @@ export function useCanListKind(
     options,
   );
   return { allowed: can(plural, 'list'), loading };
+}
+
+/** Cluster-scoped (or any-namespace) list check — uses SSAR without namespace when style=ssar */
+export function useCanListKindCluster(
+  kind: HybridSovereignKind,
+  options: { token?: string; enabled?: boolean } = {},
+): { allowed: boolean; loading: boolean } {
+  const plural = KIND_PLURALS[kind];
+  const { token, enabled = true } = options;
+  const [allowed, setAllowed] = useState(false);
+  const [loading, setLoading] = useState(enabled);
+
+  useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const run =
+      permissionsStyle === 'ssar'
+        ? fetchCanISSAR(undefined, plural, 'list', token)
+        : fetchCanIProxy('*', plural, 'list', token);
+    run
+      .then((ok) => {
+        if (!cancelled) setAllowed(ok);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [plural, enabled, token]);
+
+  return { allowed, loading };
 }

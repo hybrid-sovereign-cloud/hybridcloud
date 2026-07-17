@@ -11,7 +11,7 @@
   },
   "consolePlugin": {
     "name": "sovereign-tenant-plugin",
-    "version": "1.3.5",
+    "version": "1.3.6",
     "displayName": "Sovereign Cloud Tenancy",
     "description": "Tenant pages in the Sovereign Cloud perspective",
     "exposedModules": {
@@ -42,7 +42,8 @@
       "TenantPersonasPage": "./src/components/TenantPersonasPage.tsx",
       "TenantRbacPage": "./src/components/TenantRbacPage.tsx",
       "TenantPersonaDetailPage": "./src/components/TenantPersonaDetailPage.tsx",
-      "TenantRbacDetailPage": "./src/components/TenantRbacDetailPage.tsx"
+      "TenantRbacDetailPage": "./src/components/TenantRbacDetailPage.tsx",
+      "featureFlags": "./src/featureFlags.ts"
     }
   },
   "dependencies": {

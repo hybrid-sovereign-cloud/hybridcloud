@@ -1,10 +1,15 @@
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
-import { configureK8sClient } from '@hybridsovereign/shared';
+import { configureK8sClient, configurePermissionsClient } from '@hybridsovereign/shared';
 
 configureK8sClient({
   baseUrl: '/api/kubernetes',
   fetchFn: consoleFetch as unknown as typeof fetch,
   apiStyle: 'raw',
+});
+
+configurePermissionsClient('/api/kubernetes', {
+  style: 'ssar',
+  fetchFn: consoleFetch as unknown as typeof fetch,
 });
 
 export { default as TenantOverviewPage } from './components/TenantOverviewPage';
@@ -35,3 +40,4 @@ export { default as TenantVaultDetailPage } from './components/TenantVaultDetail
 export { default as TenantVaultKVDetailPage } from './components/TenantVaultKVDetailPage';
 export { default as TenantAAPOrgDetailPage } from './components/TenantAAPOrgDetailPage';
 export { default as TenantQuayOrgDetailPage } from './components/TenantQuayOrgDetailPage';
+export { useSovereignAccessFlags } from './featureFlags';

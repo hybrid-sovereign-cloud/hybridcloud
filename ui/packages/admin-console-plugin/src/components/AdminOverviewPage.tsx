@@ -1,19 +1,64 @@
 import * as React from 'react';
 import { PageSection, Title, Card, CardTitle, CardBody } from '@patternfly/react-core';
+import { useAccessReview } from '@openshift-console/dynamic-plugin-sdk';
 import {
+  API_GROUP,
   EntityTopology,
   PageHeader,
   HealthStrip,
   KindIcon,
+  KIND_PLURALS,
+  HybridSovereignKind,
 } from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
 
-const ENTRIES = [
-  { title: 'Entities', href: '/hybridsovereign/entities', body: 'Tenant onboarding', kind: 'Entity' },
+const ENTRIES: {
+  title: string;
+  href: string;
+  body: string;
+  kind: HybridSovereignKind;
+  namespace?: string;
+}[] = [
+  {
+    title: 'Entities',
+    href: '/hybridsovereign/entities',
+    body: 'Tenant onboarding',
+    kind: 'Entity',
+    namespace: 'sovereign-cloud',
+  },
   { title: 'Personas', href: '/hybridsovereign/personas', body: 'Cross-entity personas', kind: 'Persona' },
   { title: 'Service URLs', href: '/hybridsovereign/services', body: 'Route health', kind: 'AAPConfig' },
   { title: 'Operators', href: '/hybridsovereign/operators', body: 'CSV / RBAC health', kind: 'RbacConfig' },
-] as const;
+];
+
+function EntryCard({
+  title,
+  href,
+  body,
+  kind,
+  namespace,
+}: (typeof ENTRIES)[number]): React.ReactElement | null {
+  const [allowed] = useAccessReview({
+    group: API_GROUP,
+    resource: KIND_PLURALS[kind],
+    verb: 'list',
+    ...(namespace ? { namespace } : {}),
+  });
+  if (!allowed) return null;
+  return (
+    <a href={href} className="sc-card-link">
+      <Card isFullHeight isSelectable className="sc-entry-card">
+        <CardTitle>
+          <KindIcon kind={kind} size="md" />
+          {title}
+        </CardTitle>
+        <CardBody>
+          <div className="sc-entry-card__body">{body}</div>
+        </CardBody>
+      </Card>
+    </a>
+  );
+}
 
 const AdminOverviewPage: React.FC = () => (
   <PageSection className="sc-console-page">
@@ -35,23 +80,13 @@ const AdminOverviewPage: React.FC = () => (
       </Title>
       <div className="sc-card-grid" style={{ marginBottom: '1.5rem' }}>
         {ENTRIES.map((c) => (
-          <a key={c.href} href={c.href} className="sc-card-link">
-            <Card isFullHeight isSelectable className="sc-entry-card">
-              <CardTitle>
-                <KindIcon kind={c.kind} size="md" />
-                {c.title}
-              </CardTitle>
-              <CardBody>
-                <div className="sc-entry-card__body">{c.body}</div>
-              </CardBody>
-            </Card>
-          </a>
+          <EntryCard key={c.href} {...c} />
         ))}
       </div>
       <Title headingLevel="h2" size="lg" style={{ marginBottom: '1rem' }}>
         Live platform topology
       </Title>
-      <EntityTopology filterByPermissions={false} />
+      <EntityTopology filterByPermissions />
     </div>
   </PageSection>
 );

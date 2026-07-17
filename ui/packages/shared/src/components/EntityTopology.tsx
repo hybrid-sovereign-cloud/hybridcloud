@@ -110,20 +110,13 @@ export function EntityTopology({
   const cloudOso = useK8sResourceList<K8sResource>('CloudOSO', listOpts);
   const cloudAws = useK8sResourceList<K8sResource>('CloudAWS', listOpts);
 
-  const teamPerm = useCanListKind(ns || 'default', 'Team', { enabled: filterByPermissions && !!ns });
-  const projectPerm = useCanListKind(ns || 'default', 'Project', { enabled: filterByPermissions && !!ns });
-  const assignmentPerm = useCanListKind(ns || 'default', 'Assignment', {
-    enabled: filterByPermissions && !!ns,
-  });
-  const platformPerm = useCanListKind(ns || 'default', 'PlatformOpenshift', {
-    enabled: filterByPermissions && !!ns,
-  });
-  const cloudOsoPerm = useCanListKind(ns || 'default', 'CloudOSO', {
-    enabled: filterByPermissions && !!ns,
-  });
-  const cloudAwsPerm = useCanListKind(ns || 'default', 'CloudAWS', {
-    enabled: filterByPermissions && !!ns,
-  });
+  const permNs = ns || 'sovereign-cloud';
+  const teamPerm = useCanListKind(permNs, 'Team', { enabled: filterByPermissions });
+  const projectPerm = useCanListKind(permNs, 'Project', { enabled: filterByPermissions });
+  const assignmentPerm = useCanListKind(permNs, 'Assignment', { enabled: filterByPermissions });
+  const platformPerm = useCanListKind(permNs, 'PlatformOpenshift', { enabled: filterByPermissions });
+  const cloudOsoPerm = useCanListKind(permNs, 'CloudOSO', { enabled: filterByPermissions });
+  const cloudAwsPerm = useCanListKind(permNs, 'CloudAWS', { enabled: filterByPermissions });
 
   const [zoom, setZoom] = useState(1);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -370,15 +363,37 @@ export function EntityTopology({
     cloudOso.loading ||
     cloudAws.loading;
 
+  const listError =
+    entities.error ||
+    teams.error ||
+    projects.error ||
+    assignments.error ||
+    platforms.error ||
+    cloudOso.error ||
+    cloudAws.error;
+
   if (loading && graph.nodes.length === 0) {
     return <Spinner aria-label="Loading topology" />;
+  }
+
+  if (listError && graph.nodes.length === 0) {
+    return (
+      <Alert variant="warning" title="Unable to load topology" isInline>
+        {listError.message || 'Failed to list Hybrid Sovereign resources.'}
+      </Alert>
+    );
   }
 
   if (graph.nodes.length === 0) {
     return (
       <Alert variant="info" title="No topology data" isInline>
-        No authorized resources found for{' '}
-        {entityNamespace ? `namespace ${entityNamespace}` : 'the platform'}.
+        {filterByPermissions
+          ? `No resources visible for your access in ${
+              entityNamespace ? `namespace ${entityNamespace}` : 'the platform'
+            }.`
+          : `No Hybrid Sovereign resources found for ${
+              entityNamespace ? `namespace ${entityNamespace}` : 'the platform'
+            }.`}
       </Alert>
     );
   }

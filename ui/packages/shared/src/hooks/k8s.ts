@@ -5,6 +5,7 @@ import {
   KIND_PLURALS,
   K8sResource,
 } from '../types';
+import { usePermissions } from './permissions';
 
 export type K8sApiStyle = 'raw' | 'dashboard';
 
@@ -446,11 +447,14 @@ export function useK8sResource<T extends K8sResource>(
 
 /** Check if the current user can perform a verb on a resource */
 export function useCanI(
-  _namespace: string,
-  _resource: string,
-  _verb: 'create' | 'get' | 'list' | 'update' | 'patch' | 'delete',
+  namespace: string,
+  resource: string,
+  verb: 'create' | 'get' | 'list' | 'update' | 'patch' | 'delete',
 ): { allowed: boolean; loading: boolean } {
-  // Standalone dashboards: avoid /api/permissions (36 SSARs) which caused 429s.
-  // Show Create optimistically; the POST handler enforces RBAC.
-  return { allowed: true, loading: false };
+  const { can, loading } = usePermissions(
+    namespace || 'default',
+    [{ resource, verb }],
+    { enabled: !!namespace && !!resource },
+  );
+  return { allowed: can(resource, verb), loading };
 }

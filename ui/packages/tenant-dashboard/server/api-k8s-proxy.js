@@ -83,15 +83,17 @@ export function createApiK8sProxy(apiServer) {
     const k8sPath = (req.url || "/").startsWith("/") ? req.url : `/${req.url}`;
 
     // Lightweight can-i: /api/k8s/can-i/:namespace/:resource/:verb
+    // Use namespace "-" or "*" for cluster-scoped / any-namespace list checks.
     const canI = k8sPath.match(/^\/can-i\/([^/]+)\/([^/]+)\/([^/?]+)/);
     if (canI) {
       const [, namespace, resource, verb] = canI;
+      const namespaced = namespace && namespace !== "-" && namespace !== "*";
       const body = {
         apiVersion: "authorization.k8s.io/v1",
         kind: "SelfSubjectAccessReview",
         spec: {
           resourceAttributes: {
-            namespace,
+            ...(namespaced ? { namespace } : {}),
             verb,
             group: "hybridsovereign.redhat",
             resource,
@@ -126,7 +128,7 @@ export function createApiK8sProxy(apiServer) {
           }
         });
       });
-      upstream.on("error", () => res.json({ allowed: true })); // fail-open for UI
+      upstream.on("error", () => res.json({ allowed: false })); // fail-closed for UI gating
       upstream.write(JSON.stringify(body));
       upstream.end();
       return;

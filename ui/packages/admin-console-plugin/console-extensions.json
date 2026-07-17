@@ -1,5 +1,11 @@
 [
   {
+    "type": "console.flag/hookProvider",
+    "properties": {
+      "handler": { "$codeRef": "featureFlags.useSovereignAccessFlags" }
+    }
+  },
+  {
     "type": "console.perspective",
     "properties": {
       "id": "hybridsovereign",
@@ -35,6 +41,9 @@
       "perspective": "hybridsovereign",
       "name": "Entities",
       "href": "/hybridsovereign/entities"
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_ENTITIES"]
     }
   },
   {
@@ -45,6 +54,9 @@
       "perspective": "hybridsovereign",
       "name": "Personas",
       "href": "/hybridsovereign/personas"
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_PERSONAS"]
     }
   },
   {
@@ -55,6 +67,9 @@
       "perspective": "hybridsovereign",
       "name": "Service URLs",
       "href": "/hybridsovereign/services"
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_AAPCONFIGS"]
     }
   },
   {
@@ -65,6 +80,9 @@
       "perspective": "hybridsovereign",
       "name": "Operators",
       "href": "/hybridsovereign/operators"
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_RBACCONFIGS"]
     }
   },
   {
@@ -89,6 +107,9 @@
       "exact": true,
       "path": "/hybridsovereign/entities",
       "component": { "$codeRef": "AdminEntitiesPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_ENTITIES"]
     }
   },
   {
@@ -97,6 +118,9 @@
       "exact": false,
       "path": "/hybridsovereign/entities/:name",
       "component": { "$codeRef": "AdminEntityDetailPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_ENTITIES"]
     }
   },
   {
@@ -113,6 +137,9 @@
       "exact": true,
       "path": "/hybridsovereign/personas",
       "component": { "$codeRef": "AdminPersonasPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_PERSONAS"]
     }
   },
   {
@@ -121,6 +148,9 @@
       "exact": false,
       "path": "/hybridsovereign/personas/:namespace/:name",
       "component": { "$codeRef": "AdminPersonaDetailPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_PERSONAS"]
     }
   },
   {
@@ -129,6 +159,9 @@
       "exact": true,
       "path": "/hybridsovereign/services",
       "component": { "$codeRef": "AdminServicesPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_AAPCONFIGS"]
     }
   },
   {
@@ -137,6 +170,9 @@
       "exact": false,
       "path": "/hybridsovereign/services/:namespace/:name",
       "component": { "$codeRef": "AdminServiceDetailPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_AAPCONFIGS"]
     }
   },
   {
@@ -145,6 +181,9 @@
       "exact": true,
       "path": "/hybridsovereign/operators",
       "component": { "$codeRef": "AdminOperatorsPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_RBACCONFIGS"]
     }
   },
   {
@@ -153,6 +192,9 @@
       "exact": false,
       "path": "/hybridsovereign/operators/:namespace/:name",
       "component": { "$codeRef": "AdminOperatorDetailPage" }
+    },
+    "flags": {
+      "required": ["SOVEREIGN_CAN_LIST_RBACCONFIGS"]
     }
   }
 ]

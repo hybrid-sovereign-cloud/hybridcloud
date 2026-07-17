@@ -19,7 +19,12 @@ export type {
 } from './k8s';
 export { useOverviewCRs } from './overviewCrs';
 export type { OverviewCRsResult } from './overviewCrs';
-export { usePermissions, useCanListKind, configurePermissionsClient } from './permissions';
+export {
+  usePermissions,
+  useCanListKind,
+  useCanListKindCluster,
+  configurePermissionsClient,
+} from './permissions';
 export type { K8sVerb, PermissionCheck, UsePermissionsResult } from './permissions';
 export { useEntityNamespace } from './entityNamespace';
 export type { UseEntityNamespaceOptions, UseEntityNamespaceResult } from './entityNamespace';

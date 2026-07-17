@@ -18,6 +18,7 @@ import {
   ToolbarContent,
   ToolbarItem,
   ToolbarGroup,
+  Spinner,
 } from '@patternfly/react-core';
 import {
   MoonIcon,
@@ -48,6 +49,8 @@ import {
   useTheme,
   useEntityNamespace,
   NamespaceContextBar,
+  useCanListKind,
+  HybridSovereignKind,
 } from '@hybridsovereign/shared';
 import { TenantOverviewPage } from './pages/TenantOverviewPage';
 import { TenantResourcePage } from './pages/TenantResourcePage';
@@ -63,7 +66,7 @@ type NavEntry =
       label: string;
       icon: React.ComponentType;
       end?: boolean;
-      kind?: string;
+      kind?: HybridSovereignKind;
       form?: string;
     }
   | { type: 'sep'; label: string };
@@ -121,6 +124,60 @@ function ThemeToggle(): React.ReactElement {
   );
 }
 
+/** Stable per-kind hooks for nav gating (fixed list from NAV). */
+function useTenantNavPermissions(namespace: string): {
+  allowed: Partial<Record<HybridSovereignKind, boolean>>;
+  loading: boolean;
+} {
+  const enabled = !!namespace;
+  const ns = namespace || 'default';
+  const team = useCanListKind(ns, 'Team', { enabled });
+  const project = useCanListKind(ns, 'Project', { enabled });
+  const platform = useCanListKind(ns, 'PlatformOpenshift', { enabled });
+  const cloudoso = useCanListKind(ns, 'CloudOSO', { enabled });
+  const cloudaws = useCanListKind(ns, 'CloudAWS', { enabled });
+  const migration = useCanListKind(ns, 'OpenStackMigration', { enabled });
+  const assignment = useCanListKind(ns, 'Assignment', { enabled });
+  const persona = useCanListKind(ns, 'Persona', { enabled });
+  const rbac = useCanListKind(ns, 'Rbac', { enabled });
+  const vault = useCanListKind(ns, 'Vault', { enabled });
+  const vaultkv = useCanListKind(ns, 'VaultKV', { enabled });
+  const aaporg = useCanListKind(ns, 'AAPOrg', { enabled });
+  const quayorg = useCanListKind(ns, 'QuayOrg', { enabled });
+
+  return {
+    allowed: {
+      Team: team.allowed,
+      Project: project.allowed,
+      PlatformOpenshift: platform.allowed,
+      CloudOSO: cloudoso.allowed,
+      CloudAWS: cloudaws.allowed,
+      OpenStackMigration: migration.allowed,
+      Assignment: assignment.allowed,
+      Persona: persona.allowed,
+      Rbac: rbac.allowed,
+      Vault: vault.allowed,
+      VaultKV: vaultkv.allowed,
+      AAPOrg: aaporg.allowed,
+      QuayOrg: quayorg.allowed,
+    },
+    loading:
+      team.loading ||
+      project.loading ||
+      platform.loading ||
+      cloudoso.loading ||
+      cloudaws.loading ||
+      migration.loading ||
+      assignment.loading ||
+      persona.loading ||
+      rbac.loading ||
+      vault.loading ||
+      vaultkv.loading ||
+      aaporg.loading ||
+      quayorg.loading,
+  };
+}
+
 function TenantLayout(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
@@ -133,6 +190,7 @@ function TenantLayout(): React.ReactElement {
   } = useEntityNamespace({
     userGroups: DEV_USER_GROUPS,
   });
+  const { allowed: kindAllowed, loading: permsLoading } = useTenantNavPermissions(tenantNamespace);
 
   const header = (
     <Masthead className="sc-pf-masthead">
@@ -182,26 +240,32 @@ function TenantLayout(): React.ReactElement {
     </Masthead>
   );
 
+  const visibleNav = React.useMemo(() => {
+    const groups: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
+    let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
+    for (const entry of NAV) {
+      if (entry.type === 'sep') {
+        if (current.items.length) groups.push(current);
+        current = { title: entry.label, items: [] };
+      } else if (!entry.kind || kindAllowed[entry.kind]) {
+        current.items.push(entry);
+      }
+    }
+    if (current.items.length) groups.push(current);
+    return groups.filter((g) => g.items.length > 0);
+  }, [kindAllowed]);
+
   const sidebar = (
     <PageSidebar theme="dark" isSidebarOpen={isSidebarOpen} id="tenant-sidebar">
       <PageSidebarBody>
         <div className="sc-sidebar-title">Sovereign Cloud</div>
         <Nav theme="dark" aria-label="Tenant navigation">
-          {(() => {
-            const groups: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
-            let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = {
-              items: [],
-            };
-            for (const entry of NAV) {
-              if (entry.type === 'sep') {
-                if (current.items.length) groups.push(current);
-                current = { title: entry.label, items: [] };
-              } else {
-                current.items.push(entry);
-              }
-            }
-            if (current.items.length) groups.push(current);
-            return groups.map((group, gi) => (
+          {permsLoading && !tenantNamespace ? (
+            <div style={{ padding: '1rem' }}>
+              <Spinner size="md" aria-label="Loading permissions" />
+            </div>
+          ) : (
+            visibleNav.map((group, gi) => (
               <NavList key={group.title ?? `group-${gi}`}>
                 {group.title ? (
                   <li className="sc-nav-separator" role="presentation">
@@ -226,16 +290,20 @@ function TenantLayout(): React.ReactElement {
                   );
                 })}
               </NavList>
-            ));
-          })()}
+            ))
+          )}
         </Nav>
       </PageSidebarBody>
     </PageSidebar>
   );
 
   const resourceRoutes = React.useMemo(
-    () => NAV.filter((i): i is Extract<NavEntry, { type: 'link' }> => i.type === 'link' && !!i.kind),
-    [],
+    () =>
+      NAV.filter(
+        (i): i is Extract<NavEntry, { type: 'link' }> =>
+          i.type === 'link' && !!i.kind && !!kindAllowed[i.kind],
+      ),
+    [kindAllowed],
   );
 
   return (

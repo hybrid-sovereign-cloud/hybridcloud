@@ -1,5 +1,13 @@
 [
   {
+    "type": "console.flag/hookProvider",
+    "properties": {
+      "handler": {
+        "$codeRef": "featureFlags.useSovereignAccessFlags"
+      }
+    }
+  },
+  {
     "type": "console.navigation/section",
     "properties": {
       "id": "hybridsovereign-tenancy-section",
@@ -25,6 +33,11 @@
       "perspective": "hybridsovereign",
       "name": "Teams",
       "href": "/hybridsovereign/tenant/teams"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_TEAMS"
+      ]
     }
   },
   {
@@ -35,6 +48,11 @@
       "perspective": "hybridsovereign",
       "name": "Projects",
       "href": "/hybridsovereign/tenant/projects"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PROJECTS"
+      ]
     }
   },
   {
@@ -45,6 +63,11 @@
       "perspective": "hybridsovereign",
       "name": "Platform Openshift",
       "href": "/hybridsovereign/tenant/platforms"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PLATFORMS"
+      ]
     }
   },
   {
@@ -55,6 +78,11 @@
       "perspective": "hybridsovereign",
       "name": "Cloud OSO",
       "href": "/hybridsovereign/tenant/cloudoso"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_CLOUDOSOS"
+      ]
     }
   },
   {
@@ -65,6 +93,11 @@
       "perspective": "hybridsovereign",
       "name": "Cloud AWS",
       "href": "/hybridsovereign/tenant/cloudaws"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_CLOUDAWS"
+      ]
     }
   },
   {
@@ -75,6 +108,11 @@
       "perspective": "hybridsovereign",
       "name": "Migrate to OpenStack",
       "href": "/hybridsovereign/tenant/migrations"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_MIGRATIONS"
+      ]
     }
   },
   {
@@ -85,6 +123,11 @@
       "perspective": "hybridsovereign",
       "name": "Assignments",
       "href": "/hybridsovereign/tenant/assignments"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_ASSIGNMENTS"
+      ]
     }
   },
   {
@@ -103,6 +146,11 @@
       "perspective": "hybridsovereign",
       "name": "Personas",
       "href": "/hybridsovereign/tenant/personas"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PERSONAS"
+      ]
     }
   },
   {
@@ -113,6 +161,11 @@
       "perspective": "hybridsovereign",
       "name": "RBAC",
       "href": "/hybridsovereign/tenant/rbac"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_RBACS"
+      ]
     }
   },
   {
@@ -131,6 +184,11 @@
       "perspective": "hybridsovereign",
       "name": "Vaults",
       "href": "/hybridsovereign/tenant/vaults"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_VAULTS"
+      ]
     }
   },
   {
@@ -141,6 +199,11 @@
       "perspective": "hybridsovereign",
       "name": "Vault KVs",
       "href": "/hybridsovereign/tenant/vaultkvs"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_VAULTKVS"
+      ]
     }
   },
   {
@@ -151,6 +214,11 @@
       "perspective": "hybridsovereign",
       "name": "AAP Orgs",
       "href": "/hybridsovereign/tenant/aaporgs"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_AAPORGS"
+      ]
     }
   },
   {
@@ -161,6 +229,11 @@
       "perspective": "hybridsovereign",
       "name": "Quay Orgs",
       "href": "/hybridsovereign/tenant/quayorgs"
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_QUAYORGS"
+      ]
     }
   },
   {
@@ -168,7 +241,9 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/overview",
-      "component": { "$codeRef": "TenantOverviewPage" }
+      "component": {
+        "$codeRef": "TenantOverviewPage"
+      }
     }
   },
   {
@@ -176,7 +251,9 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/create/:formType",
-      "component": { "$codeRef": "TenantCreatePage" }
+      "component": {
+        "$codeRef": "TenantCreatePage"
+      }
     }
   },
   {
@@ -184,7 +261,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/teams",
-      "component": { "$codeRef": "TenantTeamsPage" }
+      "component": {
+        "$codeRef": "TenantTeamsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_TEAMS"
+      ]
     }
   },
   {
@@ -192,7 +276,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/teams/:name",
-      "component": { "$codeRef": "TenantTeamDetailPage" }
+      "component": {
+        "$codeRef": "TenantTeamDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_TEAMS"
+      ]
     }
   },
   {
@@ -200,7 +291,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/projects",
-      "component": { "$codeRef": "TenantProjectsPage" }
+      "component": {
+        "$codeRef": "TenantProjectsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PROJECTS"
+      ]
     }
   },
   {
@@ -208,7 +306,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/projects/:name",
-      "component": { "$codeRef": "TenantProjectDetailPage" }
+      "component": {
+        "$codeRef": "TenantProjectDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PROJECTS"
+      ]
     }
   },
   {
@@ -216,7 +321,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/platforms",
-      "component": { "$codeRef": "TenantPlatformsPage" }
+      "component": {
+        "$codeRef": "TenantPlatformsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PLATFORMS"
+      ]
     }
   },
   {
@@ -224,7 +336,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/platforms/:name",
-      "component": { "$codeRef": "TenantPlatformDetailPage" }
+      "component": {
+        "$codeRef": "TenantPlatformDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PLATFORMS"
+      ]
     }
   },
   {
@@ -232,7 +351,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/assignments",
-      "component": { "$codeRef": "TenantAssignmentsPage" }
+      "component": {
+        "$codeRef": "TenantAssignmentsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_ASSIGNMENTS"
+      ]
     }
   },
   {
@@ -240,7 +366,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/assignments/:name",
-      "component": { "$codeRef": "TenantAssignmentDetailPage" }
+      "component": {
+        "$codeRef": "TenantAssignmentDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_ASSIGNMENTS"
+      ]
     }
   },
   {
@@ -248,7 +381,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/cloudoso",
-      "component": { "$codeRef": "TenantCloudOSOPage" }
+      "component": {
+        "$codeRef": "TenantCloudOSOPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_CLOUDOSOS"
+      ]
     }
   },
   {
@@ -256,7 +396,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/cloudoso/:name",
-      "component": { "$codeRef": "TenantCloudOSODetailPage" }
+      "component": {
+        "$codeRef": "TenantCloudOSODetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_CLOUDOSOS"
+      ]
     }
   },
   {
@@ -264,7 +411,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/cloudaws",
-      "component": { "$codeRef": "TenantCloudAWSPage" }
+      "component": {
+        "$codeRef": "TenantCloudAWSPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_CLOUDAWS"
+      ]
     }
   },
   {
@@ -272,7 +426,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/cloudaws/:name",
-      "component": { "$codeRef": "TenantCloudAWSDetailPage" }
+      "component": {
+        "$codeRef": "TenantCloudAWSDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_CLOUDAWS"
+      ]
     }
   },
   {
@@ -280,7 +441,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/migrations",
-      "component": { "$codeRef": "TenantMigrationsPage" }
+      "component": {
+        "$codeRef": "TenantMigrationsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_MIGRATIONS"
+      ]
     }
   },
   {
@@ -288,7 +456,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/migrations/:name",
-      "component": { "$codeRef": "TenantMigrationDetailPage" }
+      "component": {
+        "$codeRef": "TenantMigrationDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_MIGRATIONS"
+      ]
     }
   },
   {
@@ -296,7 +471,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/personas",
-      "component": { "$codeRef": "TenantPersonasPage" }
+      "component": {
+        "$codeRef": "TenantPersonasPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PERSONAS"
+      ]
     }
   },
   {
@@ -304,7 +486,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/personas/:name",
-      "component": { "$codeRef": "TenantPersonaDetailPage" }
+      "component": {
+        "$codeRef": "TenantPersonaDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_PERSONAS"
+      ]
     }
   },
   {
@@ -312,7 +501,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/rbac",
-      "component": { "$codeRef": "TenantRbacPage" }
+      "component": {
+        "$codeRef": "TenantRbacPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_RBACS"
+      ]
     }
   },
   {
@@ -320,7 +516,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/rbac/:name",
-      "component": { "$codeRef": "TenantRbacDetailPage" }
+      "component": {
+        "$codeRef": "TenantRbacDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_RBACS"
+      ]
     }
   },
   {
@@ -328,7 +531,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/vaults",
-      "component": { "$codeRef": "TenantVaultsPage" }
+      "component": {
+        "$codeRef": "TenantVaultsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_VAULTS"
+      ]
     }
   },
   {
@@ -336,7 +546,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/vaults/:name",
-      "component": { "$codeRef": "TenantVaultDetailPage" }
+      "component": {
+        "$codeRef": "TenantVaultDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_VAULTS"
+      ]
     }
   },
   {
@@ -344,7 +561,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/vaultkvs",
-      "component": { "$codeRef": "TenantVaultKVsPage" }
+      "component": {
+        "$codeRef": "TenantVaultKVsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_VAULTKVS"
+      ]
     }
   },
   {
@@ -352,7 +576,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/vaultkvs/:name",
-      "component": { "$codeRef": "TenantVaultKVDetailPage" }
+      "component": {
+        "$codeRef": "TenantVaultKVDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_VAULTKVS"
+      ]
     }
   },
   {
@@ -360,7 +591,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/aaporgs",
-      "component": { "$codeRef": "TenantAAPOrgsPage" }
+      "component": {
+        "$codeRef": "TenantAAPOrgsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_AAPORGS"
+      ]
     }
   },
   {
@@ -368,7 +606,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/aaporgs/:name",
-      "component": { "$codeRef": "TenantAAPOrgDetailPage" }
+      "component": {
+        "$codeRef": "TenantAAPOrgDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_AAPORGS"
+      ]
     }
   },
   {
@@ -376,7 +621,14 @@
     "properties": {
       "exact": true,
       "path": "/hybridsovereign/tenant/quayorgs",
-      "component": { "$codeRef": "TenantQuayOrgsPage" }
+      "component": {
+        "$codeRef": "TenantQuayOrgsPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_QUAYORGS"
+      ]
     }
   },
   {
@@ -384,7 +636,14 @@
     "properties": {
       "exact": false,
       "path": "/hybridsovereign/tenant/quayorgs/:name",
-      "component": { "$codeRef": "TenantQuayOrgDetailPage" }
+      "component": {
+        "$codeRef": "TenantQuayOrgDetailPage"
+      }
+    },
+    "flags": {
+      "required": [
+        "SOVEREIGN_CAN_LIST_QUAYORGS"
+      ]
     }
   }
 ]

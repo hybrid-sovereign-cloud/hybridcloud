@@ -42,29 +42,59 @@ import {
   UserEditIcon,
 } from '@patternfly/react-icons';
 import { NavLink, Routes, Route, useLocation } from 'react-router-dom';
-import { SovereignThemeProvider, useTheme } from '@hybridsovereign/shared';
+import { SovereignThemeProvider, useTheme, useCanListKind, HybridSovereignKind } from '@hybridsovereign/shared';
 import { OverviewPage } from './pages/OverviewPage';
 import { ResourceListPage } from './pages/ResourceListPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { CreateResourcePage } from './pages/CreateResourcePage';
 
 type NavEntry =
-  | { type: 'link'; path: string; label: string; icon: React.ComponentType; end?: boolean }
+  | {
+      type: 'link';
+      path: string;
+      label: string;
+      icon: React.ComponentType;
+      end?: boolean;
+      kind?: HybridSovereignKind;
+      /** Namespace for SAR; use "*" for cluster/any-namespace */
+      permNs?: string;
+    }
   | { type: 'sep'; label: string };
 
 const NAV: NavEntry[] = [
   { type: 'link', path: '/', label: 'Overview', icon: TachometerAltIcon, end: true },
-  { type: 'link', path: '/entities', label: 'Entities', icon: BuildingIcon },
-  { type: 'link', path: '/personas', label: 'Personas', icon: UserEditIcon },
+  {
+    type: 'link',
+    path: '/entities',
+    label: 'Entities',
+    icon: BuildingIcon,
+    kind: 'Entity',
+    permNs: 'sovereign-cloud',
+  },
+  { type: 'link', path: '/personas', label: 'Personas', icon: UserEditIcon, kind: 'Persona', permNs: '*' },
   { type: 'sep', label: 'Platform' },
-  { type: 'link', path: '/services', label: 'Service URLs', icon: GlobeIcon },
-  { type: 'link', path: '/operators', label: 'Operators', icon: CogIcon },
+  { type: 'link', path: '/services', label: 'Service URLs', icon: GlobeIcon, kind: 'AAPConfig', permNs: '*' },
+  { type: 'link', path: '/operators', label: 'Operators', icon: CogIcon, kind: 'RbacConfig', permNs: '*' },
   { type: 'sep', label: 'Tenancy (read)' },
-  { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon },
-  { type: 'link', path: '/projects', label: 'Projects', icon: FolderOpenIcon },
-  { type: 'link', path: '/platforms', label: 'Platform Openshift', icon: ClusterIcon },
-  { type: 'link', path: '/clouds', label: 'Cloud Environments', icon: LayerGroupIcon },
-  { type: 'link', path: '/assignments', label: 'Assignments', icon: ProjectDiagramIcon },
+  { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon, kind: 'Team', permNs: '*' },
+  { type: 'link', path: '/projects', label: 'Projects', icon: FolderOpenIcon, kind: 'Project', permNs: '*' },
+  {
+    type: 'link',
+    path: '/platforms',
+    label: 'Platform Openshift',
+    icon: ClusterIcon,
+    kind: 'PlatformOpenshift',
+    permNs: '*',
+  },
+  { type: 'link', path: '/clouds', label: 'Cloud Environments', icon: LayerGroupIcon, kind: 'CloudOSO', permNs: '*' },
+  {
+    type: 'link',
+    path: '/assignments',
+    label: 'Assignments',
+    icon: ProjectDiagramIcon,
+    kind: 'Assignment',
+    permNs: '*',
+  },
 ];
 
 function ThemeToggle(): React.ReactElement {
@@ -79,8 +109,32 @@ function ThemeToggle(): React.ReactElement {
   );
 }
 
+function useAdminNavPermissions(): Partial<Record<HybridSovereignKind, boolean>> {
+  const entity = useCanListKind('sovereign-cloud', 'Entity');
+  const persona = useCanListKind('*', 'Persona');
+  const aap = useCanListKind('*', 'AAPConfig');
+  const rbacCfg = useCanListKind('*', 'RbacConfig');
+  const team = useCanListKind('*', 'Team');
+  const project = useCanListKind('*', 'Project');
+  const platform = useCanListKind('*', 'PlatformOpenshift');
+  const cloudoso = useCanListKind('*', 'CloudOSO');
+  const assignment = useCanListKind('*', 'Assignment');
+  return {
+    Entity: entity.allowed,
+    Persona: persona.allowed,
+    AAPConfig: aap.allowed,
+    RbacConfig: rbacCfg.allowed,
+    Team: team.allowed,
+    Project: project.allowed,
+    PlatformOpenshift: platform.allowed,
+    CloudOSO: cloudoso.allowed,
+    Assignment: assignment.allowed,
+  };
+}
+
 function AdminNav(): React.ReactElement {
   const location = useLocation();
+  const kindAllowed = useAdminNavPermissions();
   const groups = React.useMemo(() => {
     const result: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
     let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
@@ -88,13 +142,13 @@ function AdminNav(): React.ReactElement {
       if (entry.type === 'sep') {
         if (current.items.length) result.push(current);
         current = { title: entry.label, items: [] };
-      } else {
+      } else if (!entry.kind || kindAllowed[entry.kind]) {
         current.items.push(entry);
       }
     }
     if (current.items.length) result.push(current);
-    return result;
-  }, []);
+    return result.filter((g) => g.items.length > 0);
+  }, [kindAllowed]);
 
   return (
     <Nav theme="dark" aria-label="Sovereign Admin navigation">

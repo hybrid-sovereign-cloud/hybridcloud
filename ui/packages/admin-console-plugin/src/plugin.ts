@@ -1,10 +1,15 @@
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
-import { configureK8sClient } from '@hybridsovereign/shared';
+import { configureK8sClient, configurePermissionsClient } from '@hybridsovereign/shared';
 
 configureK8sClient({
   baseUrl: '/api/kubernetes',
   fetchFn: consoleFetch as unknown as typeof fetch,
   apiStyle: 'raw',
+});
+
+configurePermissionsClient('/api/kubernetes', {
+  style: 'ssar',
+  fetchFn: consoleFetch as unknown as typeof fetch,
 });
 
 export { default as AdminOverviewPage } from './components/AdminOverviewPage';
@@ -19,3 +24,4 @@ export { default as AdminOperatorDetailPage } from './components/AdminOperatorDe
 export { default as AdminCreatePage } from './components/AdminCreatePage';
 export { default as PerspectiveIcon } from './PerspectiveIcon';
 export { getLandingPageURL, getImportRedirectURL } from './perspective';
+export { useSovereignAccessFlags } from './featureFlags';
