@@ -1178,6 +1178,26 @@ export function createK8sHandlers(apiServer) {
       }
     },
 
+    async getOpenStackMigration(req, res) {
+      const token = userAccessToken(req);
+      if (!token) return res.status(401).json({ message: "Unauthorized" });
+      const { name } = req.params;
+      const namespace = req.query.namespace;
+      if (!name || !NAME_PATTERN.test(name)) return res.status(400).json({ message: "Invalid name" });
+      if (!namespace || !NS_PATTERN.test(namespace)) return res.status(400).json({ message: "Invalid namespace" });
+      try {
+        const urlPath = `${openstackmigrationsCollectionPath(namespace)}/${encodeURIComponent(name)}`;
+        const resp = await k8sRequest(apiServer, urlPath, "GET", token);
+        if (resp.status === 404) return res.status(404).json({ message: "Not found" });
+        if (resp.status === 403) return res.status(403).json({ message: "Forbidden" });
+        if (resp.status >= 400) return res.status(502).json({ message: "Failed to fetch OpenStackMigration" });
+        res.json(resp.body);
+      } catch (err) {
+        console.error("OpenStackMigration get error:", err.message);
+        res.status(502).json({ message: "Failed to communicate with cluster API" });
+      }
+    },
+
     async listCloudAWSs(req, res) {
       const token = userAccessToken(req);
       if (!token) return res.status(401).json({ message: "Unauthorized" });
@@ -1334,6 +1354,26 @@ export function createK8sHandlers(apiServer) {
         res.json({ message: `Vault '${name}' deleted` });
       } catch (err) {
         console.error("Vault delete error:", err.message);
+        res.status(502).json({ message: "Failed to communicate with cluster API" });
+      }
+    },
+
+    async getVault(req, res) {
+      const token = userAccessToken(req);
+      if (!token) return res.status(401).json({ message: "Unauthorized" });
+      const { name } = req.params;
+      const namespace = req.query.namespace;
+      if (!name || !NAME_PATTERN.test(name)) return res.status(400).json({ message: "Invalid name" });
+      if (!namespace || !NS_PATTERN.test(namespace)) return res.status(400).json({ message: "Invalid namespace" });
+      try {
+        const urlPath = `${vaultsCollectionPath(namespace)}/${encodeURIComponent(name)}`;
+        const resp = await k8sRequest(apiServer, urlPath, "GET", token);
+        if (resp.status === 404) return res.status(404).json({ message: "Not found" });
+        if (resp.status === 403) return res.status(403).json({ message: "Forbidden" });
+        if (resp.status >= 400) return res.status(502).json({ message: "Failed to fetch Vault" });
+        res.json(resp.body);
+      } catch (err) {
+        console.error("Vault get error:", err.message);
         res.status(502).json({ message: "Failed to communicate with cluster API" });
       }
     },
@@ -1921,6 +1961,26 @@ export function createK8sHandlers(apiServer) {
         res.json(resp.body?.items || []);
       } catch (err) {
         console.error("Persona list error:", err.message);
+        res.status(502).json({ message: "Failed to communicate with cluster API" });
+      }
+    },
+
+    async getPersona(req, res) {
+      const token = userAccessToken(req);
+      if (!token) return res.status(401).json({ message: "Unauthorized" });
+      const { name } = req.params;
+      const namespace = req.query.namespace;
+      if (!name || !NAME_PATTERN.test(name)) return res.status(400).json({ message: "Invalid name" });
+      if (!namespace || !NS_PATTERN.test(namespace)) return res.status(400).json({ message: "Invalid namespace" });
+      try {
+        const urlPath = `${personasCollectionPath(namespace)}/${encodeURIComponent(name)}`;
+        const resp = await k8sRequest(apiServer, urlPath, "GET", token);
+        if (resp.status === 404) return res.status(404).json({ message: "Not found" });
+        if (resp.status === 403) return res.status(403).json({ message: "Forbidden" });
+        if (resp.status >= 400) return res.status(502).json({ message: "Failed to fetch Persona" });
+        res.json(resp.body);
+      } catch (err) {
+        console.error("Persona get error:", err.message);
         res.status(502).json({ message: "Failed to communicate with cluster API" });
       }
     },

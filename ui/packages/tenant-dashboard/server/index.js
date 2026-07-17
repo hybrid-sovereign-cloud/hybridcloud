@@ -113,6 +113,7 @@ app.delete("/api/rbacs/:name", requireAuth, mutationLimiter, k8s.remove);
 
 // Vault CRUD
 app.get("/api/vaults", requireAuth, k8s.listVaults);
+app.get("/api/vaults/:name", requireAuth, k8s.getVault);
 app.post("/api/vaults", requireAuth, mutationLimiter, k8s.createVault);
 app.delete("/api/vaults/:name", requireAuth, mutationLimiter, k8s.deleteVault);
 
@@ -173,6 +174,7 @@ app.delete("/api/cloudosos/:name", requireAuth, mutationLimiter, k8s.deleteCloud
 // MTV catalog + OpenStackMigration CRUD
 app.get("/api/mtv-catalog", requireAuth, k8s.getMtvCatalog);
 app.get("/api/openstackmigrations", requireAuth, k8s.listOpenStackMigrations);
+app.get("/api/openstackmigrations/:name", requireAuth, k8s.getOpenStackMigration);
 app.post("/api/openstackmigrations", requireAuth, mutationLimiter, k8s.createOpenStackMigration);
 app.delete("/api/openstackmigrations/:name", requireAuth, mutationLimiter, k8s.deleteOpenStackMigration);
 
@@ -189,6 +191,7 @@ app.patch("/api/projects/:name", requireAuth, mutationLimiter, k8s.patchProject)
 
 // Persona CRUD
 app.get("/api/personas", requireAuth, k8s.listPersonas);
+app.get("/api/personas/:name", requireAuth, k8s.getPersona);
 app.post("/api/personas", requireAuth, mutationLimiter, k8s.createPersona);
 app.patch("/api/personas/:name/annotations", requireAuth, mutationLimiter, k8s.patchPersonaAnnotation);
 

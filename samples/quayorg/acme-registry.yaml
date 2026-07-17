@@ -1,8 +1,4 @@
-# Sample QuayOrg — acme-registry
-# Source: plugin_quay/config/samples/quayorg-acme-corp.yaml
-# Apply manually to services cluster (NOT via ArgoCD):
-#   oc apply -f samples/quayorg/acme-registry.yaml --context=services-admin
----
+# Sample QuayOrg for acme-corp (entity-acme-corp)
 apiVersion: hybridsovereign.redhat/v1alpha1
 kind: QuayOrg
 metadata:
@@ -11,8 +7,8 @@ metadata:
 spec:
   quayConfig: quay-sovereign-services
   quayAdminRbac:
-  - acme-platform-admins
+    - acme-quay-admins
   quayCreatorRbac:
-  - acme-developers
+    - acme-developers
   quayMemberRbac:
-  - acme-viewers
+    - acme-viewers
