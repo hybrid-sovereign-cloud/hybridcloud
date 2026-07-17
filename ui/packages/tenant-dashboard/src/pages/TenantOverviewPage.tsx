@@ -290,7 +290,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
           </Title>
           <Card className="sc-panel">
             <CardBody>
-              <EntityTopology entityNamespace={namespace} filterByPermissions />
+              <EntityTopology entityNamespace={namespace} />
             </CardBody>
           </Card>
         </>

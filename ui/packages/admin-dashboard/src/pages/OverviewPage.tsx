@@ -291,7 +291,7 @@ export function OverviewPage(): React.ReactElement {
           </Flex>
           <Card className="sc-panel">
             <CardBody>
-              <EntityTopology filterByPermissions />
+              <EntityTopology />
             </CardBody>
           </Card>
         </>

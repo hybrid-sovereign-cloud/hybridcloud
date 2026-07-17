@@ -78,7 +78,7 @@ const TenantOverviewPage: React.FC = () => {
         </Title>
         <Card isCompact className="sc-panel">
           <CardBody>
-            <EntityTopology entityNamespace={namespace} filterByPermissions />
+            <EntityTopology entityNamespace={namespace} />
           </CardBody>
         </Card>
       </div>

@@ -3,10 +3,10 @@
 SHELL := /bin/bash
 NPM := npm
 REGISTRY ?= quay.example.com/hybrid-sovereign
-ADMIN_DASH_TAG ?= 2.0.10
-TENANT_DASH_TAG ?= 5.0.11
-ADMIN_PLUGIN_TAG ?= 1.2.9
-TENANT_PLUGIN_TAG ?= 1.3.7
+ADMIN_DASH_TAG ?= 2.0.11
+TENANT_DASH_TAG ?= 5.0.12
+ADMIN_PLUGIN_TAG ?= 1.2.10
+TENANT_PLUGIN_TAG ?= 1.3.8
 
 .PHONY: help install build build-shared build-admin build-tenant \
         build-admin-plugin build-tenant-plugin typecheck dev-admin dev-tenant clean \

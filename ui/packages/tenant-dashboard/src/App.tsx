@@ -18,7 +18,6 @@ import {
   ToolbarContent,
   ToolbarItem,
   ToolbarGroup,
-  Spinner,
 } from '@patternfly/react-core';
 import {
   MoonIcon,
@@ -49,7 +48,6 @@ import {
   useTheme,
   useEntityNamespace,
   NamespaceContextBar,
-  useCanListKind,
   HybridSovereignKind,
 } from '@hybridsovereign/shared';
 import { TenantOverviewPage } from './pages/TenantOverviewPage';
@@ -71,6 +69,7 @@ type NavEntry =
     }
   | { type: 'sep'; label: string };
 
+/** Static sidebar — all links always visible; pages fetch K8s only on navigate/refresh */
 const NAV: NavEntry[] = [
   { type: 'link', path: '/', label: 'Overview', icon: TachometerAltIcon, end: true },
   { type: 'sep', label: 'Tenancy' },
@@ -124,58 +123,19 @@ function ThemeToggle(): React.ReactElement {
   );
 }
 
-/** Stable per-kind hooks for nav gating (fixed list from NAV). */
-function useTenantNavPermissions(namespace: string): {
-  allowed: Partial<Record<HybridSovereignKind, boolean>>;
-  loading: boolean;
-} {
-  const enabled = !!namespace;
-  const ns = namespace || 'default';
-  const team = useCanListKind(ns, 'Team', { enabled });
-  const project = useCanListKind(ns, 'Project', { enabled });
-  const platform = useCanListKind(ns, 'PlatformOpenshift', { enabled });
-  const cloudoso = useCanListKind(ns, 'CloudOSO', { enabled });
-  const cloudaws = useCanListKind(ns, 'CloudAWS', { enabled });
-  const migration = useCanListKind(ns, 'OpenStackMigration', { enabled });
-  const assignment = useCanListKind(ns, 'Assignment', { enabled });
-  const persona = useCanListKind(ns, 'Persona', { enabled });
-  const rbac = useCanListKind(ns, 'Rbac', { enabled });
-  const vault = useCanListKind(ns, 'Vault', { enabled });
-  const vaultkv = useCanListKind(ns, 'VaultKV', { enabled });
-  const aaporg = useCanListKind(ns, 'AAPOrg', { enabled });
-  const quayorg = useCanListKind(ns, 'QuayOrg', { enabled });
-
-  return {
-    allowed: {
-      Team: team.allowed,
-      Project: project.allowed,
-      PlatformOpenshift: platform.allowed,
-      CloudOSO: cloudoso.allowed,
-      CloudAWS: cloudaws.allowed,
-      OpenStackMigration: migration.allowed,
-      Assignment: assignment.allowed,
-      Persona: persona.allowed,
-      Rbac: rbac.allowed,
-      Vault: vault.allowed,
-      VaultKV: vaultkv.allowed,
-      AAPOrg: aaporg.allowed,
-      QuayOrg: quayorg.allowed,
-    },
-    loading:
-      team.loading ||
-      project.loading ||
-      platform.loading ||
-      cloudoso.loading ||
-      cloudaws.loading ||
-      migration.loading ||
-      assignment.loading ||
-      persona.loading ||
-      rbac.loading ||
-      vault.loading ||
-      vaultkv.loading ||
-      aaporg.loading ||
-      quayorg.loading,
-  };
+function staticNavGroups(): { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] {
+  const groups: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
+  let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
+  for (const entry of NAV) {
+    if (entry.type === 'sep') {
+      if (current.items.length) groups.push(current);
+      current = { title: entry.label, items: [] };
+    } else {
+      current.items.push(entry);
+    }
+  }
+  if (current.items.length) groups.push(current);
+  return groups;
 }
 
 function TenantLayout(): React.ReactElement {
@@ -190,7 +150,8 @@ function TenantLayout(): React.ReactElement {
   } = useEntityNamespace({
     userGroups: DEV_USER_GROUPS,
   });
-  const { allowed: kindAllowed, loading: permsLoading } = useTenantNavPermissions(tenantNamespace);
+
+  const navGroups = React.useMemo(() => staticNavGroups(), []);
 
   const header = (
     <Masthead className="sc-pf-masthead">
@@ -240,70 +201,44 @@ function TenantLayout(): React.ReactElement {
     </Masthead>
   );
 
-  const visibleNav = React.useMemo(() => {
-    const groups: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
-    let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
-    for (const entry of NAV) {
-      if (entry.type === 'sep') {
-        if (current.items.length) groups.push(current);
-        current = { title: entry.label, items: [] };
-      } else if (!entry.kind || kindAllowed[entry.kind]) {
-        current.items.push(entry);
-      }
-    }
-    if (current.items.length) groups.push(current);
-    return groups.filter((g) => g.items.length > 0);
-  }, [kindAllowed]);
-
   const sidebar = (
     <PageSidebar theme="dark" isSidebarOpen={isSidebarOpen} id="tenant-sidebar">
       <PageSidebarBody>
         <div className="sc-sidebar-title">Sovereign Cloud</div>
         <Nav theme="dark" aria-label="Tenant navigation">
-          {permsLoading && !tenantNamespace ? (
-            <div style={{ padding: '1rem' }}>
-              <Spinner size="md" aria-label="Loading permissions" />
-            </div>
-          ) : (
-            visibleNav.map((group, gi) => (
-              <NavList key={group.title ?? `group-${gi}`}>
-                {group.title ? (
-                  <li className="sc-nav-separator" role="presentation">
-                    {group.title}
-                  </li>
-                ) : null}
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const active = item.end
-                    ? location.pathname === item.path
-                    : location.pathname === item.path ||
-                      location.pathname.startsWith(`${item.path}/`);
-                  return (
-                    <NavItem key={item.path} isActive={active}>
-                      <NavLink to={item.path} end={item.end} className="sc-nav-link">
-                        <span className="sc-nav-link__icon">
-                          <Icon />
-                        </span>
-                        {item.label}
-                      </NavLink>
-                    </NavItem>
-                  );
-                })}
-              </NavList>
-            ))
-          )}
+          {navGroups.map((group, gi) => (
+            <NavList key={group.title ?? `group-${gi}`}>
+              {group.title ? (
+                <li className="sc-nav-separator" role="presentation">
+                  {group.title}
+                </li>
+              ) : null}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = item.end
+                  ? location.pathname === item.path
+                  : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+                return (
+                  <NavItem key={item.path} isActive={active}>
+                    <NavLink to={item.path} end={item.end} className="sc-nav-link">
+                      <span className="sc-nav-link__icon">
+                        <Icon />
+                      </span>
+                      {item.label}
+                    </NavLink>
+                  </NavItem>
+                );
+              })}
+            </NavList>
+          ))}
         </Nav>
       </PageSidebarBody>
     </PageSidebar>
   );
 
   const resourceRoutes = React.useMemo(
-    () =>
-      NAV.filter(
-        (i): i is Extract<NavEntry, { type: 'link' }> =>
-          i.type === 'link' && !!i.kind && !!kindAllowed[i.kind],
-      ),
-    [kindAllowed],
+    () => NAV.filter((i): i is Extract<NavEntry, { type: 'link' }> => i.type === 'link' && !!i.kind),
+    [],
   );
 
   return (

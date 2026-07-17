@@ -40,4 +40,3 @@ export { default as TenantVaultDetailPage } from './components/TenantVaultDetail
 export { default as TenantVaultKVDetailPage } from './components/TenantVaultKVDetailPage';
 export { default as TenantAAPOrgDetailPage } from './components/TenantAAPOrgDetailPage';
 export { default as TenantQuayOrgDetailPage } from './components/TenantQuayOrgDetailPage';
-export { useSovereignAccessFlags } from './featureFlags';

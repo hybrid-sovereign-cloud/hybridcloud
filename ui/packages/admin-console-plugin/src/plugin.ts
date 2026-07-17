@@ -24,4 +24,3 @@ export { default as AdminOperatorDetailPage } from './components/AdminOperatorDe
 export { default as AdminCreatePage } from './components/AdminCreatePage';
 export { default as PerspectiveIcon } from './PerspectiveIcon';
 export { getLandingPageURL, getImportRedirectURL } from './perspective';
-export { useSovereignAccessFlags } from './featureFlags';
