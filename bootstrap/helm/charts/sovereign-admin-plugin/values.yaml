@@ -2,7 +2,7 @@ namespace: sovereign-cloud
 
 image:
   repository: quay.example.com/hybrid-sovereign/sovereign-admin-plugin
-  tag: "1.2.5"
+  tag: "1.2.6"
   pullPolicy: Always
 
 imagePullSecrets:

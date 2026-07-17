@@ -18,6 +18,7 @@ import {
   KIND_PLURALS,
   API_GROUP,
   API_VERSION,
+  KindIcon,
 } from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
 
@@ -106,6 +107,7 @@ const AdminEntitiesPage: React.FC = () => {
                         className="sc-resource-link"
                         href={`/hybridsovereign/entities/${encodeURIComponent(item.metadata?.name ?? '')}`}
                       >
+                        <KindIcon kind="Entity" tiled size="sm" />
                         {item.metadata?.name}
                       </a>
                     </Td>
@@ -219,6 +221,7 @@ export const makeKindListPage = (
                     <Tr key={item.metadata?.uid ?? `${item.metadata?.namespace}/${item.metadata?.name}`}>
                       <Td>
                         <a className="sc-resource-link" href={detailHref(item)}>
+                          <KindIcon kind={kind} tiled size="sm" />
                           {item.metadata?.name}
                         </a>
                       </Td>

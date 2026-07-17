@@ -11,6 +11,7 @@ import {
   KIND_PLURALS,
   PageHeader,
   StatusBadge,
+  KindIcon,
   FilterToolbar,
   StatusFilter,
   normalizeHealth,
@@ -124,6 +125,7 @@ export function TenantResourcePage({
                         className="sc-resource-link"
                         to={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
                       >
+                        <KindIcon kind={kind} tiled size="sm" />
                         {item.metadata.name}
                       </Link>
                     </Td>

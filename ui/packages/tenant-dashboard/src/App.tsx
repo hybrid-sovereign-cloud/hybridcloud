@@ -23,10 +23,11 @@ import {
   MoonIcon,
   SunIcon,
   TachometerAltIcon,
-  CubesIcon,
+  FolderOpenIcon,
   UsersIcon,
   ClusterIcon,
-  CloudIcon,
+  LayerGroupIcon,
+  AwsIcon,
   TopologyIcon,
   OutlinedBellIcon,
   QuestionCircleIcon,
@@ -35,8 +36,11 @@ import {
   BarsIcon,
   KeyIcon,
   ProcessAutomationIcon,
-  DatabaseIcon,
-  ModuleIcon,
+  SecurityIcon,
+  UserEditIcon,
+  LockIcon,
+  BundleIcon,
+  MigrationIcon,
 } from '@patternfly/react-icons';
 import { NavLink, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -68,7 +72,7 @@ const NAV: NavEntry[] = [
   { type: 'link', path: '/', label: 'Overview', icon: TachometerAltIcon, end: true },
   { type: 'sep', label: 'Tenancy' },
   { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon, kind: 'Team', form: 'team' },
-  { type: 'link', path: '/projects', label: 'Projects', icon: CubesIcon, kind: 'Project', form: 'project' },
+  { type: 'link', path: '/projects', label: 'Projects', icon: FolderOpenIcon, kind: 'Project', form: 'project' },
   {
     type: 'link',
     path: '/platforms',
@@ -76,13 +80,13 @@ const NAV: NavEntry[] = [
     icon: ClusterIcon,
     kind: 'PlatformOpenshift',
   },
-  { type: 'link', path: '/cloudoso', label: 'Cloud OSO', icon: CloudIcon, kind: 'CloudOSO', form: 'cloudoso' },
-  { type: 'link', path: '/cloudaws', label: 'Cloud AWS', icon: CloudIcon, kind: 'CloudAWS', form: 'cloudaws' },
+  { type: 'link', path: '/cloudoso', label: 'Cloud OSO', icon: LayerGroupIcon, kind: 'CloudOSO', form: 'cloudoso' },
+  { type: 'link', path: '/cloudaws', label: 'Cloud AWS', icon: AwsIcon, kind: 'CloudAWS', form: 'cloudaws' },
   {
     type: 'link',
     path: '/migrations',
     label: 'Migrate to OpenStack',
-    icon: ProcessAutomationIcon,
+    icon: MigrationIcon,
     kind: 'OpenStackMigration',
     form: 'migration',
   },
@@ -94,13 +98,13 @@ const NAV: NavEntry[] = [
     kind: 'Assignment',
     form: 'assignment',
   },
-  { type: 'link', path: '/personas', label: 'Personas', icon: UsersIcon, kind: 'Persona', form: 'persona' },
+  { type: 'link', path: '/personas', label: 'Personas', icon: UserEditIcon, kind: 'Persona', form: 'persona' },
   { type: 'sep', label: 'Access Control' },
-  { type: 'link', path: '/rbac', label: 'RBAC', icon: KeyIcon, kind: 'Rbac', form: 'rbac' },
-  { type: 'link', path: '/vaults', label: 'Vaults', icon: DatabaseIcon, kind: 'Vault', form: 'vault' },
-  { type: 'link', path: '/vaultkvs', label: 'Vault KVs', icon: DatabaseIcon, kind: 'VaultKV', form: 'vaultkv' },
-  { type: 'link', path: '/aaporgs', label: 'AAP Orgs', icon: ModuleIcon, kind: 'AAPOrg', form: 'aaporg' },
-  { type: 'link', path: '/quayorgs', label: 'Quay Orgs', icon: CubesIcon, kind: 'QuayOrg', form: 'quayorg' },
+  { type: 'link', path: '/rbac', label: 'RBAC', icon: LockIcon, kind: 'Rbac', form: 'rbac' },
+  { type: 'link', path: '/vaults', label: 'Vaults', icon: SecurityIcon, kind: 'Vault', form: 'vault' },
+  { type: 'link', path: '/vaultkvs', label: 'Vault KVs', icon: KeyIcon, kind: 'VaultKV', form: 'vaultkv' },
+  { type: 'link', path: '/aaporgs', label: 'AAP Orgs', icon: ProcessAutomationIcon, kind: 'AAPOrg', form: 'aaporg' },
+  { type: 'link', path: '/quayorgs', label: 'Quay Orgs', icon: BundleIcon, kind: 'QuayOrg', form: 'quayorg' },
 ];
 
 function ThemeToggle(): React.ReactElement {
@@ -145,7 +149,9 @@ function TenantLayout(): React.ReactElement {
       <MastheadMain>
         <MastheadBrand>
           <NavLink to="/" className="sc-masthead-brand">
-            <TopologyIcon className="sc-masthead-brand__icon" />
+            <span className="sc-masthead-brand__mark" aria-hidden>
+              <TopologyIcon />
+            </span>
             <span>Sovereign Cloud</span>
           </NavLink>
         </MastheadBrand>

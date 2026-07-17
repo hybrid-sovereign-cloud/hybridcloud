@@ -16,13 +16,7 @@ import {
 } from '@patternfly/react-core';
 import {
   SyncIcon,
-  PlusCircleIcon,
   ExclamationTriangleIcon,
-  UsersIcon,
-  CubesIcon,
-  ClusterIcon,
-  ProjectDiagramIcon,
-  CloudIcon,
   TopologyIcon,
 } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
@@ -33,6 +27,7 @@ import {
   HealthDonut,
   InventoryCard,
   StatusBadge,
+  KindIcon,
   normalizeHealth,
   useK8sResourceList,
   K8sResource,
@@ -103,12 +98,12 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
   };
 
   const kindRows = [
-    { kind: 'Team', label: 'Teams', path: '/teams', icon: <UsersIcon /> },
-    { kind: 'Project', label: 'Projects', path: '/projects', icon: <CubesIcon /> },
-    { kind: 'PlatformOpenshift', label: 'Platforms', path: '/platforms', icon: <ClusterIcon /> },
-    { kind: 'Assignment', label: 'Assignments', path: '/assignments', icon: <ProjectDiagramIcon /> },
-    { kind: 'CloudOSO', label: 'Cloud OSO', path: '/cloudoso', icon: <CloudIcon /> },
-    { kind: 'CloudAWS', label: 'Cloud AWS', path: '/cloudaws', icon: <CloudIcon /> },
+    { kind: 'Team', label: 'Teams', path: '/teams' },
+    { kind: 'Project', label: 'Projects', path: '/projects' },
+    { kind: 'PlatformOpenshift', label: 'Platforms', path: '/platforms' },
+    { kind: 'Assignment', label: 'Assignments', path: '/assignments' },
+    { kind: 'CloudOSO', label: 'Cloud OSO', path: '/cloudoso' },
+    { kind: 'CloudAWS', label: 'Cloud AWS', path: '/cloudaws' },
   ];
 
   return (
@@ -145,28 +140,28 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                 title="Teams"
                 count={teams.items.length}
                 hint={`${bucket(teams.items).ready} ready`}
-                icon={<UsersIcon />}
+                kind="Team"
                 href="/teams"
               />
               <InventoryCard
                 title="Platforms"
                 count={platforms.items.length}
                 hint={`${bucket(platforms.items).ready} ready`}
-                icon={<ClusterIcon />}
+                kind="PlatformOpenshift"
                 href="/platforms"
               />
               <InventoryCard
                 title="Assignments"
                 count={assignments.items.length}
                 hint={`${bucket(assignments.items).ready} ready`}
-                icon={<ProjectDiagramIcon />}
+                kind="Assignment"
                 href="/assignments"
               />
               <InventoryCard
                 title="Projects"
                 count={projects.items.length}
                 hint={`${bucket(projects.items).ready} ready`}
-                icon={<CubesIcon />}
+                kind="Project"
                 href="/projects"
               />
             </div>
@@ -177,11 +172,11 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
           </Title>
           <div className="sc-card-grid sc-mb">
             {[
-              { label: 'Create Team', path: '/create/team' },
-              { label: 'Create Project', path: '/create/project' },
-              { label: 'Request CloudOSO', path: '/create/cloudoso' },
-              { label: 'Request Cloud AWS', path: '/create/cloudaws' },
-              { label: 'Create Assignment', path: '/create/assignment' },
+              { label: 'Create Team', path: '/create/team', kind: 'Team' },
+              { label: 'Create Project', path: '/create/project', kind: 'Project' },
+              { label: 'Request CloudOSO', path: '/create/cloudoso', kind: 'CloudOSO' },
+              { label: 'Request Cloud AWS', path: '/create/cloudaws', kind: 'CloudAWS' },
+              { label: 'Create Assignment', path: '/create/assignment', kind: 'Assignment' },
             ].map((a) => (
               <Card
                 key={a.path}
@@ -191,7 +186,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                 onClick={() => navigate(a.path)}
               >
                 <CardTitle>
-                  <PlusCircleIcon className="sc-inline-icon" />
+                  <KindIcon kind={a.kind} tiled size="sm" />
                   {a.label}
                 </CardTitle>
               </Card>
@@ -266,7 +261,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                     <Tr key={row.kind}>
                       <Td>
                         <span className="sc-kind-cell">
-                          {row.icon}
+                          <KindIcon kind={row.kind} tiled size="sm" />
                           {row.label}
                         </span>
                       </Td>

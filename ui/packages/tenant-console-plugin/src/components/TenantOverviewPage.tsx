@@ -10,18 +10,13 @@ import {
   K8sResource,
   configureK8sClient,
 } from '@hybridsovereign/shared';
-import {
-  UsersIcon,
-  CubesIcon,
-  ClusterIcon,
-  ProjectDiagramIcon,
-} from '@patternfly/react-icons';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
 
 configureK8sClient({
   baseUrl: '/api/kubernetes',
   fetchFn: consoleFetch as unknown as typeof fetch,
+  apiStyle: 'raw',
 });
 
 const TenantOverviewPage: React.FC = () => {
@@ -62,28 +57,28 @@ const TenantOverviewPage: React.FC = () => {
             title="Teams"
             count={teams.items.length}
             hint={`${ready(teams.items)} ready`}
-            icon={<UsersIcon />}
+            kind="Team"
             href="/hybridsovereign/tenant/teams"
           />
           <InventoryCard
             title="Projects"
             count={projects.items.length}
             hint={`${ready(projects.items)} ready`}
-            icon={<CubesIcon />}
+            kind="Project"
             href="/hybridsovereign/tenant/projects"
           />
           <InventoryCard
             title="Platforms"
             count={platforms.items.length}
             hint={`${ready(platforms.items)} ready`}
-            icon={<ClusterIcon />}
+            kind="PlatformOpenshift"
             href="/hybridsovereign/tenant/platforms"
           />
           <InventoryCard
             title="Assignments"
             count={assignments.items.length}
             hint={`${ready(assignments.items)} ready`}
-            icon={<ProjectDiagramIcon />}
+            kind="Assignment"
             href="/hybridsovereign/tenant/assignments"
           />
         </div>

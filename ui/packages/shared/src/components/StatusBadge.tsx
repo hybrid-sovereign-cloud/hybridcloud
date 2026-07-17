@@ -1,5 +1,19 @@
 import React from 'react';
-import { Label, Popover, DescriptionList, DescriptionListGroup, DescriptionListTerm, DescriptionListDescription } from '@patternfly/react-core';
+import {
+  Label,
+  Popover,
+  DescriptionList,
+  DescriptionListGroup,
+  DescriptionListTerm,
+  DescriptionListDescription,
+} from '@patternfly/react-core';
+import {
+  CheckCircleIcon,
+  InProgressIcon,
+  ExclamationCircleIcon,
+  SyncAltIcon,
+  OutlinedQuestionCircleIcon,
+} from '@patternfly/react-icons';
 
 export type ResourceHealth = 'ready' | 'pending' | 'failed' | 'reconciling' | 'unknown';
 
@@ -9,6 +23,14 @@ const COLOR: Record<ResourceHealth, 'green' | 'orange' | 'red' | 'blue' | 'grey'
   failed: 'red',
   reconciling: 'blue',
   unknown: 'grey',
+};
+
+const HEALTH_ICON: Record<ResourceHealth, React.ComponentType> = {
+  ready: CheckCircleIcon,
+  pending: InProgressIcon,
+  failed: ExclamationCircleIcon,
+  reconciling: SyncAltIcon,
+  unknown: OutlinedQuestionCircleIcon,
 };
 
 export interface StatusBadgeProps {
@@ -27,7 +49,7 @@ export function normalizeHealth(ready?: boolean, status?: string | null): Resour
   return 'unknown';
 }
 
-/** Compact OCP-style status label with optional conditions popover */
+/** Compact OCP-style status label with health icon + optional conditions popover */
 export function StatusBadge({
   status,
   ready,
@@ -35,7 +57,12 @@ export function StatusBadge({
   lastTransition,
 }: StatusBadgeProps): React.ReactElement {
   const health = normalizeHealth(ready, status);
-  const label = <Label color={COLOR[health]}>{health}</Label>;
+  const Icon = HEALTH_ICON[health];
+  const label = (
+    <Label color={COLOR[health]} icon={<Icon />} className="sc-status-badge">
+      {health}
+    </Label>
+  );
 
   if (!message && !lastTransition) {
     return label;

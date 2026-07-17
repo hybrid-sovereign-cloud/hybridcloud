@@ -1,7 +1,19 @@
 import * as React from 'react';
 import { PageSection, Title, Card, CardTitle, CardBody } from '@patternfly/react-core';
-import { EntityTopology, PageHeader, HealthStrip } from '@hybridsovereign/shared';
+import {
+  EntityTopology,
+  PageHeader,
+  HealthStrip,
+  KindIcon,
+} from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
+
+const ENTRIES = [
+  { title: 'Entities', href: '/hybridsovereign/entities', body: 'Tenant onboarding', kind: 'Entity' },
+  { title: 'Personas', href: '/hybridsovereign/personas', body: 'Cross-entity personas', kind: 'Persona' },
+  { title: 'Service URLs', href: '/hybridsovereign/services', body: 'Route health', kind: 'AAPConfig' },
+  { title: 'Operators', href: '/hybridsovereign/operators', body: 'CSV / RBAC health', kind: 'RbacConfig' },
+] as const;
 
 const AdminOverviewPage: React.FC = () => (
   <PageSection className="sc-console-page">
@@ -22,16 +34,16 @@ const AdminOverviewPage: React.FC = () => (
         Platform entry points
       </Title>
       <div className="sc-card-grid" style={{ marginBottom: '1.5rem' }}>
-        {[
-          { title: 'Entities', href: '/hybridsovereign/entities', body: 'Tenant onboarding' },
-          { title: 'Personas', href: '/hybridsovereign/personas', body: 'Cross-entity personas' },
-          { title: 'Service URLs', href: '/hybridsovereign/services', body: 'Route health' },
-          { title: 'Operators', href: '/hybridsovereign/operators', body: 'CSV / RBAC health' },
-        ].map((c) => (
+        {ENTRIES.map((c) => (
           <a key={c.href} href={c.href} className="sc-card-link">
-            <Card isFullHeight isSelectable>
-              <CardTitle>{c.title}</CardTitle>
-              <CardBody>{c.body}</CardBody>
+            <Card isFullHeight isSelectable className="sc-entry-card">
+              <CardTitle>
+                <KindIcon kind={c.kind} tiled size="md" />
+                {c.title}
+              </CardTitle>
+              <CardBody>
+                <div className="sc-entry-card__body">{c.body}</div>
+              </CardBody>
             </Card>
           </a>
         ))}

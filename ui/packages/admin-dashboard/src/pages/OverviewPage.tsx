@@ -15,14 +15,9 @@ import {
 import {
   SyncIcon,
   ExclamationTriangleIcon,
-  UsersIcon,
-  ClusterIcon,
-  ProjectDiagramIcon,
   CheckCircleIcon,
   ExternalLinkAltIcon,
   TopologyIcon,
-  BuildingIcon,
-  ServerIcon,
 } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import { Link } from 'react-router-dom';
@@ -32,6 +27,7 @@ import {
   HealthDonut,
   InventoryCard,
   StatusBadge,
+  KindIcon,
   normalizeHealth,
   useOverviewCRs,
   K8sResource,
@@ -113,7 +109,7 @@ export function OverviewPage(): React.ReactElement {
                 title="Entities"
                 count={(byKind.get('Entity') ?? []).length}
                 hint={`${bucket(byKind.get('Entity') ?? []).ready} ready`}
-                icon={<BuildingIcon />}
+                kind="Entity"
                 href="/entities"
                 status="success"
               />
@@ -121,14 +117,14 @@ export function OverviewPage(): React.ReactElement {
                 title="Teams"
                 count={(byKind.get('Team') ?? []).length}
                 hint={`${bucket(byKind.get('Team') ?? []).ready} ready`}
-                icon={<UsersIcon />}
+                kind="Team"
                 href="/teams"
               />
               <InventoryCard
                 title="Platforms"
                 count={platforms.length}
                 hint={`${bucket(platforms).ready} ready`}
-                icon={<ClusterIcon />}
+                kind="PlatformOpenshift"
                 href="/platforms"
                 status={bucket(platforms).failed ? 'danger' : 'default'}
               />
@@ -136,7 +132,7 @@ export function OverviewPage(): React.ReactElement {
                 title="Assignments"
                 count={(byKind.get('Assignment') ?? []).length}
                 hint={`${bucket(byKind.get('Assignment') ?? []).ready} ready`}
-                icon={<ProjectDiagramIcon />}
+                kind="Assignment"
                 href="/assignments"
                 status={bucket(byKind.get('Assignment') ?? []).failed ? 'danger' : 'default'}
               />
@@ -156,7 +152,7 @@ export function OverviewPage(): React.ReactElement {
                       <CardHeader>
                         <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                           <FlexItem>
-                            <ServerIcon />
+                            <KindIcon kind="PlatformOpenshift" tiled size="sm" />
                           </FlexItem>
                           <FlexItem>
                             <Link to="/platforms" className="sc-cluster-card__name">

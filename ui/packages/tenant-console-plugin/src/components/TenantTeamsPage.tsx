@@ -14,6 +14,7 @@ import {
   NamespaceContextBar,
   K8sResource,
   HybridSovereignKind,
+  KindIcon,
   configureK8sClient,
   SelfServiceFormType,
 } from '@hybridsovereign/shared';
@@ -131,6 +132,7 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
                           className="sc-resource-link"
                           href={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
                         >
+                          <KindIcon kind={kind} tiled size="sm" />
                           {item.metadata.name}
                         </a>
                       </Td>

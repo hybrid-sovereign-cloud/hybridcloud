@@ -26,11 +26,10 @@ import {
   MoonIcon,
   SunIcon,
   TachometerAltIcon,
-  CubesIcon,
+  FolderOpenIcon,
   UsersIcon,
-  CatalogIcon,
   ClusterIcon,
-  CloudIcon,
+  LayerGroupIcon,
   TopologyIcon,
   CogIcon,
   OutlinedBellIcon,
@@ -40,6 +39,7 @@ import {
   BuildingIcon,
   BarsIcon,
   GlobeIcon,
+  UserEditIcon,
 } from '@patternfly/react-icons';
 import { NavLink, Routes, Route, useLocation } from 'react-router-dom';
 import { SovereignThemeProvider, useTheme } from '@hybridsovereign/shared';
@@ -55,15 +55,15 @@ type NavEntry =
 const NAV: NavEntry[] = [
   { type: 'link', path: '/', label: 'Overview', icon: TachometerAltIcon, end: true },
   { type: 'link', path: '/entities', label: 'Entities', icon: BuildingIcon },
-  { type: 'link', path: '/personas', label: 'Personas', icon: UsersIcon },
+  { type: 'link', path: '/personas', label: 'Personas', icon: UserEditIcon },
   { type: 'sep', label: 'Platform' },
   { type: 'link', path: '/services', label: 'Service URLs', icon: GlobeIcon },
   { type: 'link', path: '/operators', label: 'Operators', icon: CogIcon },
   { type: 'sep', label: 'Tenancy (read)' },
   { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon },
-  { type: 'link', path: '/projects', label: 'Projects', icon: CubesIcon },
+  { type: 'link', path: '/projects', label: 'Projects', icon: FolderOpenIcon },
   { type: 'link', path: '/platforms', label: 'Platform Openshift', icon: ClusterIcon },
-  { type: 'link', path: '/clouds', label: 'Cloud Environments', icon: CloudIcon },
+  { type: 'link', path: '/clouds', label: 'Cloud Environments', icon: LayerGroupIcon },
   { type: 'link', path: '/assignments', label: 'Assignments', icon: ProjectDiagramIcon },
 ];
 
@@ -146,10 +146,10 @@ function AdminLayout(): React.ReactElement {
       <MastheadMain>
         <MastheadBrand>
           <NavLink to="/" className="sc-masthead-brand">
-            <TopologyIcon className="sc-masthead-brand__icon" />
-            <span>
-              Sovereign Admin Console
+            <span className="sc-masthead-brand__mark" aria-hidden>
+              <TopologyIcon />
             </span>
+            <span>Sovereign Admin Console</span>
           </NavLink>
         </MastheadBrand>
       </MastheadMain>
