@@ -2,8 +2,8 @@ apiVersion: v2
 name: sovereign-tenant-plugin
 description: Sovereign Tenant - OpenShift Console Plugin for tenant management
 type: application
-version: 0.1.16
-appVersion: "1.3.6"
+version: 0.1.17
+appVersion: "1.3.7"
 keywords:
   - openshift
   - console-plugin

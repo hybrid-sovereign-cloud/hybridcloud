@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Spinner, Alert, Button } from '@patternfly/react-core';
-import { PlusCircleIcon, SyncIcon } from '@patternfly/react-icons';
+import { PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   HybridSovereignKind,
@@ -53,7 +53,6 @@ export function TenantResourcePage({
   const { allowed: canCreate } = useCanI(namespace, plural, 'create');
   const { items, loading, error, refresh } = useK8sResourceList<K8sResource>(kind, {
     namespace,
-    pollIntervalMs: 30000,
   });
 
   const filtered = useMemo(() => {
@@ -72,20 +71,15 @@ export function TenantResourcePage({
         subtitle={`Namespaced ${kind} resources in ${namespace}`}
         breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Tenancy' }, { label: title }]}
         actions={
-          <>
-            <Button variant="secondary" icon={<SyncIcon />} onClick={refresh}>
-              Refresh
+          formType && canCreate ? (
+            <Button
+              variant="primary"
+              icon={<PlusCircleIcon />}
+              onClick={() => navigate(`/create/${formType}`)}
+            >
+              Create
             </Button>
-            {formType && canCreate && (
-              <Button
-                variant="primary"
-                icon={<PlusCircleIcon />}
-                onClick={() => navigate(`/create/${formType}`)}
-              >
-                Create
-              </Button>
-            )}
-          </>
+          ) : undefined
         }
       />
       <FilterToolbar

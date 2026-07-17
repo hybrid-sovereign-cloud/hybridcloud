@@ -56,7 +56,6 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
     const { items, loading, error, refresh } = useK8sResourceList<K8sResource>(kind, {
       namespace,
-      pollIntervalMs: 30000,
     });
     const filtered = React.useMemo(() => {
       const q = search.trim().toLowerCase();
@@ -85,21 +84,16 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
               { label: title },
             ]}
             actions={
-              <>
-                <Button variant="secondary" size="sm" onClick={refresh}>
-                  Refresh
+              meta.form && namespace ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<PlusCircleIcon />}
+                  onClick={() => history.push(`/hybridsovereign/tenant/create/${meta.form}`)}
+                >
+                  Create
                 </Button>
-                {meta.form && namespace && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    icon={<PlusCircleIcon />}
-                    onClick={() => history.push(`/hybridsovereign/tenant/create/${meta.form}`)}
-                  >
-                    Create
-                  </Button>
-                )}
-              </>
+              ) : undefined
             }
           />
           <FilterToolbar

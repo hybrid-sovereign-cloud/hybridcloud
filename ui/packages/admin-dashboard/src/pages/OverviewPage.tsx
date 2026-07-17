@@ -47,7 +47,7 @@ function bucket(items: K8sResource[]) {
 }
 
 export function OverviewPage(): React.ReactElement {
-  const { items, loading, error, refresh } = useOverviewCRs(60000);
+  const { items, loading, error, refresh } = useOverviewCRs();
 
   const byKind = useMemo(() => {
     const map = new Map<string, K8sResource[]>();

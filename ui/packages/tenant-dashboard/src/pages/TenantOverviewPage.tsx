@@ -52,7 +52,7 @@ function bucket(items: K8sResource[]) {
 
 export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): React.ReactElement {
   const navigate = useNavigate();
-  const opts = { namespace, pollIntervalMs: 60000 as const };
+  const opts = { namespace };
   const teams = useK8sResourceList<K8sResource>('Team', opts);
   const projects = useK8sResourceList<K8sResource>('Project', opts);
   const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', opts);

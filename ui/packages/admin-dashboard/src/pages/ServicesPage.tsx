@@ -13,15 +13,33 @@ export function ServicesPage(): React.ReactElement {
         subtitle="Platform service resources and configuration health"
         breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Platform' }, { label: 'Service URLs' }]}
       />
-      <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)}>
+      <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)} mountOnEnter unmountOnExit>
         <Tab eventKey={0} title={<TabTitleText>AAP</TabTitleText>}>
-          <ResourceListPage kind="AAPOrg" title="AAP Organizations" secondaryKind="AAPConfig" />
+          <ResourceListPage
+            kind="AAPOrg"
+            title="AAP Organizations"
+            secondaryKind="AAPConfig"
+            hideHeader
+            enabled={activeTab === 0}
+          />
         </Tab>
         <Tab eventKey={1} title={<TabTitleText>Quay</TabTitleText>}>
-          <ResourceListPage kind="QuayOrg" title="Quay Organizations" secondaryKind="QuayConfig" />
+          <ResourceListPage
+            kind="QuayOrg"
+            title="Quay Organizations"
+            secondaryKind="QuayConfig"
+            hideHeader
+            enabled={activeTab === 1}
+          />
         </Tab>
         <Tab eventKey={2} title={<TabTitleText>Vault</TabTitleText>}>
-          <ResourceListPage kind="Vault" title="Vault Instances" secondaryKind="VaultKV" />
+          <ResourceListPage
+            kind="Vault"
+            title="Vault Instances"
+            secondaryKind="VaultKV"
+            hideHeader
+            enabled={activeTab === 2}
+          />
         </Tab>
       </Tabs>
     </>

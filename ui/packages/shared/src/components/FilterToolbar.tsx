@@ -16,7 +16,8 @@ export interface FilterToolbarProps {
   onSearchChange: (value: string) => void;
   statusFilter: StatusFilter;
   onStatusFilterChange: (value: StatusFilter) => void;
-  onRefresh?: () => void;
+  /** Manual refresh — always shown; status tabs never trigger API calls */
+  onRefresh: () => void;
   searchPlaceholder?: string;
 }
 
@@ -55,13 +56,11 @@ export function FilterToolbar({
             ))}
           </ToggleGroup>
         </ToolbarItem>
-        {onRefresh && (
-          <ToolbarItem align={{ default: 'alignRight' }}>
-            <Button variant="secondary" onClick={onRefresh}>
-              Refresh
-            </Button>
-          </ToolbarItem>
-        )}
+        <ToolbarItem align={{ default: 'alignRight' }}>
+          <Button variant="secondary" onClick={onRefresh}>
+            Refresh
+          </Button>
+        </ToolbarItem>
       </ToolbarContent>
     </Toolbar>
   );

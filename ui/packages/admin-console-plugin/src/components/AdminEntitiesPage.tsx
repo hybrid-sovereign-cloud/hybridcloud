@@ -4,10 +4,6 @@ import { PageSection, Spinner, Alert, Button } from '@patternfly/react-core';
 import { PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
-  K8sResourceCommon,
-  useK8sWatchResource,
-} from '@openshift-console/dynamic-plugin-sdk';
-import {
   PageHeader,
   StatusBadge,
   FilterToolbar,
@@ -16,13 +12,21 @@ import {
   OperatorStatus,
   HybridSovereignKind,
   KIND_PLURALS,
-  API_GROUP,
-  API_VERSION,
   KindIcon,
+  useK8sResourceList,
+  K8sResource,
+  configureK8sClient,
 } from '@hybridsovereign/shared';
+import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
 
-type SovereignResource = K8sResourceCommon & {
+configureK8sClient({
+  baseUrl: '/api/kubernetes',
+  fetchFn: consoleFetch as unknown as typeof fetch,
+  apiStyle: 'raw',
+});
+
+type SovereignResource = K8sResource & {
   status?: OperatorStatus;
 };
 
@@ -32,32 +36,18 @@ const AdminEntitiesPage: React.FC = () => {
   const history = useHistory();
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
-  const [items, loaded, loadError] = useK8sWatchResource<SovereignResource[]>({
-    groupVersionKind: {
-      group: API_GROUP,
-      version: API_VERSION,
-      kind: 'Entity',
-    },
-    isList: true,
+  const { items, loading, error, refresh } = useK8sResourceList<SovereignResource>('Entity', {
     namespace: ENTITY_NS,
   });
 
-  const list = React.useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    return list.filter((item) => {
+    return items.filter((item) => {
       if (q && !item.metadata?.name?.toLowerCase().includes(q)) return false;
       if (statusFilter === 'all') return true;
       return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
     });
-  }, [list, search, statusFilter]);
-
-  const errorMessage =
-    loadError instanceof Error
-      ? loadError.message
-      : loadError
-        ? String(loadError)
-        : null;
+  }, [items, search, statusFilter]);
 
   return (
     <PageSection className="sc-console-page">
@@ -81,13 +71,14 @@ const AdminEntitiesPage: React.FC = () => {
           onSearchChange={setSearch}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
+          onRefresh={refresh}
         />
-        {errorMessage && (
+        {error && (
           <Alert variant="warning" isInline title="Unable to list Entities">
-            {errorMessage}
+            {error.message}
           </Alert>
         )}
-        {!loaded && list.length === 0 ? (
+        {loading && items.length === 0 ? (
           <Spinner />
         ) : (
           <div className="sc-table-wrap">
@@ -100,23 +91,29 @@ const AdminEntitiesPage: React.FC = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {filtered.map((item) => (
-                  <Tr key={item.metadata?.uid ?? item.metadata?.name}>
-                    <Td>
-                      <a
-                        className="sc-resource-link"
-                        href={`/hybridsovereign/entities/${encodeURIComponent(item.metadata?.name ?? '')}`}
-                      >
-                        <KindIcon kind="Entity" size="sm" />
-                        {item.metadata?.name}
-                      </a>
-                    </Td>
-                    <Td>
-                      <StatusBadge status={item.status?.status} ready={item.status?.ready} />
-                    </Td>
-                    <Td>{item.status?.lastReconciledAt ?? '—'}</Td>
+                {filtered.length === 0 ? (
+                  <Tr>
+                    <Td colSpan={3}>No Entity resources match the current filters</Td>
                   </Tr>
-                ))}
+                ) : (
+                  filtered.map((item) => (
+                    <Tr key={item.metadata?.uid ?? item.metadata?.name}>
+                      <Td>
+                        <a
+                          className="sc-resource-link"
+                          href={`/hybridsovereign/entities/${encodeURIComponent(item.metadata?.name ?? '')}`}
+                        >
+                          <KindIcon kind="Entity" size="sm" />
+                          {item.metadata?.name}
+                        </a>
+                      </Td>
+                      <Td>
+                        <StatusBadge status={item.status?.status} ready={item.status?.ready} />
+                      </Td>
+                      <Td>{item.status?.lastReconciledAt ?? '—'}</Td>
+                    </Tr>
+                  ))
+                )}
               </Tbody>
             </Table>
           </div>
@@ -128,7 +125,7 @@ const AdminEntitiesPage: React.FC = () => {
 
 export default AdminEntitiesPage;
 
-/** Reusable list page for other admin kinds (cluster-wide or all-namespaces list) */
+/** Reusable list page for other admin kinds — one-shot fetch, manual refresh only */
 export const makeKindListPage = (
   kind: HybridSovereignKind,
   title: string,
@@ -139,32 +136,18 @@ export const makeKindListPage = (
     const history = useHistory();
     const [search, setSearch] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
-    const [items, loaded, loadError] = useK8sWatchResource<SovereignResource[]>({
-      groupVersionKind: {
-        group: API_GROUP,
-        version: API_VERSION,
-        kind,
-      },
-      isList: true,
+    const { items, loading, error, refresh } = useK8sResourceList<SovereignResource>(kind, {
       ...(kind === 'Entity' ? { namespace: ENTITY_NS } : {}),
     });
 
-    const list = React.useMemo(() => (Array.isArray(items) ? items : []), [items]);
     const filtered = React.useMemo(() => {
       const q = search.trim().toLowerCase();
-      return list.filter((item) => {
+      return items.filter((item) => {
         if (q && !item.metadata?.name?.toLowerCase().includes(q)) return false;
         if (statusFilter === 'all') return true;
         return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
       });
-    }, [list, search, statusFilter]);
-
-    const errorMessage =
-      loadError instanceof Error
-        ? loadError.message
-        : loadError
-          ? String(loadError)
-          : null;
+    }, [items, search, statusFilter]);
 
     const detailHref = (item: SovereignResource) => {
       const n = item.metadata?.name ?? '';
@@ -198,13 +181,14 @@ export const makeKindListPage = (
             onSearchChange={setSearch}
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
+            onRefresh={refresh}
           />
-          {errorMessage && (
+          {error && (
             <Alert variant="warning" isInline title={`Unable to list ${KIND_PLURALS[kind] ?? kind}`}>
-              {errorMessage}
+              {error.message}
             </Alert>
           )}
-          {!loaded && list.length === 0 ? (
+          {loading && items.length === 0 ? (
             <Spinner />
           ) : (
             <div className="sc-table-wrap">
@@ -217,20 +201,26 @@ export const makeKindListPage = (
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {filtered.map((item) => (
-                    <Tr key={item.metadata?.uid ?? `${item.metadata?.namespace}/${item.metadata?.name}`}>
-                      <Td>
-                        <a className="sc-resource-link" href={detailHref(item)}>
-                          <KindIcon kind={kind} size="sm" />
-                          {item.metadata?.name}
-                        </a>
-                      </Td>
-                      <Td>{item.metadata?.namespace ?? '—'}</Td>
-                      <Td>
-                        <StatusBadge status={item.status?.status} ready={item.status?.ready} />
-                      </Td>
+                  {filtered.length === 0 ? (
+                    <Tr>
+                      <Td colSpan={3}>No {kind} resources match the current filters</Td>
                     </Tr>
-                  ))}
+                  ) : (
+                    filtered.map((item) => (
+                      <Tr key={item.metadata?.uid ?? `${item.metadata?.namespace}/${item.metadata?.name}`}>
+                        <Td>
+                          <a className="sc-resource-link" href={detailHref(item)}>
+                            <KindIcon kind={kind} size="sm" />
+                            {item.metadata?.name}
+                          </a>
+                        </Td>
+                        <Td>{item.metadata?.namespace ?? '—'}</Td>
+                        <Td>
+                          <StatusBadge status={item.status?.status} ready={item.status?.ready} />
+                        </Td>
+                      </Tr>
+                    ))
+                  )}
                 </Tbody>
               </Table>
             </div>
@@ -239,6 +229,5 @@ export const makeKindListPage = (
       </PageSection>
     );
   };
-  Page.displayName = `Admin${kind}Page`;
   return Page;
 };

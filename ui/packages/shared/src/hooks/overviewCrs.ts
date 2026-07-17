@@ -9,8 +9,8 @@ export interface OverviewCRsResult {
   refresh: () => void;
 }
 
-/** Single aggregated CR fetch for admin Overview (/api/overview/crs) */
-export function useOverviewCRs(pollIntervalMs = 60000): OverviewCRsResult {
+/** Single aggregated CR fetch for admin Overview (/api/overview/crs). No live polling. */
+export function useOverviewCRs(pollIntervalMs = 0): OverviewCRsResult {
   const [items, setItems] = useState<K8sResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);

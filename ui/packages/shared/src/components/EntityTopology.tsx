@@ -94,14 +94,13 @@ export function EntityTopology({
 }: EntityTopologyProps): React.ReactElement {
   const ns = entityNamespace ?? '';
   const listOpts = useMemo(
-    () => (entityNamespace ? { namespace: entityNamespace, pollIntervalMs: 60000 } : { pollIntervalMs: 60000 }),
+    () => (entityNamespace ? { namespace: entityNamespace } : {}),
     [entityNamespace],
   );
 
   const entities = useK8sResourceList<K8sResource>('Entity', {
     enabled: !entityNamespace,
     namespace: 'sovereign-cloud',
-    pollIntervalMs: 60000,
   });
   const teams = useK8sResourceList<K8sResource>('Team', listOpts);
   const projects = useK8sResourceList<K8sResource>('Project', listOpts);

@@ -300,7 +300,6 @@ export function ResourceDetail({
 
   const { resource, loading, error, refresh } = useK8sResource<K8sResource>(kind, name, {
     namespace,
-    pollIntervalMs: 15000,
   });
 
   const readyStatus =

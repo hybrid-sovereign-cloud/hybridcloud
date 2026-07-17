@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Spinner, Alert, Button } from '@patternfly/react-core';
-import { SyncIcon, PlusCircleIcon } from '@patternfly/react-icons';
+import { PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   HybridSovereignKind,
@@ -20,6 +20,10 @@ interface ResourceListPageProps {
   subtitle?: string;
   secondaryKind?: HybridSovereignKind;
   createPath?: string;
+  /** When false, skip the API fetch (e.g. inactive service tab) */
+  enabled?: boolean;
+  /** Hide page header when embedded in a parent tab strip */
+  hideHeader?: boolean;
 }
 
 function matchesFilter(item: K8sResource, search: string, statusFilter: StatusFilter): boolean {
@@ -98,16 +102,17 @@ export function ResourceListPage({
   subtitle,
   secondaryKind,
   createPath,
+  enabled = true,
+  hideHeader = false,
 }: ResourceListPageProps): React.ReactElement {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  const primary = useK8sResourceList<K8sResource>(kind, { pollIntervalMs: 30000 });
-  const secondary = useK8sResourceList<K8sResource>(
-    secondaryKind ?? kind,
-    { enabled: !!secondaryKind, pollIntervalMs: 30000 },
-  );
+  const primary = useK8sResourceList<K8sResource>(kind, { enabled });
+  const secondary = useK8sResourceList<K8sResource>(secondaryKind ?? kind, {
+    enabled: enabled && !!secondaryKind,
+  });
 
   const primaryFiltered = useMemo(
     () => primary.items.filter((i) => matchesFilter(i, search, statusFilter)),
@@ -125,23 +130,20 @@ export function ResourceListPage({
 
   return (
     <>
-      <PageHeader
-        title={title}
-        subtitle={subtitle ?? `${kind} resources across the platform`}
-        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: title }]}
-        actions={
-          <>
-            <Button variant="secondary" icon={<SyncIcon />} onClick={refresh}>
-              Refresh
-            </Button>
-            {createPath && (
+      {!hideHeader && (
+        <PageHeader
+          title={title}
+          subtitle={subtitle ?? `${kind} resources across the platform`}
+          breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: title }]}
+          actions={
+            createPath ? (
               <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => navigate(createPath)}>
                 Create
               </Button>
-            )}
-          </>
-        }
-      />
+            ) : undefined
+          }
+        />
+      )}
       <FilterToolbar
         search={search}
         onSearchChange={setSearch}

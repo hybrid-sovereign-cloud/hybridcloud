@@ -22,19 +22,10 @@ configureK8sClient({
 const TenantOverviewPage: React.FC = () => {
   const { namespace, entities, selectEntity, entity } = useEntityNamespace();
 
-  const teams = useK8sResourceList<K8sResource>('Team', { namespace, pollIntervalMs: 30000 });
-  const projects = useK8sResourceList<K8sResource>('Project', {
-    namespace,
-    pollIntervalMs: 30000,
-  });
-  const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', {
-    namespace,
-    pollIntervalMs: 30000,
-  });
-  const assignments = useK8sResourceList<K8sResource>('Assignment', {
-    namespace,
-    pollIntervalMs: 30000,
-  });
+  const teams = useK8sResourceList<K8sResource>('Team', { namespace });
+  const projects = useK8sResourceList<K8sResource>('Project', { namespace });
+  const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', { namespace });
+  const assignments = useK8sResourceList<K8sResource>('Assignment', { namespace });
   const ready = (items: K8sResource[]) => items.filter((i) => i.status?.ready).length;
 
   return (
