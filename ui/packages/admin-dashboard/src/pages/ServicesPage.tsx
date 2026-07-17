@@ -19,6 +19,8 @@ export function ServicesPage(): React.ReactElement {
             kind="AAPOrg"
             title="AAP Organizations"
             secondaryKind="AAPConfig"
+            listPath="/services/aaporgs"
+            secondaryListPath="/services/aapconfigs"
             hideHeader
             enabled={activeTab === 0}
           />
@@ -28,6 +30,8 @@ export function ServicesPage(): React.ReactElement {
             kind="QuayOrg"
             title="Quay Organizations"
             secondaryKind="QuayConfig"
+            listPath="/services/quayorgs"
+            secondaryListPath="/services/quayconfigs"
             hideHeader
             enabled={activeTab === 1}
           />
@@ -37,6 +41,8 @@ export function ServicesPage(): React.ReactElement {
             kind="Vault"
             title="Vault Instances"
             secondaryKind="VaultKV"
+            listPath="/services/vaults"
+            secondaryListPath="/services/vaultkvs"
             hideHeader
             enabled={activeTab === 2}
           />

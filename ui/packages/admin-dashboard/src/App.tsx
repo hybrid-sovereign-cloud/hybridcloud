@@ -47,6 +47,7 @@ import { OverviewPage } from './pages/OverviewPage';
 import { ResourceListPage } from './pages/ResourceListPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { CreateResourcePage } from './pages/CreateResourcePage';
+import { AdminResourceDetailPage } from './pages/AdminResourceDetailPage';
 
 type NavEntry =
   | {
@@ -249,18 +250,72 @@ function AdminLayout(): React.ReactElement {
             <Route path="/" element={<OverviewPage />} />
             <Route
               path="/entities"
-              element={<ResourceListPage kind="Entity" title="Entities" createPath="/create/entity" />}
+              element={
+                <ResourceListPage kind="Entity" title="Entities" listPath="/entities" createPath="/create/entity" />
+              }
             />
-            <Route path="/teams" element={<ResourceListPage kind="Team" title="Teams" />} />
-            <Route path="/assignments" element={<ResourceListPage kind="Assignment" title="Assignments" />} />
-            <Route path="/projects" element={<ResourceListPage kind="Project" title="Projects" />} />
+            <Route
+              path="/entities/:name"
+              element={
+                <AdminResourceDetailPage
+                  kind="Entity"
+                  title="Entities"
+                  listPath="/entities"
+                  fixedNamespace="sovereign-cloud"
+                />
+              }
+            />
+            <Route path="/teams" element={<ResourceListPage kind="Team" title="Teams" listPath="/teams" />} />
+            <Route
+              path="/teams/:namespace/:name"
+              element={<AdminResourceDetailPage kind="Team" title="Teams" listPath="/teams" />}
+            />
+            <Route
+              path="/assignments"
+              element={<ResourceListPage kind="Assignment" title="Assignments" listPath="/assignments" />}
+            />
+            <Route
+              path="/assignments/:namespace/:name"
+              element={<AdminResourceDetailPage kind="Assignment" title="Assignments" listPath="/assignments" />}
+            />
+            <Route
+              path="/projects"
+              element={<ResourceListPage kind="Project" title="Projects" listPath="/projects" />}
+            />
+            <Route
+              path="/projects/:namespace/:name"
+              element={<AdminResourceDetailPage kind="Project" title="Projects" listPath="/projects" />}
+            />
             <Route
               path="/personas"
-              element={<ResourceListPage kind="Persona" title="Personas" createPath="/create/persona" />}
+              element={
+                <ResourceListPage
+                  kind="Persona"
+                  title="Personas"
+                  listPath="/personas"
+                  createPath="/create/persona"
+                />
+              }
+            />
+            <Route
+              path="/personas/:namespace/:name"
+              element={<AdminResourceDetailPage kind="Persona" title="Personas" listPath="/personas" />}
             />
             <Route
               path="/platforms"
-              element={<ResourceListPage kind="PlatformOpenshift" title="Platform Openshift" />}
+              element={
+                <ResourceListPage kind="PlatformOpenshift" title="Platform Openshift" listPath="/platforms" />
+              }
+            />
+            <Route
+              path="/platforms/:namespace/:name"
+              element={
+                <AdminResourceDetailPage
+                  kind="PlatformOpenshift"
+                  title="Platform Openshift"
+                  listPath="/platforms"
+                />
+              }
             />
             <Route
               path="/clouds"
@@ -270,7 +325,21 @@ function AdminLayout(): React.ReactElement {
                   title="Cloud Environments"
                   subtitle="CloudOSO and CloudAWS resources"
                   secondaryKind="CloudAWS"
+                  listPath="/clouds/cloudoso"
+                  secondaryListPath="/clouds/cloudaws"
                 />
+              }
+            />
+            <Route
+              path="/clouds/cloudoso/:namespace/:name"
+              element={
+                <AdminResourceDetailPage kind="CloudOSO" title="Cloud Environments" listPath="/clouds" />
+              }
+            />
+            <Route
+              path="/clouds/cloudaws/:namespace/:name"
+              element={
+                <AdminResourceDetailPage kind="CloudAWS" title="Cloud Environments" listPath="/clouds" />
               }
             />
             <Route
@@ -281,10 +350,46 @@ function AdminLayout(): React.ReactElement {
                   title="Operators"
                   subtitle="RBAC roles and platform operator configs"
                   secondaryKind="RbacConfig"
+                  listPath="/operators/rbacs"
+                  secondaryListPath="/operators/rbacconfigs"
                 />
               }
             />
+            <Route
+              path="/operators/rbacs/:namespace/:name"
+              element={<AdminResourceDetailPage kind="Rbac" title="Operators" listPath="/operators" />}
+            />
+            <Route
+              path="/operators/rbacconfigs/:namespace/:name"
+              element={
+                <AdminResourceDetailPage kind="RbacConfig" title="Operators" listPath="/operators" />
+              }
+            />
             <Route path="/services" element={<ServicesPage />} />
+            <Route
+              path="/services/aaporgs/:namespace/:name"
+              element={<AdminResourceDetailPage kind="AAPOrg" title="Service URLs" listPath="/services" />}
+            />
+            <Route
+              path="/services/aapconfigs/:namespace/:name"
+              element={<AdminResourceDetailPage kind="AAPConfig" title="Service URLs" listPath="/services" />}
+            />
+            <Route
+              path="/services/quayorgs/:namespace/:name"
+              element={<AdminResourceDetailPage kind="QuayOrg" title="Service URLs" listPath="/services" />}
+            />
+            <Route
+              path="/services/quayconfigs/:namespace/:name"
+              element={<AdminResourceDetailPage kind="QuayConfig" title="Service URLs" listPath="/services" />}
+            />
+            <Route
+              path="/services/vaults/:namespace/:name"
+              element={<AdminResourceDetailPage kind="Vault" title="Service URLs" listPath="/services" />}
+            />
+            <Route
+              path="/services/vaultkvs/:namespace/:name"
+              element={<AdminResourceDetailPage kind="VaultKV" title="Service URLs" listPath="/services" />}
+            />
             <Route path="/create/:kind" element={<CreateResourcePage />} />
             <Route
               path="*"

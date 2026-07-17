@@ -31,7 +31,35 @@ import {
   normalizeHealth,
   useOverviewCRs,
   K8sResource,
+  HybridSovereignKind,
 } from '@hybridsovereign/shared';
+import { adminDetailHref } from './ResourceListPage';
+
+const KIND_LIST_PATH: Partial<Record<string, string>> = {
+  Entity: '/entities',
+  Team: '/teams',
+  Project: '/projects',
+  Assignment: '/assignments',
+  PlatformOpenshift: '/platforms',
+  CloudOSO: '/clouds/cloudoso',
+  CloudAWS: '/clouds/cloudaws',
+  Persona: '/personas',
+  Rbac: '/operators/rbacs',
+  RbacConfig: '/operators/rbacconfigs',
+  AAPOrg: '/services/aaporgs',
+  AAPConfig: '/services/aapconfigs',
+  QuayOrg: '/services/quayorgs',
+  QuayConfig: '/services/quayconfigs',
+  Vault: '/services/vaults',
+  VaultKV: '/services/vaultkvs',
+};
+
+function overviewItemHref(item: K8sResource): string | null {
+  const kind = (item.kind || '') as HybridSovereignKind;
+  const listPath = KIND_LIST_PATH[kind];
+  if (!listPath) return null;
+  return adminDetailHref(listPath, kind, item);
+}
 
 function bucket(items: K8sResource[]) {
   let ready = 0;
@@ -155,7 +183,13 @@ export function OverviewPage(): React.ReactElement {
                             <KindIcon kind="PlatformOpenshift" size="sm" />
                           </FlexItem>
                           <FlexItem>
-                            <Link to="/platforms" className="sc-cluster-card__name">
+                            <Link
+                              to={
+                                overviewItemHref(p) ??
+                                `/platforms/${encodeURIComponent(p.metadata.namespace ?? 'default')}/${encodeURIComponent(p.metadata.name)}`
+                              }
+                              className="sc-cluster-card__name"
+                            >
                               {p.metadata.name} <ExternalLinkAltIcon />
                             </Link>
                           </FlexItem>
@@ -215,20 +249,32 @@ export function OverviewPage(): React.ReactElement {
                       </Tr>
                     </Thead>
                     <Tbody>
-                      {failedItems.map((item) => (
-                        <Tr key={`${item.kind}/${item.metadata.namespace}/${item.metadata.name}`}>
-                          <Td dataLabel="Kind">{item.kind}</Td>
-                          <Td dataLabel="Name">{item.metadata.name}</Td>
-                          <Td dataLabel="Namespace">{item.metadata.namespace ?? '—'}</Td>
-                          <Td dataLabel="Message">
-                            <StatusBadge
-                              status={item.status?.status}
-                              ready={item.status?.ready}
-                              message={item.status?.message}
-                            />
-                          </Td>
-                        </Tr>
-                      ))}
+                      {failedItems.map((item) => {
+                        const href = overviewItemHref(item);
+                        return (
+                          <Tr key={`${item.kind}/${item.metadata.namespace}/${item.metadata.name}`}>
+                            <Td dataLabel="Kind">{item.kind}</Td>
+                            <Td dataLabel="Name">
+                              {href ? (
+                                <Link className="sc-resource-link" to={href}>
+                                  <KindIcon kind={item.kind || 'Unknown'} size="sm" />
+                                  {item.metadata.name}
+                                </Link>
+                              ) : (
+                                item.metadata.name
+                              )}
+                            </Td>
+                            <Td dataLabel="Namespace">{item.metadata.namespace ?? '—'}</Td>
+                            <Td dataLabel="Message">
+                              <StatusBadge
+                                status={item.status?.status}
+                                ready={item.status?.ready}
+                                message={item.status?.message}
+                              />
+                            </Td>
+                          </Tr>
+                        );
+                      })}
                     </Tbody>
                   </Table>
                 </div>

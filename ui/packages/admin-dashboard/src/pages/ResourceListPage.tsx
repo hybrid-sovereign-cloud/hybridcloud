@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Spinner, Alert, Button } from '@patternfly/react-core';
 import { PlusCircleIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
@@ -12,6 +12,7 @@ import {
   FilterToolbar,
   StatusFilter,
   normalizeHealth,
+  KindIcon,
 } from '@hybridsovereign/shared';
 
 interface ResourceListPageProps {
@@ -19,6 +20,10 @@ interface ResourceListPageProps {
   title: string;
   subtitle?: string;
   secondaryKind?: HybridSovereignKind;
+  /** Base path for primary kind detail links (e.g. /teams) */
+  listPath: string;
+  /** Base path for secondary kind detail links */
+  secondaryListPath?: string;
   createPath?: string;
   /** When false, skip the API fetch (e.g. inactive service tab) */
   enabled?: boolean;
@@ -35,16 +40,32 @@ function matchesFilter(item: K8sResource, search: string, statusFilter: StatusFi
   return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
 }
 
+/** Build detail URL — Entity uses /entities/:name; other kinds use /path/:namespace/:name */
+export function adminDetailHref(
+  listPath: string,
+  kind: HybridSovereignKind,
+  item: K8sResource,
+): string {
+  const name = encodeURIComponent(item.metadata.name);
+  if (kind === 'Entity') {
+    return `${listPath}/${name}`;
+  }
+  const ns = encodeURIComponent(item.metadata.namespace ?? 'default');
+  return `${listPath}/${ns}/${name}`;
+}
+
 function ResourceTable({
   kind,
   items,
   loading,
   error,
+  listPath,
 }: {
   kind: HybridSovereignKind;
   items: K8sResource[];
   loading: boolean;
   error: Error | null;
+  listPath: string;
 }): React.ReactElement {
   if (loading && items.length === 0) {
     return <Spinner aria-label={`Loading ${kind} resources`} />;
@@ -75,7 +96,15 @@ function ResourceTable({
             ) : (
               items.map((item) => (
                 <Tr key={`${item.metadata.namespace}/${item.metadata.name}`}>
-                  <Td dataLabel="Name">{item.metadata.name}</Td>
+                  <Td dataLabel="Name">
+                    <Link
+                      className="sc-resource-link"
+                      to={adminDetailHref(listPath, kind, item)}
+                    >
+                      <KindIcon kind={kind} size="sm" />
+                      {item.metadata.name}
+                    </Link>
+                  </Td>
                   <Td dataLabel="Namespace">{item.metadata.namespace ?? '—'}</Td>
                   <Td dataLabel="Status">
                     <StatusBadge
@@ -101,6 +130,8 @@ export function ResourceListPage({
   title,
   subtitle,
   secondaryKind,
+  listPath,
+  secondaryListPath,
   createPath,
   enabled = true,
   hideHeader = false,
@@ -127,6 +158,8 @@ export function ResourceListPage({
     primary.refresh();
     if (secondaryKind) secondary.refresh();
   };
+
+  const secondaryPath = secondaryListPath ?? listPath;
 
   return (
     <>
@@ -156,6 +189,7 @@ export function ResourceListPage({
         items={primaryFiltered}
         loading={primary.loading}
         error={primary.error}
+        listPath={listPath}
       />
       {secondaryKind && (
         <div style={{ marginTop: '1rem' }}>
@@ -165,6 +199,7 @@ export function ResourceListPage({
             items={secondaryFiltered}
             loading={secondary.loading}
             error={secondary.error}
+            listPath={secondaryPath}
           />
         </div>
       )}
