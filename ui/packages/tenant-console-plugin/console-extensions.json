@@ -1,8 +1,8 @@
 [
   {
-    "type": "console.navigation/separator",
+    "type": "console.navigation/section",
     "properties": {
-      "id": "hybridsovereign-tenancy-sep",
+      "id": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Tenancy"
     }
@@ -11,6 +11,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-overview",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Entity Overview",
       "href": "/hybridsovereign/tenant/overview"
@@ -20,6 +21,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-teams",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Teams",
       "href": "/hybridsovereign/tenant/teams"
@@ -29,6 +31,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-projects",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Projects",
       "href": "/hybridsovereign/tenant/projects"
@@ -38,6 +41,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-platforms",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Platform Openshift",
       "href": "/hybridsovereign/tenant/platforms"
@@ -47,6 +51,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-cloudoso",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Cloud OSO",
       "href": "/hybridsovereign/tenant/cloudoso"
@@ -56,6 +61,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-cloudaws",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Cloud AWS",
       "href": "/hybridsovereign/tenant/cloudaws"
@@ -65,6 +71,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-migrations",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Migrate to OpenStack",
       "href": "/hybridsovereign/tenant/migrations"
@@ -74,15 +81,16 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-assignments",
+      "section": "hybridsovereign-tenancy-section",
       "perspective": "hybridsovereign",
       "name": "Assignments",
       "href": "/hybridsovereign/tenant/assignments"
     }
   },
   {
-    "type": "console.navigation/separator",
+    "type": "console.navigation/section",
     "properties": {
-      "id": "hybridsovereign-access-sep",
+      "id": "hybridsovereign-access-section",
       "perspective": "hybridsovereign",
       "name": "Access Control"
     }
@@ -91,6 +99,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-vaults",
+      "section": "hybridsovereign-access-section",
       "perspective": "hybridsovereign",
       "name": "Vaults",
       "href": "/hybridsovereign/tenant/vaults"
@@ -100,6 +109,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-vaultkvs",
+      "section": "hybridsovereign-access-section",
       "perspective": "hybridsovereign",
       "name": "Vault KVs",
       "href": "/hybridsovereign/tenant/vaultkvs"
@@ -109,6 +119,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-aaporgs",
+      "section": "hybridsovereign-access-section",
       "perspective": "hybridsovereign",
       "name": "AAP Orgs",
       "href": "/hybridsovereign/tenant/aaporgs"
@@ -118,6 +129,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-quayorgs",
+      "section": "hybridsovereign-access-section",
       "perspective": "hybridsovereign",
       "name": "Quay Orgs",
       "href": "/hybridsovereign/tenant/quayorgs"

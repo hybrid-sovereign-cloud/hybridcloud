@@ -100,6 +100,7 @@ export function EntityTopology({
 
   const entities = useK8sResourceList<K8sResource>('Entity', {
     enabled: !entityNamespace,
+    namespace: 'sovereign-cloud',
     pollIntervalMs: 60000,
   });
   const teams = useK8sResourceList<K8sResource>('Team', listOpts);

@@ -1,3 +1,12 @@
+import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
+import { configureK8sClient } from '@hybridsovereign/shared';
+
+configureK8sClient({
+  baseUrl: '/api/kubernetes',
+  fetchFn: consoleFetch as unknown as typeof fetch,
+  apiStyle: 'raw',
+});
+
 export { default as TenantOverviewPage } from './components/TenantOverviewPage';
 export { default as TenantTeamsPage } from './components/TenantTeamsPage';
 export { default as TenantProjectsPage } from './components/TenantProjectsPage';

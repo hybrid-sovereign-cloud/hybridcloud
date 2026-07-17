@@ -35,7 +35,10 @@ export function useEntityNamespace(
   options: UseEntityNamespaceOptions = {},
 ): UseEntityNamespaceResult {
   const { userGroups = [], fallbackNamespace = DEFAULT_NAMESPACE } = options;
-  const { items: entities, loading: entitiesLoading } = useK8sResourceList<K8sResource>('Entity');
+  const { items: entities, loading: entitiesLoading } = useK8sResourceList<K8sResource>('Entity', {
+    // Entities CRD is namespaced; admin entities live in sovereign-cloud.
+    namespace: 'sovereign-cloud',
+  });
   const [namespace, setNamespaceState] = useState(() => {
     if (typeof window === 'undefined') return fallbackNamespace;
     return sessionStorage.getItem(STORAGE_KEY) || fallbackNamespace;

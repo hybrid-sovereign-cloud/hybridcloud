@@ -4,15 +4,24 @@
     "properties": {
       "id": "hybridsovereign",
       "name": "Sovereign Cloud",
-      "icon": { "$codeRef": "PerspectiveIcon" },
-      "landingPageURL": { "$codeRef": "perspective.perspectiveLandingPage" },
-      "importRedirectURL": { "$codeRef": "perspective.perspectiveImportRedirect" }
+      "icon": { "$codeRef": "perspective.icon" },
+      "landingPageURL": { "$codeRef": "perspective.getLandingPageURL" },
+      "importRedirectURL": { "$codeRef": "perspective.getImportRedirectURL" }
+    }
+  },
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "id": "hybridsovereign-admin-section",
+      "perspective": "hybridsovereign",
+      "name": "Sovereign Cloud"
     }
   },
   {
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-overview",
+      "section": "hybridsovereign-admin-section",
       "perspective": "hybridsovereign",
       "name": "Overview",
       "href": "/hybridsovereign/overview"
@@ -22,6 +31,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-entities",
+      "section": "hybridsovereign-admin-section",
       "perspective": "hybridsovereign",
       "name": "Entities",
       "href": "/hybridsovereign/entities"
@@ -31,23 +41,17 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-personas",
+      "section": "hybridsovereign-admin-section",
       "perspective": "hybridsovereign",
       "name": "Personas",
       "href": "/hybridsovereign/personas"
     }
   },
   {
-    "type": "console.navigation/separator",
-    "properties": {
-      "id": "hybridsovereign-platform-sep",
-      "perspective": "hybridsovereign",
-      "name": "Platform"
-    }
-  },
-  {
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-services",
+      "section": "hybridsovereign-admin-section",
       "perspective": "hybridsovereign",
       "name": "Service URLs",
       "href": "/hybridsovereign/services"
@@ -57,6 +61,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-operators",
+      "section": "hybridsovereign-admin-section",
       "perspective": "hybridsovereign",
       "name": "Operators",
       "href": "/hybridsovereign/operators"

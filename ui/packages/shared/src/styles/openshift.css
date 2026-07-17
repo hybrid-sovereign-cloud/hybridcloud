@@ -356,6 +356,36 @@ select.sc-entity-select,
   border-top: 1px solid #3c3f42;
 }
 
+/* Remove per-item divider lines — only section headers should separate groups */
+.pf-v5-c-page__sidebar .pf-v5-c-nav__item,
+.pf-v5-c-page__sidebar .pf-v5-c-nav__list > .pf-v5-c-nav__item,
+.pf-v5-c-page__sidebar .pf-v5-c-nav__list > li {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.pf-v5-c-page__sidebar .pf-v5-c-nav__item + .pf-v5-c-nav__item,
+.pf-v5-c-page__sidebar .pf-v5-c-nav__list > li + li:not(.sc-nav-separator) {
+  border-top: none !important;
+}
+
+.pf-v5-c-page__sidebar .pf-v5-c-nav__section-title,
+.pf-v5-c-page__sidebar .pf-v5-c-nav__section > .pf-v5-c-nav__section-title {
+  border-top: none;
+  color: #a3a3a3;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-block: 0.75rem 0.25rem;
+}
+
+.pf-v5-c-page__sidebar .pf-v5-c-nav__section + .pf-v5-c-nav__section {
+  margin-top: 0.35rem;
+  border-top: 1px solid #3c3f42;
+  padding-top: 0.15rem;
+}
+
 /* Page header — ListPage pattern */
 .sc-page-header {
   display: flex;

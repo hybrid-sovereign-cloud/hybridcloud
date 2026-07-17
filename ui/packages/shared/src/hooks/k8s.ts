@@ -91,7 +91,10 @@ function buildRawListUrl(kind: HybridSovereignKind, options: UseK8sResourceListO
   if (options.fieldSelector) params.set('fieldSelector', options.fieldSelector);
   const query = params.toString() ? `?${params.toString()}` : '';
 
-  if (options.namespace && kind !== 'Entity') {
+  // Entity (and other namespaced kinds) must use a namespace path when provided.
+  // Cluster-scoped list (/apis/.../entities) also works for privileged users, but
+  // OpenShift console proxies often 404 that form for namespaced CRDs.
+  if (options.namespace) {
     return `${base}/apis/${API_VERSION_FULL}/namespaces/${options.namespace}/${plural}${query}`;
   }
   return `${base}/apis/${API_VERSION_FULL}/${plural}${query}`;

@@ -81,33 +81,48 @@ function ThemeToggle(): React.ReactElement {
 
 function AdminNav(): React.ReactElement {
   const location = useLocation();
+  const groups = React.useMemo(() => {
+    const result: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
+    let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
+    for (const entry of NAV) {
+      if (entry.type === 'sep') {
+        if (current.items.length) result.push(current);
+        current = { title: entry.label, items: [] };
+      } else {
+        current.items.push(entry);
+      }
+    }
+    if (current.items.length) result.push(current);
+    return result;
+  }, []);
+
   return (
     <Nav theme="dark" aria-label="Sovereign Admin navigation">
-      <NavList>
-        {NAV.map((item, idx) => {
-          if (item.type === 'sep') {
+      {groups.map((group, gi) => (
+        <NavList key={group.title ?? `group-${gi}`}>
+          {group.title ? (
+            <li className="sc-nav-separator" role="presentation">
+              {group.title}
+            </li>
+          ) : null}
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            const active = item.end
+              ? location.pathname === item.path
+              : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
             return (
-              <li key={`sep-${item.label}-${idx}`} className="sc-nav-separator" role="presentation">
-                {item.label}
-              </li>
+              <NavItem key={item.path} isActive={active}>
+                <NavLink to={item.path} end={item.end} className="sc-nav-link">
+                  <span className="sc-nav-link__icon">
+                    <Icon />
+                  </span>
+                  {item.label}
+                </NavLink>
+              </NavItem>
             );
-          }
-          const Icon = item.icon;
-          const active = item.end
-            ? location.pathname === item.path
-            : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-          return (
-            <NavItem key={item.path} isActive={active}>
-              <NavLink to={item.path} end={item.end} className="sc-nav-link">
-                <span className="sc-nav-link__icon">
-                  <Icon />
-                </span>
-                {item.label}
-              </NavLink>
-            </NavItem>
-          );
-        })}
-      </NavList>
+          })}
+        </NavList>
+      ))}
     </Nav>
   );
 }
