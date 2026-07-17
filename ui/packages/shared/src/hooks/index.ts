@@ -1,7 +1,10 @@
 export {
   configureK8sClient,
   createDashboardResource,
+  deleteDashboardResource,
+  forceReconcile,
   getK8sClientConfig,
+  updateDashboardResource,
   useCanI,
   useK8sResource,
   useK8sResourceList,

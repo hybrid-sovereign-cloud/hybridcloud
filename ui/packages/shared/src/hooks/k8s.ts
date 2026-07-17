@@ -121,13 +121,110 @@ function buildListUrl(kind: HybridSovereignKind, options: UseK8sResourceListOpti
     : buildRawListUrl(kind, options);
 }
 
+function buildDashboardResourceUrl(
+  kind: HybridSovereignKind,
+  name: string,
+  namespace?: string,
+): string | null {
+  const path = DASHBOARD_LIST_PATH[kind];
+  if (!path) return null;
+  const encoded = encodeURIComponent(name);
+  if (kind === 'Entity' || kind === 'RbacConfig' || kind === 'AAPConfig' || kind === 'QuayConfig') {
+    return `${path}/${encoded}`;
+  }
+  if (!namespace) return null;
+  return `${path}/${encoded}?namespace=${encodeURIComponent(namespace)}`;
+}
+
 function buildResourceUrl(kind: HybridSovereignKind, name: string, namespace?: string): string {
+  if (globalK8sConfig.apiStyle === 'dashboard') {
+    const dash = buildDashboardResourceUrl(kind, name, namespace);
+    if (dash) return dash;
+  }
   const plural = KIND_PLURALS[kind];
   const base = globalK8sConfig.baseUrl ?? '/api/k8s';
   if (namespace && kind !== 'Entity') {
-    return `${base}/apis/${API_VERSION_FULL}/namespaces/${namespace}/${plural}/${name}`;
+    return `${base}/apis/${API_VERSION_FULL}/namespaces/${namespace}/${plural}/${encodeURIComponent(name)}`;
   }
-  return `${base}/apis/${API_VERSION_FULL}/${plural}/${name}`;
+  return `${base}/apis/${API_VERSION_FULL}/${plural}/${encodeURIComponent(name)}`;
+}
+
+const UPDATE_METHOD: Partial<Record<HybridSovereignKind, 'PUT' | 'PATCH'>> = {
+  Team: 'PUT',
+  Assignment: 'PUT',
+  Rbac: 'PUT',
+  VaultKV: 'PUT',
+  AAPOrg: 'PUT',
+  QuayOrg: 'PUT',
+  Project: 'PATCH',
+  PlatformOpenshift: 'PATCH',
+  CloudOSO: 'PATCH',
+  CloudAWS: 'PATCH',
+  Persona: 'PATCH',
+};
+
+const RECONCILE_ANNOTATION = 'ansible.sdk.operatorframework.io/reconcileNow';
+
+/** Force reconcile by setting the operator reconcileNow annotation */
+export async function forceReconcile(
+  kind: HybridSovereignKind,
+  name: string,
+  namespace: string,
+): Promise<unknown> {
+  return k8sFetchJson('/api/k8s/patch-annotation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      group: 'hybridsovereign.redhat',
+      version: 'v1alpha1',
+      kind,
+      name,
+      namespace,
+      annotation: RECONCILE_ANNOTATION,
+      value: 'true',
+    }),
+  });
+}
+
+/** Delete a Hybrid Sovereign CR via curated dashboard API when available */
+export async function deleteDashboardResource(
+  kind: HybridSovereignKind,
+  name: string,
+  namespace?: string,
+): Promise<unknown> {
+  const path = DASHBOARD_LIST_PATH[kind];
+  if (globalK8sConfig.apiStyle === 'dashboard' && path) {
+    const url =
+      namespace && kind !== 'Entity'
+        ? `${path}/${encodeURIComponent(name)}?namespace=${encodeURIComponent(namespace)}`
+        : `${path}/${encodeURIComponent(name)}`;
+    return k8sFetchJson(url, { method: 'DELETE' });
+  }
+  return k8sFetchJson(buildResourceUrl(kind, name, namespace), { method: 'DELETE' });
+}
+
+/** Update a Hybrid Sovereign CR spec via curated dashboard API when available */
+export async function updateDashboardResource(
+  kind: HybridSovereignKind,
+  name: string,
+  namespace: string,
+  body: { spec: unknown },
+): Promise<unknown> {
+  const path = DASHBOARD_LIST_PATH[kind];
+  const method = UPDATE_METHOD[kind] ?? 'PUT';
+  if (globalK8sConfig.apiStyle === 'dashboard' && path) {
+    const url = `${path}/${encodeURIComponent(name)}?namespace=${encodeURIComponent(namespace)}`;
+    return k8sFetchJson(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+  return k8sFetchJson(buildResourceUrl(kind, name, namespace), {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/merge-patch+json' },
+    body: JSON.stringify(body),
+  });
 }
 
 async function k8sFetchJson<T>(url: string, init?: RequestInit): Promise<T> {

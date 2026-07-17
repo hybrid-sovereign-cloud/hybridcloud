@@ -907,3 +907,112 @@ select.sc-entity-select,
 .pf-v5-c-page__sidebar .pf-v5-c-nav__link:hover {
   background: var(--pf-v5-global--BackgroundColor--dark-200, #3c3f42);
 }
+
+/* ── Resource detail page ─────────────────────────────────────────── */
+.sc-text-muted {
+  color: var(--sc-text-muted);
+}
+
+.sc-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sc-detail__badges {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sc-detail__tabs {
+  margin-bottom: 1.5rem;
+}
+
+.sc-fields {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  border-top: 1px solid var(--sc-border);
+}
+
+.sc-fields__row {
+  display: contents;
+}
+
+.sc-fields__label,
+.sc-fields__value {
+  padding: 0.75rem 1rem 0.75rem 0;
+  border-bottom: 1px solid var(--sc-border);
+  font-size: 0.9375rem;
+}
+
+.sc-fields__label {
+  color: var(--sc-text-muted);
+  font-weight: 400;
+}
+
+.sc-fields__value {
+  word-break: break-word;
+}
+
+.sc-yaml {
+  font-family: 'Red Hat Mono', 'Courier New', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 520px;
+  padding: 1.25rem;
+  background: var(--sc-surface-alt);
+  color: var(--sc-text);
+  border-radius: var(--sc-radius);
+  margin: 0;
+  white-space: pre;
+}
+
+.sc-conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sc-condition {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+}
+
+.sc-condition__type {
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.sc-condition__message {
+  font-size: 0.875rem;
+  color: var(--sc-text-muted);
+  word-break: break-word;
+}
+
+.sc-condition__time {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+}
+
+.sc-form .pf-v5-c-form__group {
+  margin-bottom: 1rem;
+}
+
+.sc-table-wrap a.sc-resource-link {
+  color: var(--sc-link);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sc-table-wrap a.sc-resource-link:hover {
+  text-decoration: underline;
+}

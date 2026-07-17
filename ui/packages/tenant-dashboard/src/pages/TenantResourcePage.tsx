@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Spinner, Alert, Button } from '@patternfly/react-core';
 import { PlusCircleIcon, SyncIcon } from '@patternfly/react-icons';
 import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
@@ -34,6 +34,7 @@ interface TenantResourcePageProps {
   kind: HybridSovereignKind;
   title: string;
   namespace: string;
+  listPath: string;
   formType?: FormType;
 }
 
@@ -41,6 +42,7 @@ export function TenantResourcePage({
   kind,
   title,
   namespace,
+  listPath,
   formType,
 }: TenantResourcePageProps): React.ReactElement {
   const navigate = useNavigate();
@@ -117,7 +119,14 @@ export function TenantResourcePage({
               ) : (
                 filtered.map((item) => (
                   <Tr key={item.metadata.name}>
-                    <Td>{item.metadata.name}</Td>
+                    <Td>
+                      <Link
+                        className="sc-resource-link"
+                        to={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
+                      >
+                        {item.metadata.name}
+                      </Link>
+                    </Td>
                     <Td>
                       <StatusBadge
                         status={item.status?.status}

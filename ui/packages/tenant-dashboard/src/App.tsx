@@ -47,6 +47,7 @@ import {
 } from '@hybridsovereign/shared';
 import { TenantOverviewPage } from './pages/TenantOverviewPage';
 import { TenantResourcePage } from './pages/TenantResourcePage';
+import { TenantResourceDetailPage } from './pages/TenantResourceDetailPage';
 import { SelfServiceFormPage } from './pages/SelfServiceFormPage';
 
 const DEV_USER_GROUPS = ['acme-corp-platform-engineering-admins'];
@@ -248,7 +249,19 @@ function TenantLayout(): React.ReactElement {
         <div className="sc-page">
           <Routes>
             <Route path="/" element={<TenantOverviewPage namespace={tenantNamespace} />} />
-            {resourceRoutes.map((item) => (
+            {resourceRoutes.flatMap((item) => [
+              <Route
+                key={`${item.path}-detail`}
+                path={`${item.path}/:name`}
+                element={
+                  <TenantResourceDetailPage
+                    kind={item.kind as 'Team'}
+                    title={item.label}
+                    listPath={item.path}
+                    namespace={tenantNamespace}
+                  />
+                }
+              />,
               <Route
                 key={item.path}
                 path={item.path}
@@ -257,11 +270,12 @@ function TenantLayout(): React.ReactElement {
                     kind={item.kind as 'Team'}
                     title={item.label}
                     namespace={tenantNamespace}
+                    listPath={item.path}
                     formType={item.form as 'team' | undefined}
                   />
                 }
-              />
-            ))}
+              />,
+            ])}
             <Route path="/create/:formType" element={<SelfServiceFormPage namespace={tenantNamespace} />} />
           </Routes>
         </div>

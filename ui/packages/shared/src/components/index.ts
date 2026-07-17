@@ -16,3 +16,5 @@ export { FilterToolbar } from './FilterToolbar';
 export type { FilterToolbarProps, StatusFilter } from './FilterToolbar';
 export { NamespaceContextBar } from './NamespaceContextBar';
 export type { NamespaceContextBarProps } from './NamespaceContextBar';
+export { ResourceDetail } from './ResourceDetail';
+export type { ResourceDetailProps } from './ResourceDetail';

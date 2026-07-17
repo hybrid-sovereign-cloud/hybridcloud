@@ -4,7 +4,7 @@ SHELL := /bin/bash
 NPM := npm
 REGISTRY ?= quay.example.com/hybrid-sovereign
 ADMIN_DASH_TAG ?= 2.0.5
-TENANT_DASH_TAG ?= 5.0.5
+TENANT_DASH_TAG ?= 5.0.6
 ADMIN_PLUGIN_TAG ?= 1.2.4
 TENANT_PLUGIN_TAG ?= 1.3.2
 
