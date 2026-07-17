@@ -23,70 +23,58 @@ import {
 } from '@patternfly/react-icons';
 import { HybridSovereignKind } from '../types';
 
-export type KindAccent = 'red' | 'blue' | 'teal' | 'green' | 'orange' | 'purple' | 'grey' | 'cyan';
-
 export interface KindVisual {
   icon: React.ComponentType<{ className?: string }>;
-  accent: KindAccent;
   label: string;
 }
 
-/** Distinctive icon + accent per CR kind (and nav aliases). */
+/** Distinctive icon per CR kind — no accent backgrounds; color is inherited. */
 export const KIND_VISUALS: Record<string, KindVisual> = {
-  Overview: { icon: TachometerAltIcon, accent: 'red', label: 'Overview' },
-  Entity: { icon: BuildingIcon, accent: 'red', label: 'Entity' },
-  Team: { icon: UsersIcon, accent: 'blue', label: 'Team' },
-  Project: { icon: FolderOpenIcon, accent: 'teal', label: 'Project' },
-  PlatformOpenshift: { icon: ClusterIcon, accent: 'red', label: 'Platform Openshift' },
-  CloudOSO: { icon: LayerGroupIcon, accent: 'cyan', label: 'Cloud OSO' },
-  CloudAWS: { icon: AwsIcon, accent: 'orange', label: 'Cloud AWS' },
-  Cloud: { icon: CloudIcon, accent: 'cyan', label: 'Cloud' },
-  Assignment: { icon: ProjectDiagramIcon, accent: 'purple', label: 'Assignment' },
-  Persona: { icon: UserEditIcon, accent: 'blue', label: 'Persona' },
-  Rbac: { icon: LockIcon, accent: 'grey', label: 'RBAC' },
-  Vault: { icon: SecurityIcon, accent: 'green', label: 'Vault' },
-  VaultKV: { icon: KeyIcon, accent: 'teal', label: 'Vault KV' },
-  AAPOrg: { icon: ProcessAutomationIcon, accent: 'orange', label: 'AAP Org' },
-  QuayOrg: { icon: BundleIcon, accent: 'purple', label: 'Quay Org' },
-  OpenStackMigration: { icon: MigrationIcon, accent: 'cyan', label: 'Migration' },
-  AAPConfig: { icon: GlobeIcon, accent: 'blue', label: 'Service URL' },
-  RbacConfig: { icon: CogIcon, accent: 'grey', label: 'Operator' },
-  QuayConfig: { icon: CatalogIcon, accent: 'purple', label: 'Quay Config' },
-  Server: { icon: ServerIcon, accent: 'red', label: 'Server' },
+  Overview: { icon: TachometerAltIcon, label: 'Overview' },
+  Entity: { icon: BuildingIcon, label: 'Entity' },
+  Team: { icon: UsersIcon, label: 'Team' },
+  Project: { icon: FolderOpenIcon, label: 'Project' },
+  PlatformOpenshift: { icon: ClusterIcon, label: 'Platform Openshift' },
+  CloudOSO: { icon: LayerGroupIcon, label: 'Cloud OSO' },
+  CloudAWS: { icon: AwsIcon, label: 'Cloud AWS' },
+  Cloud: { icon: CloudIcon, label: 'Cloud' },
+  Assignment: { icon: ProjectDiagramIcon, label: 'Assignment' },
+  Persona: { icon: UserEditIcon, label: 'Persona' },
+  Rbac: { icon: LockIcon, label: 'RBAC' },
+  Vault: { icon: SecurityIcon, label: 'Vault' },
+  VaultKV: { icon: KeyIcon, label: 'Vault KV' },
+  AAPOrg: { icon: ProcessAutomationIcon, label: 'AAP Org' },
+  QuayOrg: { icon: BundleIcon, label: 'Quay Org' },
+  OpenStackMigration: { icon: MigrationIcon, label: 'Migration' },
+  AAPConfig: { icon: GlobeIcon, label: 'Service URL' },
+  RbacConfig: { icon: CogIcon, label: 'Operator' },
+  QuayConfig: { icon: CatalogIcon, label: 'Quay Config' },
+  Server: { icon: ServerIcon, label: 'Server' },
 };
 
 export function getKindVisual(kind: HybridSovereignKind | string): KindVisual {
-  return KIND_VISUALS[kind] ?? { icon: CatalogIcon, accent: 'grey', label: String(kind) };
+  return KIND_VISUALS[kind] ?? { icon: CatalogIcon, label: String(kind) };
 }
 
 export interface KindIconProps {
   kind: HybridSovereignKind | string;
-  /** When true, wraps icon in a colored tile */
+  /** @deprecated Ignored — icons render without background tiles */
   tiled?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
   title?: string;
 }
 
-/** Kind-aware icon with optional accent tile for lists, cards, and nav. */
+/** Kind-aware icon without background color (inherits text/link color). */
 export function KindIcon({
   kind,
-  tiled = false,
   size = 'md',
   className = '',
   title,
 }: KindIconProps): React.ReactElement {
   const visual = getKindVisual(kind);
   const Icon = visual.icon;
-  const classes = [
-    'sc-kind-icon',
-    tiled ? 'sc-kind-icon--tiled' : '',
-    `sc-kind-icon--${visual.accent}`,
-    `sc-kind-icon--${size}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const classes = ['sc-kind-icon', `sc-kind-icon--${size}`, className].filter(Boolean).join(' ');
 
   return (
     <span className={classes} title={title ?? visual.label} aria-hidden={!title}>

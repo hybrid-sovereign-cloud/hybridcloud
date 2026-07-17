@@ -186,7 +186,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                 onClick={() => navigate(a.path)}
               >
                 <CardTitle>
-                  <KindIcon kind={a.kind} tiled size="sm" />
+                  <KindIcon kind={a.kind} size="sm" />
                   {a.label}
                 </CardTitle>
               </Card>
@@ -261,7 +261,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                     <Tr key={row.kind}>
                       <Td>
                         <span className="sc-kind-cell">
-                          <KindIcon kind={row.kind} tiled size="sm" />
+                          <KindIcon kind={row.kind} size="sm" />
                           {row.label}
                         </span>
                       </Td>

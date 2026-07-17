@@ -98,8 +98,36 @@
   {
     "type": "console.navigation/href",
     "properties": {
-      "id": "hybridsovereign-tenant-vaults",
+      "id": "hybridsovereign-tenant-personas",
       "section": "hybridsovereign-access-section",
+      "perspective": "hybridsovereign",
+      "name": "Personas",
+      "href": "/hybridsovereign/tenant/personas"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-rbac",
+      "section": "hybridsovereign-access-section",
+      "perspective": "hybridsovereign",
+      "name": "RBAC",
+      "href": "/hybridsovereign/tenant/rbac"
+    }
+  },
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "id": "hybridsovereign-integrations-section",
+      "perspective": "hybridsovereign",
+      "name": "Integrations"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-vaults",
+      "section": "hybridsovereign-integrations-section",
       "perspective": "hybridsovereign",
       "name": "Vaults",
       "href": "/hybridsovereign/tenant/vaults"
@@ -109,7 +137,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-vaultkvs",
-      "section": "hybridsovereign-access-section",
+      "section": "hybridsovereign-integrations-section",
       "perspective": "hybridsovereign",
       "name": "Vault KVs",
       "href": "/hybridsovereign/tenant/vaultkvs"
@@ -119,7 +147,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-aaporgs",
-      "section": "hybridsovereign-access-section",
+      "section": "hybridsovereign-integrations-section",
       "perspective": "hybridsovereign",
       "name": "AAP Orgs",
       "href": "/hybridsovereign/tenant/aaporgs"
@@ -129,7 +157,7 @@
     "type": "console.navigation/href",
     "properties": {
       "id": "hybridsovereign-tenant-quayorgs",
-      "section": "hybridsovereign-access-section",
+      "section": "hybridsovereign-integrations-section",
       "perspective": "hybridsovereign",
       "name": "Quay Orgs",
       "href": "/hybridsovereign/tenant/quayorgs"
@@ -261,6 +289,38 @@
       "exact": false,
       "path": "/hybridsovereign/tenant/migrations/:name",
       "component": { "$codeRef": "TenantMigrationDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/personas",
+      "component": { "$codeRef": "TenantPersonasPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/personas/:name",
+      "component": { "$codeRef": "TenantPersonaDetailPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/hybridsovereign/tenant/rbac",
+      "component": { "$codeRef": "TenantRbacPage" }
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": false,
+      "path": "/hybridsovereign/tenant/rbac/:name",
+      "component": { "$codeRef": "TenantRbacDetailPage" }
     }
   },
   {

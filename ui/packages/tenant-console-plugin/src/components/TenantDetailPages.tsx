@@ -22,5 +22,7 @@ export const TenantVaultDetailPage = makeTenantDetailPage('Vault', 'Vaults', 'va
 export const TenantVaultKVDetailPage = makeTenantDetailPage('VaultKV', 'Vault KVs', 'vaultkvs');
 export const TenantAAPOrgDetailPage = makeTenantDetailPage('AAPOrg', 'AAP Orgs', 'aaporgs');
 export const TenantQuayOrgDetailPage = makeTenantDetailPage('QuayOrg', 'Quay Orgs', 'quayorgs');
+export const TenantPersonaDetailPage = makeTenantDetailPage('Persona', 'Personas', 'personas');
+export const TenantRbacDetailPage = makeTenantDetailPage('Rbac', 'RBAC', 'rbac');
 
 export { default as TenantTeamDetailPage } from './TenantTeamDetailPage';

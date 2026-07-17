@@ -11,7 +11,7 @@
   },
   "consolePlugin": {
     "name": "sovereign-tenant-plugin",
-    "version": "1.3.4",
+    "version": "1.3.5",
     "displayName": "Sovereign Cloud Tenancy",
     "description": "Tenant pages in the Sovereign Cloud perspective",
     "exposedModules": {
@@ -38,7 +38,11 @@
       "TenantVaultDetailPage": "./src/components/TenantVaultDetailPage.tsx",
       "TenantVaultKVDetailPage": "./src/components/TenantVaultKVDetailPage.tsx",
       "TenantAAPOrgDetailPage": "./src/components/TenantAAPOrgDetailPage.tsx",
-      "TenantQuayOrgDetailPage": "./src/components/TenantQuayOrgDetailPage.tsx"
+      "TenantQuayOrgDetailPage": "./src/components/TenantQuayOrgDetailPage.tsx",
+      "TenantPersonasPage": "./src/components/TenantPersonasPage.tsx",
+      "TenantRbacPage": "./src/components/TenantRbacPage.tsx",
+      "TenantPersonaDetailPage": "./src/components/TenantPersonaDetailPage.tsx",
+      "TenantRbacDetailPage": "./src/components/TenantRbacDetailPage.tsx"
     }
   },
   "dependencies": {

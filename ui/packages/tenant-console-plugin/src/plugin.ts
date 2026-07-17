@@ -15,6 +15,8 @@ export { default as TenantAssignmentsPage } from './components/TenantAssignments
 export { default as TenantCloudOSOPage } from './components/TenantCloudOSOPage';
 export { default as TenantCloudAWSPage } from './components/TenantCloudAWSPage';
 export { default as TenantMigrationsPage } from './components/TenantMigrationsPage';
+export { default as TenantPersonasPage } from './components/TenantPersonasPage';
+export { default as TenantRbacPage } from './components/TenantRbacPage';
 export { default as TenantVaultsPage } from './components/TenantVaultsPage';
 export { default as TenantVaultKVsPage } from './components/TenantVaultKVsPage';
 export { default as TenantAAPOrgsPage } from './components/TenantAAPOrgsPage';
@@ -27,6 +29,8 @@ export { default as TenantAssignmentDetailPage } from './components/TenantAssign
 export { default as TenantCloudOSODetailPage } from './components/TenantCloudOSODetailPage';
 export { default as TenantCloudAWSDetailPage } from './components/TenantCloudAWSDetailPage';
 export { default as TenantMigrationDetailPage } from './components/TenantMigrationDetailPage';
+export { default as TenantPersonaDetailPage } from './components/TenantPersonaDetailPage';
+export { default as TenantRbacDetailPage } from './components/TenantRbacDetailPage';
 export { default as TenantVaultDetailPage } from './components/TenantVaultDetailPage';
 export { default as TenantVaultKVDetailPage } from './components/TenantVaultKVDetailPage';
 export { default as TenantAAPOrgDetailPage } from './components/TenantAAPOrgDetailPage';

@@ -38,7 +38,7 @@ const AdminOverviewPage: React.FC = () => (
           <a key={c.href} href={c.href} className="sc-card-link">
             <Card isFullHeight isSelectable className="sc-entry-card">
               <CardTitle>
-                <KindIcon kind={c.kind} tiled size="md" />
+                <KindIcon kind={c.kind} size="md" />
                 {c.title}
               </CardTitle>
               <CardBody>

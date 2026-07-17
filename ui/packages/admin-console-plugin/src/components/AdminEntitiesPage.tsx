@@ -107,7 +107,7 @@ const AdminEntitiesPage: React.FC = () => {
                         className="sc-resource-link"
                         href={`/hybridsovereign/entities/${encodeURIComponent(item.metadata?.name ?? '')}`}
                       >
-                        <KindIcon kind="Entity" tiled size="sm" />
+                        <KindIcon kind="Entity" size="sm" />
                         {item.metadata?.name}
                       </a>
                     </Td>
@@ -221,7 +221,7 @@ export const makeKindListPage = (
                     <Tr key={item.metadata?.uid ?? `${item.metadata?.namespace}/${item.metadata?.name}`}>
                       <Td>
                         <a className="sc-resource-link" href={detailHref(item)}>
-                          <KindIcon kind={kind} tiled size="sm" />
+                          <KindIcon kind={kind} size="sm" />
                           {item.metadata?.name}
                         </a>
                       </Td>

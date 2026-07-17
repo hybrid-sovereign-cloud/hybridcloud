@@ -125,7 +125,7 @@ export function TenantResourcePage({
                         className="sc-resource-link"
                         to={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
                       >
-                        <KindIcon kind={kind} tiled size="sm" />
+                        <KindIcon kind={kind} size="sm" />
                         {item.metadata.name}
                       </Link>
                     </Td>

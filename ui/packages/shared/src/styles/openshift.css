@@ -98,15 +98,15 @@
 
 .sc-page-section--dashboard {
   background:
-    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(238, 0, 0, 0.04), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 102, 204, 0.05), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(0, 102, 204, 0.04), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 149, 150, 0.04), transparent 50%),
     linear-gradient(180deg, var(--pf-v5-global--BackgroundColor--200, #f0f0f0) 0%, #e8eaed 100%);
 }
 
 .pf-v5-theme-dark .sc-page-section--dashboard {
   background:
-    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(238, 0, 0, 0.08), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 102, 204, 0.08), transparent 50%),
+    radial-gradient(ellipse 80% 50% at 0% 0%, rgba(0, 102, 204, 0.08), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 149, 150, 0.06), transparent 50%),
     linear-gradient(180deg, #1b1d21 0%, #151515 100%);
 }
 
@@ -311,7 +311,7 @@ select.sc-entity-select,
 }
 
 .sc-masthead-brand__icon {
-  color: var(--sc-brand-red);
+  color: #c7c7c7;
   font-size: 1.5rem;
 }
 
@@ -334,21 +334,21 @@ select.sc-entity-select,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #f0f0f0;
-  font-size: 0.95rem;
+  width: 1.25rem;
+  height: 1.25rem;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  color: inherit;
+  opacity: 0.85;
+  font-size: 1rem;
+  background: none;
 }
 
 .pf-v5-c-page__sidebar .pf-v5-c-nav__link:hover .sc-nav-link__icon,
 .pf-v5-c-page__sidebar .pf-v5-c-nav__link.pf-m-current .sc-nav-link__icon,
 .pf-v5-c-page__sidebar .sc-nav-link[aria-current='page'] .sc-nav-link__icon {
-  background: rgba(238, 0, 0, 0.18);
-  color: #ff6b6b;
+  opacity: 1;
+  color: inherit;
+  background: none;
 }
 
 .pf-v5-c-page__sidebar {
@@ -528,13 +528,14 @@ select.sc-entity-select,
   border-top: 3px solid var(--sc-warning);
 }
 
-/* Kind icon tiles — accent vocabulary shared across dashboards + plugins */
+/* Kind icons — no background tiles; inherit muted/current color */
 .sc-kind-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  color: inherit;
+  color: var(--sc-text-muted);
+  flex-shrink: 0;
 }
 
 .sc-kind-icon--sm {
@@ -549,82 +550,12 @@ select.sc-entity-select,
   font-size: 1.35rem;
 }
 
-.sc-kind-icon--tiled {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 6px;
-  font-size: 1rem;
-}
-
-.sc-kind-icon--tiled.sc-kind-icon--lg {
-  width: 2.5rem;
-  height: 2.5rem;
-  font-size: 1.2rem;
-  border-radius: 8px;
-}
-
-.sc-kind-icon--red {
-  color: #c9190b;
-}
-.sc-kind-icon--tiled.sc-kind-icon--red {
-  background: rgba(201, 25, 11, 0.12);
-  color: #a30000;
-}
-
-.sc-kind-icon--blue {
-  color: #0066cc;
-}
-.sc-kind-icon--tiled.sc-kind-icon--blue {
-  background: rgba(0, 102, 204, 0.12);
-  color: #004d99;
-}
-
-.sc-kind-icon--teal {
-  color: #009596;
-}
-.sc-kind-icon--tiled.sc-kind-icon--teal {
-  background: rgba(0, 149, 150, 0.14);
-  color: #007a7b;
-}
-
-.sc-kind-icon--green {
-  color: #3e8635;
-}
-.sc-kind-icon--tiled.sc-kind-icon--green {
-  background: rgba(62, 134, 53, 0.14);
-  color: #2d6a24;
-}
-
-.sc-kind-icon--orange {
-  color: #c58c00;
-}
-.sc-kind-icon--tiled.sc-kind-icon--orange {
-  background: rgba(240, 171, 0, 0.18);
-  color: #8a6300;
-}
-
-.sc-kind-icon--purple {
-  color: #5752d1;
-}
-.sc-kind-icon--tiled.sc-kind-icon--purple {
-  background: rgba(87, 82, 209, 0.12);
-  color: #3d38a8;
-}
-
-.sc-kind-icon--cyan {
-  color: #0096c7;
-}
-.sc-kind-icon--tiled.sc-kind-icon--cyan {
-  background: rgba(0, 150, 199, 0.14);
-  color: #007399;
-}
-
-.sc-kind-icon--grey {
-  color: #6a6e73;
-}
-.sc-kind-icon--tiled.sc-kind-icon--grey {
-  background: rgba(106, 110, 115, 0.14);
-  color: #4f5255;
+.sc-resource-link .sc-kind-icon,
+.sc-card-link .sc-kind-icon,
+.sc-action-card .sc-kind-icon,
+.sc-entry-card .sc-kind-icon {
+  color: inherit;
+  opacity: 0.8;
 }
 
 .sc-action-card.pf-v5-c-card {
@@ -687,8 +618,8 @@ select.sc-entity-select,
 
 .sc-console-page {
   background:
-    radial-gradient(ellipse 70% 40% at 0% 0%, rgba(238, 0, 0, 0.035), transparent 55%),
-    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(0, 102, 204, 0.04), transparent 50%),
+    radial-gradient(ellipse 70% 40% at 0% 0%, rgba(0, 102, 204, 0.04), transparent 55%),
+    radial-gradient(ellipse 50% 35% at 100% 0%, rgba(0, 149, 150, 0.035), transparent 50%),
     var(--pf-v5-global--BackgroundColor--200, #f0f0f0);
   min-height: 100%;
 }
@@ -700,10 +631,9 @@ select.sc-entity-select,
   width: 1.75rem;
   height: 1.75rem;
   border-radius: 4px;
-  background: linear-gradient(145deg, #ee0000 0%, #a30000 100%);
+  background: #3c3f42;
   color: #fff;
   font-size: 1rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
 }
 
 .sc-cluster-grid {

@@ -24,7 +24,7 @@ export function InventoryCard({
   href,
   status = 'default',
 }: InventoryCardProps): React.ReactElement {
-  const iconNode = kind ? <KindIcon kind={kind} tiled size="md" /> : icon;
+  const iconNode = kind ? <KindIcon kind={kind} size="md" /> : icon;
 
   const inner = (
     <Card isCompact isFullHeight className={`sc-inventory-card sc-inventory-card--${status}`}>

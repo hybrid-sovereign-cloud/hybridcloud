@@ -41,6 +41,8 @@ const KIND_META: Partial<
   VaultKV: { path: 'vaultkvs', form: 'vaultkv' },
   AAPOrg: { path: 'aaporgs', form: 'aaporg' },
   QuayOrg: { path: 'quayorgs', form: 'quayorg' },
+  Persona: { path: 'personas', form: 'persona' },
+  Rbac: { path: 'rbac', form: 'rbac' },
 };
 
 export function makeTenantKindPage(kind: HybridSovereignKind, title: string): React.FC {
@@ -132,7 +134,7 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
                           className="sc-resource-link"
                           href={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
                         >
-                          <KindIcon kind={kind} tiled size="sm" />
+                          <KindIcon kind={kind} size="sm" />
                           {item.metadata.name}
                         </a>
                       </Td>

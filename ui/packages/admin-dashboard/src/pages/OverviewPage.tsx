@@ -152,7 +152,7 @@ export function OverviewPage(): React.ReactElement {
                       <CardHeader>
                         <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                           <FlexItem>
-                            <KindIcon kind="PlatformOpenshift" tiled size="sm" />
+                            <KindIcon kind="PlatformOpenshift" size="sm" />
                           </FlexItem>
                           <FlexItem>
                             <Link to="/platforms" className="sc-cluster-card__name">
