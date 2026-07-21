@@ -14,21 +14,21 @@
 # Lab topology — populated for live platform; override via values-lab.yaml / Vault.
 # After make sync-lab-helm-params, prefer empty placeholders in git and inject from .env.
 lab:
-  domain: "lab.example.com"
-  baseDomain: "example.com"
-  centralClusterName: "central"
-  servicesClusterName: "services"
+  domain: "lab.signal9.gg"
+  baseDomain: "signal9.gg"
+  centralClusterName: "shc-cental5"
+  servicesClusterName: "shc-services5"
   appsSubdomain: apps
-  centralAppsDomain: "apps.central.example.com"
-  servicesAppsDomain: "apps.services.example.com"
-  dnsForwarderZone: "lab.example.com"
+  centralAppsDomain: "apps.shc-cental5.lab.signal9.gg"
+  servicesAppsDomain: "apps.shc-services5.lab.signal9.gg"
+  dnsForwarderZone: "lab.signal9.gg"
   dnsForwarderIps:
-    - "127.0.0.1"
-    - "127.0.0.1"
+    - "172.18.42.10"
+    - "172.18.42.11"
   extraDnsServers:
     - name: ses4-slug-forwarder
       zones:
-        - a4fce.lab.example.com
+        - a4fce.lab.signal9.gg
       policy: Sequential
       upstreams:
         - "205.251.193.121"
@@ -37,13 +37,13 @@ lab:
         - "205.251.198.181"
     - name: designate-zone-forwarder
       zones:
-        - shc.example.com
+        - shc.signal9.gg
       policy: Sequential
       upstreams:
         - "8.8.8.8"
         - "8.8.4.4"
-        - "127.0.0.1"
-        - "127.0.0.1"
+        - "172.18.42.10"
+        - "172.18.42.11"
 
 # Pull lab-config from Vault after `make upload-lab-config`. Keep disabled until seeded.
 labConfigExternalSecret:
@@ -71,11 +71,11 @@ applicationsEnabled: true
 
 # ─── Services cluster (managed by central ArgoCD) ────────────────────────────
 servicesCluster:
-  server: "https://api.services.example.com:6443"
+  server: "https://api.shc-services5.lab.signal9.gg:6443"
 
 # ─── OCI registry that stores platform Helm charts ───────────────────────────
 oci:
-  registry: &oci_registry "quay.example.com"
+  registry: &oci_registry "quay.signal9.gg"
   repositoryBase: "hybrid-sovereign"
 
 # ─── Sovereign Namespaces (central cluster) ──────────────────────────────────
@@ -98,7 +98,7 @@ sovereignNamespaces:
       identityProviderName: "sovereign-central"
       clientId: "openshift-central"
       clientSecretName: "sovereign-central-oauth-secret"
-      issuer: "https://rhbk-central.apps.central.example.com/realms/sovereign-central"
+      issuer: "https://rhbk-central.apps.shc-cental5.lab.signal9.gg/realms/sovereign-central"
       caConfigMap: "keycloak-central-ca"
 
 # ─── Sovereign Namespaces (services cluster) ────────────────────────────────
@@ -133,7 +133,7 @@ sovereignNamespacesServices:
       identityProviderName: "sovereign-services"
       clientId: "openshift-services"
       clientSecretName: "sovereign-services-oauth-secret"
-      issuer: "https://rhbk-services.apps.services.example.com/realms/sovereign-tenants"
+      issuer: "https://rhbk-services.apps.shc-services5.lab.signal9.gg/realms/sovereign-tenants"
       caConfigMap: "keycloak-services-ca"
 
 # ─── RHBK Central (Keycloak) ─────────────────────────────────────────────────
@@ -152,7 +152,7 @@ rhbk:
     keycloak:
       enabled: true
       instances: 2
-      hostname: "rhbk-central.apps.central.example.com"
+      hostname: "rhbk-central.apps.shc-cental5.lab.signal9.gg"
       db:
         enabled: true
         vendor: postgres
@@ -189,7 +189,7 @@ rhbkServices:
     keycloak:
       enabled: true
       instances: 2
-      hostname: "rhbk-services.apps.services.example.com"
+      hostname: "rhbk-services.apps.shc-services5.lab.signal9.gg"
       db:
         enabled: true
         vendor: postgres
@@ -286,19 +286,19 @@ vault:
           size: 10Gi
         route:
           enabled: true
-          host: vault-central.apps.central.example.com
+          host: vault-central.apps.shc-cental5.lab.signal9.gg
           tls:
             termination: edge
             insecureEdgeTerminationPolicy: Redirect
         image:
-          repository: quay.example.com/hybrid-sovereign/vault
+          repository: quay.signal9.gg/hybrid-sovereign/vault
           tag: "1.21.2"
       ui:
         enabled: true
       injector:
         enabled: true
         image:
-          repository: quay.example.com/hybrid-sovereign/vault-k8s
+          repository: quay.signal9.gg/hybrid-sovereign/vault-k8s
           tag: "1.5.0"
 
 # ─── Vault Services ─────────────────────────────────────────────────────────
@@ -353,12 +353,12 @@ vaultServices:
           size: 10Gi
         route:
           enabled: true
-          host: vault-services.apps.services.example.com
+          host: vault-services.apps.shc-services5.lab.signal9.gg
           tls:
             termination: edge
             insecureEdgeTerminationPolicy: Redirect
         image:
-          repository: quay.example.com/hybrid-sovereign/vault
+          repository: quay.signal9.gg/hybrid-sovereign/vault
           tag: "1.21.2"
         readinessProbe:
           enabled: true
@@ -368,7 +368,7 @@ vaultServices:
       injector:
         enabled: true
         image:
-          repository: quay.example.com/hybrid-sovereign/vault-k8s
+          repository: quay.signal9.gg/hybrid-sovereign/vault-k8s
           tag: "1.5.0"
 
 # ─── Vault Services Init (separate App to avoid StatefulSet health deadlock) ─
@@ -379,7 +379,7 @@ vaultServicesInit:
   values:
     namespace: services-vault
     serviceAccount: vault-init-runner
-    image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+    image: "quay.signal9.gg/hybrid-sovereign/ansible-runner:latest"
     imagePullSecretName: "quay-pull-secret"
     secretName: "vault-services-init-secrets"
     vaultAddr: "http://vault-services-0.vault-services-internal.services-vault.svc:8200"
@@ -474,13 +474,13 @@ pluginIaac:
     leaderElection: true
     metricsPort: 8443
     image:
-      repository: quay.example.com/hybrid-sovereign/plugin-iaac
+      repository: quay.signal9.gg/hybrid-sovereign/plugin-iaac
       tag: "v0.2.0"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     gitea:
-      url: "https://gitea.apps.central.example.com"
+      url: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
       repoOwner: "gitea_admin"
       repoName: "tenancy_repo"
       secretName: "gitea-admin-token"
@@ -500,9 +500,9 @@ eventForwarder:
   chartVersion: "0.5.4"
   syncWave: "32"
   image:
-    repository: quay.example.com/hybrid-sovereign/event-forwarder
+    repository: quay.signal9.gg/hybrid-sovereign/event-forwarder
     tag: "0.3.0"
-  eventStreamUrl: "https://aap.apps.central.example.com/eda-event-streams/api/eda/v1/external_event_stream/4392c64b-2faf-4414-a6e6-5ff1bc8d5a75/post/"
+  eventStreamUrl: "https://sovereign-aap-aap.apps.shc-cental5.lab.signal9.gg/eda-event-streams/api/eda/v1/external_event_stream/4392c64b-2faf-4414-a6e6-5ff1bc8d5a75/post/"
   vaultSecretPath: "event-forwarder"
 
 # ─── OpenShift Virtualization (CNV) — central cluster ───────────────────────
@@ -560,7 +560,7 @@ mtv:
       enabled: true
       name: vmware-vcenter
       type: vsphere
-      url: "https://vcenter.lab.example.com/sdk"
+      url: "https://xna-vcenter-8.lab.signal9.gg/sdk"
       credentialsSecretName: vmware-vcenter-secret
     externalSecret:
       enabled: true
@@ -616,7 +616,7 @@ quay:
       enabled: true
       name: sovereign-registry
       configBundle: |
-        SERVER_HOSTNAME: quay.example.com
+        SERVER_HOSTNAME: quay.signal9.gg
         FEATURE_USER_INITIALIZE: true
         FEATURE_SUPERUSERS_FULL_ACCESS: true
         SUPER_USERS:
@@ -675,7 +675,7 @@ quayServices:
       enabled: true
       name: svc-sovereign-registry
       configBundle: |
-        SERVER_HOSTNAME: svc-sovereign-registry-quay-services-quay.apps.services.example.com
+        SERVER_HOSTNAME: svc-sovereign-registry-quay-services-quay.apps.shc-services5.lab.signal9.gg
         FEATURE_USER_INITIALIZE: true
         FEATURE_SUPERUSERS_FULL_ACCESS: true
         SUPER_USERS:
@@ -739,7 +739,7 @@ gitea:
           - quay-pull-secret
       replicaCount: 1
       image:
-        registry: quay.example.com
+        registry: quay.signal9.gg
         repository: hybrid-sovereign/gitea
         tag: "1.25.5"
         rootless: true
@@ -752,8 +752,8 @@ gitea:
           existingSecret: "gitea-admin-credentials"
         config:
           server:
-            DOMAIN: "gitea-gitea.apps.services.example.com"
-            ROOT_URL: "https://gitea.apps.central.example.com"
+            DOMAIN: "gitea-gitea.apps.shc-services5.lab.signal9.gg"
+            ROOT_URL: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
           database:
             DB_TYPE: postgres
           session:
@@ -765,12 +765,12 @@ gitea:
       postgresql:
         enabled: true
         image:
-          registry: quay.example.com
+          registry: quay.signal9.gg
           repository: hybrid-sovereign/postgresql
           tag: "17.6.0-debian-12-r4"
         volumePermissions:
           image:
-            registry: quay.example.com
+            registry: quay.signal9.gg
             repository: hybrid-sovereign/os-shell
             tag: "12-debian-12-r51"
       postgresql-ha:
@@ -782,16 +782,16 @@ gitea:
       valkey-cluster:
         enabled: true
         image:
-          registry: quay.example.com
+          registry: quay.signal9.gg
           repository: hybrid-sovereign/valkey-cluster
           tag: "8.1.3-debian-12-r3"
         volumePermissions:
           image:
-            registry: quay.example.com
+            registry: quay.signal9.gg
             repository: hybrid-sovereign/os-shell
             tag: "12-debian-12-r51"
         sysctlImage:
-          registry: quay.example.com
+          registry: quay.signal9.gg
           repository: hybrid-sovereign/os-shell
           tag: "12-debian-12-r51"
       persistence:
@@ -849,7 +849,7 @@ giteaCentral:
       strategy:
         type: Recreate
       image:
-        registry: quay.example.com
+        registry: quay.signal9.gg
         repository: hybrid-sovereign/gitea
         tag: "1.25.5"
         rootless: true
@@ -864,8 +864,8 @@ giteaCentral:
                 key: password
         config:
           server:
-            DOMAIN: "gitea-gitea.apps.central.example.com"
-            ROOT_URL: "https://gitea.apps.central.example.com"
+            DOMAIN: "gitea-gitea.apps.shc-cental5.lab.signal9.gg"
+            ROOT_URL: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
           database:
             DB_TYPE: postgres
             HOST: "gitea-pgcluster-primary.gitea.svc:5432"
@@ -889,16 +889,16 @@ giteaCentral:
       valkey-cluster:
         enabled: true
         image:
-          registry: quay.example.com
+          registry: quay.signal9.gg
           repository: hybrid-sovereign/valkey-cluster
           tag: "8.1.3-debian-12-r3"
         volumePermissions:
           image:
-            registry: quay.example.com
+            registry: quay.signal9.gg
             repository: hybrid-sovereign/os-shell
             tag: "12-debian-12-r51"
         sysctlImage:
-          registry: quay.example.com
+          registry: quay.signal9.gg
           repository: hybrid-sovereign/os-shell
           tag: "12-debian-12-r51"
       persistence:
@@ -966,7 +966,7 @@ externalSecrets:
     namespace: external-secrets
 
 # ─── DNS Forwarder (services) ────────────────────────────────────────────────
-# Adds lab.example.com → 127.0.0.1/127.0.0.1 forwarder to the services
+# Adds lab.signal9.gg → 172.18.42.10/172.18.42.11 forwarder to the services
 # cluster CoreDNS so pods can resolve internal lab hostnames (vCenter, ESXi, etc.)
 # without falling through to public DNS which has no knowledge of private hosts.
 dnsForwarderServices:
@@ -978,11 +978,11 @@ dnsForwarderServices:
     servers:
       - name: lab-domain-forwarder
         zones:
-          - lab.example.com
+          - lab.signal9.gg
         policy: Sequential
         upstreams:
-          - "127.0.0.1"
-          - "127.0.0.1"
+          - "172.18.42.10"
+          - "172.18.42.11"
 
 # ─── External Secrets Operator (services) ───────────────────────────────────
 externalSecretsServices:
@@ -1019,16 +1019,16 @@ vaultCentralNamespace:
       enabled: true
       namespace: sovereign-cloud-jobs
       jobServiceAccount: sovereign-ansible-runner
-      image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+      image: "quay.signal9.gg/hybrid-sovereign/ansible-runner:latest"
       imagePullSecrets:
         - name: quay-pull-secret
       vaultAddr: "http://vault-active.central-vault.svc:8200"
       vaultPath: "central/data/dashboard-central-reader"
-      apiServer: "https://api.central.example.com:6443"
+      apiServer: "https://api.shc-cental5.lab.signal9.gg:6443"
     edaS3Creds:
       enabled: true
       bucketName: "eda-job-logs"
-      endpoint: "https://s3.apps.services.example.com"
+      endpoint: "https://s3-openshift-storage.apps.shc-services5.lab.signal9.gg"
     centralServiceAccounts:
       # DEVIATION: awshelper-creator-sa disabled — HELPERAWS operator is obsolete (feature 009).
       # WHY: User confirmed no active tenants; helper_CloudAWS operator will not be re-deployed.
@@ -1073,7 +1073,7 @@ vaultCentralNamespace:
 # ─── ArgoCD Repo Secret: cluster_builds (Gitea → Vault → ESO) ────────────────
 argocdClusterBuildsRepo:
   enabled: false  # Phase 5: direct Helm by operators replaces Gitea→ArgoCD cluster-build flow
-  giteaUrl: "https://gitea.apps.central.example.com"
+  giteaUrl: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
   giteaUser: "gitea_admin"
 
 # ─── Vault ClusterSecretStore (central) — uses k8s auth ─────────────────────
@@ -1100,7 +1100,7 @@ vaultSecretStoreServices:
   syncWave: "22"
   values:
     vault:
-      server: "https://vault-central.apps.central.example.com"
+      server: "https://vault-central.apps.shc-cental5.lab.signal9.gg"
       path: "central"
       caBundle: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURERENDQWZTZ0F3SUJBZ0lCQVRBTkJna3Foa2lHOXcwQkFRc0ZBREFtTVNRd0lnWURWUVFEREJ0cGJtZHkKWlhOekxXOXdaWEpoZEc5eVFERTNPRE0zTnpnNE9ETXdIaGNOTWpZd056RXhNVFF3T0RBeVdoY05Namd3TnpFdwpNVFF3T0RBeldqQW1NU1F3SWdZRFZRUUREQnRwYm1keVpYTnpMVzl3WlhKaGRHOXlRREUzT0RNM056ZzRPRE13CmdnRWlNQTBHQ1NxR1NJYjNEUUVCQVFVQUE0SUJEd0F3Z2dFS0FvSUJBUURENXJCVnIyeGlhN21mS0pTSEFIN28KbDFubXJONWIvZnFzSFZVSXRrVEFZdGhBRVloTHUwTExoMUJjWTcyWU9sUUxMVk0vdzVNdGVNOW5uYmhza2htYQo0Y0gyREs1NGU3VlJBdWVrSlFCakRscTdOYU00V0M5NzhsSnEyenY2VXdHZ0F2cERYQzRPTWRqc2U5bVhCaVdwCm1qb0tYWS9INjlSVkswOUhHYWgvU0llR05KalFOVnc3UDVFYXpxS3A0dnFWWmh4WlRqblJaWFBaQUxYaTRYWGoKNU9QeXR3K2tjNDBuTW80S2dGK1pGSFJVUDlpN2wyWG5iU2RHeXluNUtZcE0rRGdoaXl2MmNtM3RKWHQ3UTNUdwpiWnlZdWEwU3ZRVTI3NlJpZWZLSklaR2pnOEt6dDV4dW9ib1U2TXB6TzZWZFVNOC9aZ250NUZ6U3JWS3J4dzROCkFnTUJBQUdqUlRCRE1BNEdBMVVkRHdFQi93UUVBd0lDcERBU0JnTlZIUk1CQWY4RUNEQUdBUUgvQWdFQU1CMEcKQTFVZERnUVdCQlM4ekhGYTlFVEFwWFQ3dnBDUzEwNHlBYXBnVGpBTkJna3Foa2lHOXcwQkFRc0ZBQU9DQVFFQQplb0hidUVmaCtWUFBmQUR6SVU2WTEvS05pSnpMYlc4bWdTbmVacFhKQjJYbmtPK1hFUkxuTTVjcXVIc2Fxa3RrCjFsRU5MVDR0ZkRraDdKU0wxOVBkS1BQc25CV3pJV1hVUjFOZW4wTS9CTzlRYjhTSzVtMkR2ZmdwQmpReThWRXIKVVhUY1FvcmhuK1R3MWVtWmd6b2d4aWRhRWViak5YV3JqLzQ5WVZ1V2ZWaFJZcGRSakpCajlRRWxqMnNGUnVjUAo4K3p1TEh4OUpaV0VBVi9MVVFiSzhSWTZSUCtrcllzVi9JRnlPcU1Tc0xMbEdRQmhBNWExSnF3NlRpY2pNdE8xCjdRMTdVOVc1cDBvMFVzN25kaVBWTXp0RnFrZG1JOWI5cFlydVpYNEgwWFdPdTgwNFZwbU0vZjdFUENyYUsvSGoKdVh4cnZFK2R3NFpFNDFhbFhmLzJaQT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
     auth:
@@ -1126,7 +1126,7 @@ sovereignJobs:
   chartVersion: "0.1.7"
   namespace: sovereign-cloud-jobs
   serviceAccount: sovereign-ansible-runner
-  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  image: "quay.signal9.gg/hybrid-sovereign/ansible-runner:latest"
   backoffLimit: 5
   imagePullSecrets:
     - name: quay-pull-secret
@@ -1164,9 +1164,9 @@ sovereignJobs:
         - name: VAULT_NAMESPACE
           value: "central-vault"
         - name: OCP_CENTRAL_SERVER
-          value: "https://api.central.example.com:6443"
+          value: "https://api.shc-cental5.lab.signal9.gg:6443"
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
         - name: OCP_CENTRAL_KUBEADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -1208,7 +1208,7 @@ sovereignJobs:
         - name: VAULT_ADDR
           value: "http://vault-active.central-vault.svc:8200"
         - name: KAFKA_EXTERNAL_BOOTSTRAP
-          value: "kafka.apps.central.example.com:443"
+          value: "hybridsovereign-kafka-kafka-bootstrap-amq-streams.apps.shc-cental5.lab.signal9.gg:443"
     mtvCatalogSync:
       enabled: true
       playbook: mtv-catalog-sync.yml
@@ -1218,7 +1218,7 @@ sovereignJobs:
         - name: RUN_ID
           value: "3"
         - name: OCP_CENTRAL_SERVER
-          value: "https://api.central.example.com:6443"
+          value: "https://api.shc-cental5.lab.signal9.gg:6443"
     deliverVaultToken:
       enabled: false
       playbook: deliver-vault-token.yml
@@ -1226,7 +1226,7 @@ sovereignJobs:
       syncWave: "25"
       env:
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
         - name: TARGET_NAMESPACE
           value: "services-vault"
         - name: TARGET_SECRET_NAME
@@ -1242,9 +1242,9 @@ sovereignJobs:
         - name: VAULT_ADDR
           value: "http://vault-active.central-vault.svc:8200"
         - name: VAULT_SERVICES_ADDR
-          value: "https://vault-services.apps.services.example.com"
+          value: "https://vault-services.apps.shc-services5.lab.signal9.gg"
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
         - name: VAULT_SECRET_NAMESPACE
           value: "central-vault"
     keycloakRealms:
@@ -1321,7 +1321,7 @@ sovereignJobs:
       syncWave: "27"
       env:
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
     keycloakOauth:
       enabled: true
       playbook: keycloak-oauth.yml
@@ -1331,9 +1331,9 @@ sovereignJobs:
         - name: RUN_ID
           value: "2026-06-24-fix-oauth"
         - name: KEYCLOAK_CENTRAL_URL
-          value: "https://rhbk-central.apps.central.example.com"
+          value: "https://rhbk-central.apps.shc-cental5.lab.signal9.gg"
         - name: KEYCLOAK_SERVICES_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_ADMIN_SECRET
           value: "rhbk-central-initial-admin"
         - name: KEYCLOAK_ADMIN_SECRET_NS
@@ -1343,7 +1343,7 @@ sovereignJobs:
         - name: KEYCLOAK_SERVICES_ADMIN_SECRET_NS
           value: "services-rhbk"
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
         - name: SERVICES_REALM_NAME
           value: "sovereign-tenants"
     giteaInit:
@@ -1381,7 +1381,7 @@ sovereignJobs:
         - name: RUN_ID
           value: "3"
         - name: GITEA_URL
-          value: "https://gitea.apps.central.example.com"
+          value: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
         - name: GITEA_ADMIN_USER
           value: "gitea_admin"
         - name: GITEA_ADMIN_PASSWORD
@@ -1404,7 +1404,7 @@ sovereignJobs:
         - name: RUN_ID
           value: "3"
         - name: GITEA_URL
-          value: "https://gitea.apps.central.example.com"
+          value: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
         - name: GITEA_ADMIN_USER
           value: "gitea_admin"
         - name: GITEA_ADMIN_PASSWORD
@@ -1432,7 +1432,7 @@ sovereignJobs:
               property: password
       env:
         - name: KEYCLOAK_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_ADMIN_SECRET
           value: "rhbk-services-admin"
         - name: KEYCLOAK_ADMIN_SECRET_NS
@@ -1448,7 +1448,7 @@ sovereignJobs:
       syncWave: "29"
       env:
         - name: KEYCLOAK_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_ADMIN_SECRET
           value: "rhbk-services-admin"
         - name: KEYCLOAK_ADMIN_SECRET_NS
@@ -1466,7 +1466,7 @@ sovereignJobs:
       syncWave: "30"
       env:
         - name: KEYCLOAK_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_ADMIN_SECRET
           value: "rhbk-services-admin"
         - name: KEYCLOAK_ADMIN_SECRET_NS
@@ -1484,9 +1484,9 @@ sovereignJobs:
       syncWave: "29"
       env:
         - name: VAULT_ADDR
-          value: "https://vault-services.apps.services.example.com"
+          value: "https://vault-services.apps.shc-services5.lab.signal9.gg"
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
         - name: VAULT_SECRET_NAME
           value: "vault-services-init-secrets"
         - name: VAULT_SECRET_NAMESPACE
@@ -1504,13 +1504,13 @@ sovereignJobs:
         - name: VAULT_SECRET_NAME
           value: "vault-init-secrets"
         - name: VAULT_SERVICES_ADDR
-          value: "https://vault-services.apps.services.example.com"
+          value: "https://vault-services.apps.shc-services5.lab.signal9.gg"
         # External HTTPS URL — Vault needs this to match the issuer in OIDC discovery doc.
         # central_ingress_ca_pem is fetched in pre_tasks and passed to the Vault OIDC config.
         - name: KEYCLOAK_CENTRAL_URL
-          value: "https://rhbk-central.apps.central.example.com"
+          value: "https://rhbk-central.apps.shc-cental5.lab.signal9.gg"
         - name: KEYCLOAK_SERVICES_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_CENTRAL_REALM
           value: "sovereign-central"
         - name: KEYCLOAK_SERVICES_REALM
@@ -1520,7 +1520,7 @@ sovereignJobs:
         - name: KEYCLOAK_SERVICES_ADMIN_SECRET_NS
           value: "sovereign-cloud-jobs"
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
     aapLicenseServices:
       enabled: true
       playbook: aap-license.yml
@@ -1543,7 +1543,7 @@ sovereignJobs:
               property: token
       env:
         - name: AAP_GATEWAY_URL
-          value: "https://aap.apps.services.example.com"
+          value: "https://sovereign-aap-aap.apps.shc-services5.lab.signal9.gg"
       volumeMounts:
         - name: aap-manifest
           mountPath: /var/run/secrets/aap-manifest
@@ -1580,7 +1580,7 @@ sovereignJobs:
               property: token
       env:
         - name: AAP_GATEWAY_URL
-          value: "https://aap.apps.central.example.com"
+          value: "https://sovereign-aap-aap.apps.shc-cental5.lab.signal9.gg"
       volumeMounts:
         - name: aap-manifest
           mountPath: /var/run/secrets/aap-manifest
@@ -1639,7 +1639,7 @@ sovereignJobs:
         - name: RUN_ID
           value: "8"
         - name: AAP_CONTROLLER_URL
-          value: "https://aap-controller.apps.central.example.com"
+          value: "https://sovereign-aap-controller-aap.apps.shc-cental5.lab.signal9.gg"
         - name: AAP_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -1668,7 +1668,7 @@ sovereignJobs:
         - name: EDA_REPO_URL
           value: "https://github.com/hybrid-sovereign-cloud/eda.git"
         - name: OCP_CENTRAL_SERVER
-          value: "https://api.central.example.com:6443"
+          value: "https://api.shc-cental5.lab.signal9.gg:6443"
         - name: OCP_CENTRAL_SA_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1726,9 +1726,9 @@ sovereignJobs:
         - name: RUN_ID
           value: "19"
         - name: EDA_CONTROLLER_URL
-          value: "https://aap.apps.central.example.com"
+          value: "https://sovereign-aap-aap.apps.shc-cental5.lab.signal9.gg"
         - name: AAP_CONTROLLER_URL
-          value: "https://aap.apps.central.example.com"
+          value: "https://sovereign-aap-aap.apps.shc-cental5.lab.signal9.gg"
         - name: AAP_RESOURCE_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1839,13 +1839,13 @@ sovereignJobs:
         - name: AAP_CONFIG_PATH
           value: "/runner/project/aap-config"
         - name: AAP_CONTROLLER_HOST
-          value: "https://aap-controller.apps.central.example.com"
+          value: "https://sovereign-aap-controller-aap.apps.shc-cental5.lab.signal9.gg"
         - name: AAP_CONTROLLER_URL
-          value: "https://aap-controller.apps.central.example.com"
+          value: "https://sovereign-aap-controller-aap.apps.shc-cental5.lab.signal9.gg"
         - name: EDA_CONTROLLER_HOST
-          value: "https://aap.apps.central.example.com"
+          value: "https://sovereign-aap-aap.apps.shc-cental5.lab.signal9.gg"
         - name: AAP_GATEWAY_URL
-          value: "https://aap.apps.central.example.com"
+          value: "https://sovereign-aap-aap.apps.shc-cental5.lab.signal9.gg"
         - name: AAP_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -1886,14 +1886,14 @@ sovereignJobs:
         - name: RULEBOOK_REPO_URL
           value: "https://github.com/hybrid-sovereign-cloud/eda.git"
         - name: OCP_CENTRAL_SERVER
-          value: "https://api.central.example.com:6443"
+          value: "https://api.shc-cental5.lab.signal9.gg:6443"
         - name: OCP_CENTRAL_SA_TOKEN
           valueFrom:
             secretKeyRef:
               name: aap-config-as-code-central-sa
               key: bearer_token
         - name: KAFKA_BOOTSTRAP_HOST
-          value: "kafka.apps.central.example.com"
+          value: "hybridsovereign-kafka-kafka-bootstrap-amq-streams.apps.shc-cental5.lab.signal9.gg"
         - name: KAFKA_BOOTSTRAP_PORT
           value: "443"
         - name: KAFKA_TOPIC
@@ -1923,9 +1923,9 @@ sovereignJobs:
         - name: RUN_ID
           value: "2026-06-24-fix-keycloak-test-users"
         - name: KEYCLOAK_CENTRAL_URL
-          value: "https://rhbk-central.apps.central.example.com"
+          value: "https://rhbk-central.apps.shc-cental5.lab.signal9.gg"
         - name: KEYCLOAK_SERVICES_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_CENTRAL_REALM
           value: "sovereign-central"
         - name: KEYCLOAK_SERVICES_REALM
@@ -1951,7 +1951,7 @@ sovereignJobs:
       # avoids dual-ownership conflict with ESO creationPolicy: Owner.
       env:
         - name: GITEA_URL
-          value: "https://gitea.apps.central.example.com"
+          value: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
         - name: GITEA_ADMIN_USER
           value: "gitea_admin"
         - name: GITEA_ADMIN_PASSWORD
@@ -1976,7 +1976,7 @@ sovereignJobs:
       syncWave: "45"
       env:
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
         - name: RUN_ID
           value: "3"
 
@@ -1999,7 +1999,7 @@ sovereignJobs:
               property: password
       env:
         - name: QUAY_URL
-          value: "https://quay.apps.central.example.com"
+          value: "https://sovereign-registry-quay-central-quay.apps.shc-cental5.lab.signal9.gg"
         - name: QUAY_ADMIN_USER
           value: "sovereign_admin"
         - name: VAULT_ADDR
@@ -2009,7 +2009,7 @@ sovereignJobs:
         - name: VAULT_SECRET_PATH
           value: "central/quay-central-admin"
         - name: KEYCLOAK_URL
-          value: "https://rhbk-central.apps.central.example.com"
+          value: "https://rhbk-central.apps.shc-cental5.lab.signal9.gg"
         - name: KEYCLOAK_REALM
           value: "sovereign-central"
         - name: KEYCLOAK_CLIENT_ID
@@ -2038,7 +2038,7 @@ sovereignJobs:
               property: password
       env:
         - name: QUAY_URL
-          value: "https://quay.apps.services.example.com"
+          value: "https://svc-sovereign-registry-quay-services-quay.apps.shc-services5.lab.signal9.gg"
         - name: QUAY_ADMIN_USER
           value: "sovereign_admin"
         - name: VAULT_ADDR
@@ -2048,7 +2048,7 @@ sovereignJobs:
         - name: VAULT_SECRET_PATH
           value: "central/quay-services-admin"
         - name: KEYCLOAK_URL
-          value: "https://rhbk-services.apps.services.example.com"
+          value: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
         - name: KEYCLOAK_REALM
           value: "sovereign-tenants"
         - name: KEYCLOAK_CLIENT_ID
@@ -2077,7 +2077,7 @@ sovereignJobs:
               property: password
       env:
         - name: ACS_URL
-          value: "https://acs.apps.central.example.com"
+          value: "https://central-stackrox.apps.shc-cental5.lab.signal9.gg"
         - name: ACS_ADMIN_SECRET_NAME
           value: "stackrox-central-services-admin-password"
         - name: ACS_ADMIN_SECRET_NAMESPACE
@@ -2089,7 +2089,7 @@ sovereignJobs:
         - name: VAULT_SECRET_PATH
           value: "central/acs-admin"
         - name: KEYCLOAK_URL
-          value: "https://rhbk-central.apps.central.example.com"
+          value: "https://rhbk-central.apps.shc-cental5.lab.signal9.gg"
         - name: KEYCLOAK_REALM
           value: "sovereign-central"
         - name: KEYCLOAK_CLIENT_ID
@@ -2099,7 +2099,7 @@ sovereignJobs:
         - name: KEYCLOAK_ADMIN_SECRET_NS
           value: "sovereign-cloud-jobs"
         - name: OCP_SERVICES_SERVER
-          value: "https://api.services.example.com:6443"
+          value: "https://api.shc-services5.lab.signal9.gg:6443"
 
 # ─── Plugin RBAC Operator (services cluster) ────────────────────────────────
 pluginRbac:
@@ -2111,7 +2111,7 @@ pluginRbac:
     namespace: sovereign-cloud-plugins
     createNamespace: false
     image:
-      repository: quay.example.com/hybrid-sovereign/plugin-rbac
+      repository: quay.signal9.gg/hybrid-sovereign/plugin-rbac
       tag: "0.0.8"
       pullPolicy: Always
     imagePullSecrets:
@@ -2150,13 +2150,13 @@ pluginVault:
     namespace: sovereign-cloud-plugins
     createNamespace: false
     image:
-      repository: quay.example.com/hybrid-sovereign/plugin-vault
+      repository: quay.signal9.gg/hybrid-sovereign/plugin-vault
       tag: "0.0.13"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     vaultImage:
-      repository: quay.example.com/hybrid-sovereign/vault
+      repository: quay.signal9.gg/hybrid-sovereign/vault
       tag: "1.21.2"
     keycloak:
       internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
@@ -2182,15 +2182,15 @@ pluginAap:
     namespace: sovereign-cloud-plugins
     createNamespace: false
     image:
-      repository: quay.example.com/hybrid-sovereign/plugin-aap
+      repository: quay.signal9.gg/hybrid-sovereign/plugin-aap
       tag: "0.0.10"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     aap:
-      controllerUrl: "https://aap-controller.apps.services.example.com"
+      controllerUrl: "https://sovereign-aap-controller-aap.apps.shc-services5.lab.signal9.gg"
       controllerInternalUrl: "http://sovereign-aap-controller-service.aap.svc:80"
-      gatewayUrl: "https://aap.apps.services.example.com"
+      gatewayUrl: "https://sovereign-aap-aap.apps.shc-services5.lab.signal9.gg"
       gatewayInternalUrl: "http://sovereign-aap.aap.svc:80"
     keycloak:
       internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
@@ -2222,13 +2222,13 @@ pluginQuay:
     namespace: sovereign-cloud-plugins
     createNamespace: false
     image:
-      repository: quay.example.com/hybrid-sovereign/plugin-quay
+      repository: quay.signal9.gg/hybrid-sovereign/plugin-quay
       tag: "0.0.9"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     quay:
-      url: "https://svc-sovereign-registry-quay-quay-enterprise.apps.services.example.com"
+      url: "https://svc-sovereign-registry-quay-quay-enterprise.apps.shc-services5.lab.signal9.gg"
       internalUrl: "http://svc-sovereign-registry-quay-app.quay-enterprise.svc:443"
     keycloak:
       internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
@@ -2259,7 +2259,7 @@ entityOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/entity-operator
+      repository: quay.signal9.gg/hybrid-sovereign/entity-operator
       tag: "0.1.5"
       pullPolicy: Always
     imagePullSecrets:
@@ -2279,7 +2279,7 @@ personaOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/persona-operator
+      repository: quay.signal9.gg/hybrid-sovereign/persona-operator
       tag: "v0.1.0"
       pullPolicy: Always
     imagePullSecrets:
@@ -2296,7 +2296,7 @@ teamOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/team-operator
+      repository: quay.signal9.gg/hybrid-sovereign/team-operator
       tag: "0.0.5"
       pullPolicy: Always
     imagePullSecrets:
@@ -2334,9 +2334,9 @@ assignmentOperator:
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
-    centralApiServer: "https://api.central.example.com:6443"
+    centralApiServer: "https://api.shc-cental5.lab.signal9.gg:6443"
     image:
-      repository: quay.example.com/hybrid-sovereign/assignment-operator
+      repository: quay.signal9.gg/hybrid-sovereign/assignment-operator
       tag: "0.2.8"
       pullPolicy: Always
     imagePullSecrets:
@@ -2353,7 +2353,7 @@ projectOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/project-operator
+      repository: quay.signal9.gg/hybrid-sovereign/project-operator
       tag: "0.0.5"
       pullPolicy: Always
     imagePullSecrets:
@@ -2370,14 +2370,14 @@ platformOpenshiftOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/platformopenshift-operator
+      repository: quay.signal9.gg/hybrid-sovereign/platformopenshift-operator
       tag: "0.3.15"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
     keycloak:
       internalUrl: "http://rhbk-services-service.services-rhbk.svc:8080"
-      externalUrl: "https://rhbk-services.apps.services.example.com"
+      externalUrl: "https://rhbk-services.apps.shc-services5.lab.signal9.gg"
       realm: "sovereign-tenants"
       adminSecretName: "rhbk-admin-credentials"
       adminSecret:
@@ -2407,7 +2407,7 @@ cloudOSOOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/cloudoso-operator
+      repository: quay.signal9.gg/hybrid-sovereign/cloudoso-operator
       tag: "0.3.1"
       pullPolicy: Always
     imagePullSecrets:
@@ -2432,7 +2432,7 @@ openstackMigrationOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/openstackmigration-operator
+      repository: quay.signal9.gg/hybrid-sovereign/openstackmigration-operator
       tag: "0.1.0"
       pullPolicy: Always
     imagePullSecrets:
@@ -2450,7 +2450,7 @@ cloudAWSOperator:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/cloudaws-operator
+      repository: quay.signal9.gg/hybrid-sovereign/cloudaws-operator
       tag: "0.1.4"
       pullPolicy: Always
     imagePullSecrets:
@@ -2474,9 +2474,9 @@ sovereignDashboard:
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
-    clusterDomain: apps.services.example.com
+    clusterDomain: apps.shc-services5.lab.signal9.gg
     image:
-      repository: quay.example.com/hybrid-sovereign/sovereign-cloud-dashboard
+      repository: quay.signal9.gg/hybrid-sovereign/sovereign-cloud-dashboard
       tag: "2.0.11"
       pullPolicy: Always
     imagePullSecrets:
@@ -2506,9 +2506,9 @@ tenancyDashboard:
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
-    clusterDomain: apps.services.example.com
+    clusterDomain: apps.shc-services5.lab.signal9.gg
     image:
-      repository: quay.example.com/hybrid-sovereign/tenancy-dashboard
+      repository: quay.signal9.gg/hybrid-sovereign/tenancy-dashboard
       tag: "5.0.12"
       pullPolicy: Always
     imagePullSecrets:
@@ -2538,7 +2538,7 @@ sovereignAdminPlugin:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/sovereign-admin-plugin
+      repository: quay.signal9.gg/hybrid-sovereign/sovereign-admin-plugin
       tag: "1.2.10"
       pullPolicy: Always
     imagePullSecrets:
@@ -2558,7 +2558,7 @@ sovereignTenantPlugin:
   values:
     namespace: sovereign-cloud
     image:
-      repository: quay.example.com/hybrid-sovereign/sovereign-tenant-plugin
+      repository: quay.signal9.gg/hybrid-sovereign/sovereign-tenant-plugin
       tag: "1.3.8"
       pullPolicy: Always
     imagePullSecrets:
@@ -2576,8 +2576,8 @@ sovereignTenantPlugin:
 clusterBuilds:
   enabled: false  # direct Helm by operators replaces Gitea→ArgoCD cluster-build flow
   syncWave: "50"
-  repoURL: "https://gitea.apps.central.example.com/gitea_admin/cluster_builds.git"
-  chartsRepoURL: "oci://quay.example.com/hybrid-sovereign/mce-cluster-build"
+  repoURL: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg/gitea_admin/cluster_builds.git"
+  chartsRepoURL: "oci://quay.signal9.gg/hybrid-sovereign/mce-cluster-build"
   mceChartName: "mce-cluster-build"
   mceChartVersion: "0.2.0"
 
@@ -2651,11 +2651,11 @@ hybridsovereignPrimaryOperator:
     namespace: sovereign-cloud
     pluginsNamespace: sovereign-cloud-plugins
     image:
-      repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
+      repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-primary-operator
       tag: "0.1.11"
     namespaceOperator:
       image:
-        repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
+        repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-namespace-operator
         tag: "0.1.5"
     amqKafka:
       enabled: true
@@ -2673,12 +2673,12 @@ iaacGitSync:
   values:
     namespace: sovereign-cloud-plugins
     image:
-      repository: quay.example.com/hybrid-sovereign/iaac-git-sync
+      repository: quay.signal9.gg/hybrid-sovereign/iaac-git-sync
       tag: "0.1.0"
     imagePullSecrets:
       - name: quay-pull-secret
     gitea:
-      url: "https://gitea.apps.central.example.com"
+      url: "https://gitea-gitea.apps.shc-cental5.lab.signal9.gg"
       repoOwner: gitea_admin
       repoName: tenancy_repo
       externalSecret:
