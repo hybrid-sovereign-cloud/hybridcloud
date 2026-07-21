@@ -87,9 +87,13 @@ upload-lab-config: check-env-central ## Upload lab topology from .env to Vault (
 	  -X POST "$$VAULT_ADDR/v1/$(LAB_VAULT_PATH)" \
 	  -d "$$payload"); \
 	if [ "$$code" != "200" ] && [ "$$code" != "204" ]; then \
-	  echo "Vault write failed (HTTP $$code):"; cat /tmp/lab-config-vault.json; exit 1; \
+	  echo "Vault route write failed (HTTP $$code); trying in-cluster via scripts/unseal-and-upload-lab-config.py"; \
+	  python3 "$(CURDIR)/../scripts/unseal-and-upload-lab-config.py" || { \
+	    echo "Vault write failed (HTTP $$code):"; cat /tmp/lab-config-vault.json; exit 1; \
+	  }; \
+	else \
+	  $(call ok_print,Uploaded lab-config to Vault $(LAB_VAULT_PATH)); \
 	fi; \
-	$(call ok_print,Uploaded lab-config to Vault $(LAB_VAULT_PATH)); \
 	cm_args=; \
 	for key in $(LAB_CONFIG_KEYS); do \
 	  val=$$(eval echo \$$$$key); \

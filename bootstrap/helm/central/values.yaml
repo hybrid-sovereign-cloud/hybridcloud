@@ -45,9 +45,9 @@ lab:
         - "172.18.42.10"
         - "172.18.42.11"
 
-# Pull lab-config from Vault after `make upload-lab-config`. Keep disabled until seeded.
+# Pull lab-config from Vault after `make upload-lab-config`.
 labConfigExternalSecret:
-  enabled: false
+  enabled: true
   namespace: openshift-gitops
   syncWave: "28"
   secretStoreName: vault-backend
