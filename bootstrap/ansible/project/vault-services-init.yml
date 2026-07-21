@@ -5,7 +5,7 @@
   gather_facts: false
 
   vars:
-    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('https://vault-services.apps.services.lab.example.com', true) }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') }}"
     vault_secret_name: "{{ lookup('env', 'VAULT_SECRET_NAME') | default('vault-services-init-secrets', true) }}"
     vault_secret_namespace: "{{ lookup('env', 'VAULT_SECRET_NAMESPACE') | default('sovereign-cloud-jobs', true) }}"
     vault_key_shares: 5

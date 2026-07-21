@@ -3,7 +3,7 @@ namespace: entity-example
 entityName: example
 
 image:
-  repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
+  repository: /hybrid-sovereign/hybridsovereign-namespace-operator
   tag: "0.1.0"
   pullPolicy: Always
 

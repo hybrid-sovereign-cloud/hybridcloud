@@ -151,7 +151,7 @@
                 type: RuntimeDefault
             containers:
               - name: manager
-                image: "{{ lookup('env', 'NAMESPACE_OPERATOR_IMAGE') | default('quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator:0.1.0', true) }}"
+                image: "{{ lookup('env', 'NAMESPACE_OPERATOR_IMAGE') }}"
                 imagePullPolicy: Always
                 args:
                   - --leader-elect

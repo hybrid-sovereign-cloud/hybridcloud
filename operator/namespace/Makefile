@@ -1,4 +1,4 @@
-OPERATOR_IMAGE ?= quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
+OPERATOR_IMAGE ?= $(OCI_HOST)/hybrid-sovereign/hybridsovereign-namespace-operator
 OPERATOR_TAG ?= 0.1.0
 CHART_NAME := hybridsovereign-namespace-operator
 CHART_VERSION := $(shell grep '^version:' helm/Chart.yaml | awk '{print $$2}')
@@ -17,4 +17,4 @@ operator-build-push: operator-build operator-push
 upload-chart:
 	helm package helm/ -d /tmp/
 	helm registry login $(OCI_REGISTRY) -u '$$oauthtoken' --password-stdin <<< "$(OCI_REGISTRY_TOKEN)"
-	helm push /tmp/$(CHART_NAME)-$(CHART_VERSION).tgz oci://quay.example.com/hybrid-sovereign
+	helm push /tmp/$(CHART_NAME)-$(CHART_VERSION).tgz oci://$(OCI_HOST)/hybrid-sovereign

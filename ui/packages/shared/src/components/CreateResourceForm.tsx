@@ -255,9 +255,9 @@ export function CreateResourceForm({
           aws: cloudAwsRef || undefined,
         };
       case 'cloudoso':
-        return { vaultPath: 'oso/accounts/shc_admin', baseDomain: 'lab.example.com' };
+        return { vaultPath: 'oso/accounts/shc_admin', baseDomain: process.env.LAB_DOMAIN || '' };
       case 'cloudaws':
-        return { account: '', vaultPath: '', baseDomain: 'lab.example.com' };
+        return { account: '', vaultPath: '', baseDomain: process.env.LAB_DOMAIN || '' };
       case 'migration':
         return { source, vmName, cloudoso: cloudosoRef };
       case 'persona':

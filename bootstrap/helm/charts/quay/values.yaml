@@ -45,4 +45,4 @@ crunchy:
   backupStorage: 20Gi
 
 dbInitJob:
-  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  image: "/hybrid-sovereign/ansible-runner:latest"

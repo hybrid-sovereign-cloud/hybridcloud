@@ -141,4 +141,4 @@ argocdSchemaFix:
   # Deploys a minimal HTTPS server that injects the tilde-encoded UserPermissionStatus
   # definition into the aggregated OpenAPI v2 spec, working around a kube-openapi ~1
   # resolution bug in ArgoCD when MCE/RHACM is installed on the same cluster.
-  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  image: "/hybrid-sovereign/ansible-runner:latest"

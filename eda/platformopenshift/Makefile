@@ -1,4 +1,4 @@
-IMAGE_REGISTRY ?= quay.example.com
+IMAGE_REGISTRY ?= $(OCI_HOST)
 IMAGE_NAMESPACE ?= hybrid-sovereign
 DE_NAME = de-platformopenshift
 DE_TAG ?= 0.1.7
@@ -12,7 +12,7 @@ de-platformopenshift-build:
 	podman build -f context/Containerfile context/ -t $(IMAGE_REGISTRY)/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG)
 
 de-platformopenshift-push:
-	podman tag $(IMAGE_REGISTRY)/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG) quay.example.com/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG) 2>/dev/null || true
-	podman push quay.example.com/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG)
+	podman tag $(IMAGE_REGISTRY)/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG) $(IMAGE_REGISTRY)/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG) 2>/dev/null || true
+	podman push $(IMAGE_REGISTRY)/$(IMAGE_NAMESPACE)/$(DE_NAME):$(DE_TAG)
 
 de-platformopenshift-build-push: de-platformopenshift-build de-platformopenshift-push

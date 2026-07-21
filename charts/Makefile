@@ -1,4 +1,4 @@
-OCI_REGISTRY_HOST ?= quay.example.com
+OCI_REGISTRY_HOST ?= $(OCI_HOST)
 OCI_CHART_REF    ?= oci://$(OCI_REGISTRY_HOST)/hybrid-sovereign
 
 MCE_CHART_NAME    = mce-cluster-build

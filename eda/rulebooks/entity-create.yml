@@ -3,7 +3,7 @@
   hosts: all
   sources:
     - ansible.eda.kafka:
-        host: kafka.apps.central.example.com
+        host: {{ KAFKA_BOOTSTRAP_HOST }}
         port: "443"
         topic: hybridsovereign-events
         group_id: eda-entity-create

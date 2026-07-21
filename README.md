@@ -29,8 +29,8 @@ make init-central-argo   # from bootstrap/
 
 ## Clusters
 
-- **Central**: `api.central.lab.example.com` — ArgoCD, ACM, Vault, AAP EDA
-- **Services**: `api.services.lab.example.com` — operators, dashboards, tenant CRs
+- **Central**: `api.central.LAB_DOMAIN` — ArgoCD, ACM, Vault, AAP EDA
+- **Services**: `api.services.LAB_DOMAIN` — operators, dashboards, tenant CRs
 
 ## Constraints
 

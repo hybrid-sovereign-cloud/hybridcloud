@@ -60,53 +60,37 @@ spec:
         upstreams:
           - 8.8.8.8
           - 8.8.4.4
-    - name: signal9-forwarder
+    - name: base-domain-forwarder
       zones:
-        - example.com
+        - {{ .Values.lab.baseDomain | default "example.invalid" | quote }}
       forwardPlugin:
         policy: Sequential
         upstreams:
           - 8.8.8.8
           - 8.8.4.4
-    # Forward lab.example.com to internal lab DNS servers.
-    # lab.example.com hosts private infrastructure (vCenter, ESXi, etc.) that only
-    # internal DNS at 127.0.0.1/127.0.0.1 can resolve.  Without this entry
-    # CoreDNS falls through to the signal9-forwarder (8.8.8.8) which has no knowledge
-    # of internal hosts — pods curl/reach them but nodes succeed via /etc/resolv.conf.
-    # More-specific than example.com, so this wins for all lab.example.com subdomains.
-    - name: lab-signal9-forwarder
+    # Forward lab zone to internal lab DNS servers (from values-lab / Vault lab-config).
+    - name: lab-domain-forwarder
       zones:
-        - lab.example.com
+        - {{ .Values.lab.dnsForwarderZone | default .Values.lab.domain | default "lab.example.invalid" | quote }}
       forwardPlugin:
         policy: Sequential
         upstreams:
-          - 127.0.0.1
-          - 127.0.0.1
-    # Forward a4fce.lab.example.com directly to the Route53 zone NS.
-    # The lab.example.com Route53 zone (Z04944392VFMLMB3L46MM) holds a4fce.* records
-    # but the parent example.com domain delegates lab.example.com to stale NS servers
-    # (old zone in a different account) that don't have a4fce records.
-    # More-specific zone wins in CoreDNS, so this overrides both forwarders above.
-    - name: ses4-a4fce-forwarder
+{{- range (.Values.lab.dnsForwarderIps | default list) }}
+          - {{ . | quote }}
+{{- else }}
+          - "127.0.0.1"
+{{- end }}
+    # Optional more-specific lab slug zones (from values-lab).
+{{- range (.Values.lab.extraDnsServers | default list) }}
+    - name: {{ .name | quote }}
       zones:
-        - a4fce.lab.example.com
+{{- range .zones }}
+        - {{ . | quote }}
+{{- end }}
       forwardPlugin:
-        policy: Sequential
+        policy: {{ .policy | default "Sequential" }}
         upstreams:
-          - 205.251.193.121
-          - 205.251.195.171
-          - 205.251.197.184
-          - 205.251.198.181
-    # Forward shc.example.com for OpenStack Designate DNS (internet-facing OCP clusters).
-    # Try public resolvers first (Designate records are internet-visible); internal lab
-    # DNS is fallback for private shc zones reachable only from lab network.
-    - name: shc-signal9-forwarder
-      zones:
-        - shc.example.com
-      forwardPlugin:
-        policy: Sequential
-        upstreams:
-          - 8.8.8.8
-          - 8.8.4.4
-          - 127.0.0.1
-          - 127.0.0.1
+{{- range .upstreams }}
+          - {{ . | quote }}
+{{- end }}
+{{- end }}

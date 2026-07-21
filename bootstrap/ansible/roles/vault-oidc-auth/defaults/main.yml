@@ -26,9 +26,11 @@ vault_admin_group: "sovereign-admin"
 admin_policy_name: "sovereign-admin-policy"
 oidc_role_name: "sovereign-admin"
 
-# Default redirect URIs for Vault UI (central + services routes + CLI)
-vault_redirect_uris:
+# Default redirect URIs for Vault UI (central + services routes + CLI).
+# Lab route callbacks come from env (VAULT_CENTRAL_URL / VAULT_SERVICES_URL).
+vault_redirect_uris: "{{ (vault_redirect_uris_base | default([])) + ([vault_central_oidc_callback] if vault_central_oidc_callback | length > 0 else []) + ([vault_services_oidc_callback] if vault_services_oidc_callback | length > 0 else []) }}"
+vault_redirect_uris_base:
   - "http://localhost:8250/oidc/callback"
   - "https://ui.vault.hashicorp.com/oidc/callback"
-  - "https://vault-central.apps.central.lab.example.com/ui/vault/auth/oidc/oidc/callback"
-  - "https://vault-services.apps.services.lab.example.com/ui/vault/auth/oidc/oidc/callback"
+vault_central_oidc_callback: "{{ (lookup('env', 'VAULT_CENTRAL_URL') | default('', true) | regex_replace('/$', '')) ~ '/ui/vault/auth/oidc/oidc/callback' if (lookup('env', 'VAULT_CENTRAL_URL') | default('', true) | length > 0) else '' }}"
+vault_services_oidc_callback: "{{ (lookup('env', 'VAULT_SERVICES_URL') | default('', true) | regex_replace('/$', '')) ~ '/ui/vault/auth/oidc/oidc/callback' if (lookup('env', 'VAULT_SERVICES_URL') | default('', true) | length > 0) else '' }}"

@@ -216,7 +216,7 @@
           implicitFlowEnabled: false
           directAccessGrantsEnabled: false
           redirectUris:
-            - "https://vault-services.apps.services.lab.example.com/ui/vault/auth/oidc/oidc/callback"
+            - "{{ lookup('env', 'VAULT_SERVICES_URL') | regex_replace('/$', '') ~ '/ui/vault/auth/oidc/oidc/callback' }}"
             - "http://localhost:8250/oidc/callback"
           webOrigins:
             - "+"

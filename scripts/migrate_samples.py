@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -58,11 +59,11 @@ KIND_DIRS = {
 SANITIZE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b\d{12}\b"), "000000000000"),  # AWS account IDs
     (re.compile(r"390403869973"), "000000000000"),
-    (re.compile(r"lab\.signal9\.gg", re.I), "lab.example.com"),
-    (re.compile(r"central\.lab\.signal9\.gg", re.I), "api.central.example.com"),
-    (re.compile(r"services\.lab\.signal9\.gg", re.I), "api.services.example.com"),
-    (re.compile(r"quay\.signal9\.gg", re.I), "quay.example.com"),
-    (re.compile(r"[\w.-]+\.signal9\.gg", re.I), "lab.example.com"),
+    # Lab domains: override via MIGRATE_LAB_DOMAIN_RE / MIGRATE_LAB_DOMAIN_TO
+    (re.compile(os.environ.get("MIGRATE_LAB_DOMAIN_RE", r"lab\.example\.com"), re.I),
+     os.environ.get("MIGRATE_LAB_DOMAIN_TO", "lab.example.com")),
+    (re.compile(os.environ.get("MIGRATE_OCI_HOST_RE", r"quay\.example\.com"), re.I),
+     os.environ.get("MIGRATE_OCI_HOST_TO", "quay.example.com")),
     (re.compile(r"sandbox\d+\.opentlc\.com", re.I), "sandbox.example.com"),
     (re.compile(r"[\w.-]+\.opentlc\.com", re.I), "sandbox.example.com"),
     (re.compile(r"shc_admin"), "example-admin"),
@@ -257,7 +258,7 @@ def write_readme(counts: dict[str, int], total: int) -> None:
         "The following were stripped or replaced in all samples:",
         "",
         "- AWS account IDs → `000000000000`",
-        "- Real hostnames (`*.example.com`, `*.opentlc.com`) → `*.example.com`",
+        "- Real hostnames (`*.os.environ.get("BASE_DOMAIN","")`, `*.opentlc.com`) → `*.example.com`",
         "- Environment-specific Vault paths (`shc_admin`) → `example-admin`",
         "- Credential fields → `REDACTED`",
         "",

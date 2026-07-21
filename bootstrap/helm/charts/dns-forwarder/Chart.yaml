@@ -2,8 +2,8 @@ apiVersion: v2
 name: dns-forwarder
 description: >
   Configures the OpenShift DNS operator with custom forwarders so pods can
-  resolve internal lab hostnames (lab.example.com) via the lab DNS servers
-  at 127.0.0.1 / 127.0.0.1.
+  resolve internal lab hostnames ({{LAB_DOMAIN}}) via the lab DNS servers
+  at {{DNS_FORWARDER_IP_1}} / {{DNS_FORWARDER_IP_2}}.
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

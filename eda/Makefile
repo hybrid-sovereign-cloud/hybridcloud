@@ -1,9 +1,9 @@
-EDA_HOST          ?= https://sovereign-aap-aap.apps.central.lab.example.com
+EDA_HOST          ?= $(AAP_CENTRAL_GATEWAY_URL)
 EDA_PROJECT_NAME  ?= sovereign-eda-rulebooks
 EDA_PROJECT_URL   ?= https://github.com/hybrid-sovereign-cloud/hybridcloud.git
 EDA_PROJECT_SCM_PATH ?= eda
 EVENT_STREAM_NAME ?= sovereign-operator-events
-OCI_REGISTRY_HOST ?= quay.example.com
+OCI_REGISTRY_HOST ?= $(OCI_HOST)
 OCI_NAMESPACE     ?= hybrid-sovereign
 
 # Derived — EDA admin password from the services cluster

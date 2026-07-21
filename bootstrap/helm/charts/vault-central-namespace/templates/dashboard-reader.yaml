@@ -103,7 +103,7 @@ spec:
       {{- end }}
       containers:
         - name: push-token
-          image: {{ .Values.dashboardCentralReader.image | default "quay.example.com/hybrid-sovereign/ansible-runner:latest" }}
+          image: {{ .Values.dashboardCentralReader.image | default "/hybrid-sovereign/ansible-runner:latest" }}
           command:
             - /bin/bash
             - -c

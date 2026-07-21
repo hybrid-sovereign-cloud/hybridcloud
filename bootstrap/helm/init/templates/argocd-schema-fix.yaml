@@ -228,7 +228,7 @@ spec:
         - name: quay-pull-secret
       containers:
         - name: server
-          image: {{ .Values.argocdSchemaFix.image | default "quay.example.com/hybrid-sovereign/ansible-runner:latest" }}
+          image: {{ .Values.argocdSchemaFix.image | default "/hybrid-sovereign/ansible-runner:latest" }}
           command: ["/bin/sh", "/config/serve.sh"]
           ports:
             - containerPort: 6443

@@ -6,7 +6,7 @@ rbac:
 job:
   name: ""
   playbook: ""
-  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  image: "/hybrid-sovereign/ansible-runner:latest"
   serviceAccount: sovereign-ansible-runner
   backoffLimit: 5
   activeDeadlineSeconds: 600

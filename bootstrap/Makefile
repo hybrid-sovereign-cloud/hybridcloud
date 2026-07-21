@@ -99,6 +99,7 @@ include make/upload-dns-forwarder-chart.mk
 include make/upload-amq-streams-chart.mk
 include make/upload-primary-operator-chart.mk
 include make/upload-iaac-chart.mk
+include make/lab-config.mk
 
 ##@ Convenience
 

@@ -51,7 +51,7 @@ dashboardCentralReader:
   enabled: false
   namespace: sovereign-cloud-jobs
   jobServiceAccount: sovereign-ansible-runner
-  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  image: "/hybrid-sovereign/ansible-runner:latest"
   imagePullSecrets:
     - name: quay-pull-secret
   vaultAddr: "http://vault-active.central-vault.svc:8200"
@@ -66,4 +66,4 @@ centralServiceAccounts: {}
 edaS3Creds:
   enabled: false
   bucketName: "eda-job-logs"
-  endpoint: "https://s3.apps.services.example.com"
+  endpoint: "https://s3-openshift-storage.apps.services."

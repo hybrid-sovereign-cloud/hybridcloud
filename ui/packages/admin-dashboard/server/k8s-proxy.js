@@ -297,10 +297,10 @@ export function createK8sClient(apiServer, namespace) {
         }
 
         const staticEntries = [
-          { name: "OpenShift Console", namespace: "openshift-console", host: "console-openshift-console.apps.services.lab.example.com", tls: true, path: "", cluster: "services" },
-          { name: "OpenShift API", namespace: "openshift-apiserver", host: "api.services.lab.example.com:6443", tls: true, path: "", cluster: "services" },
-          { name: "OpenShift Console", namespace: "openshift-console", host: "console-openshift-console.apps.central.lab.example.com", tls: true, path: "", cluster: "central" },
-          { name: "OpenShift API", namespace: "openshift-apiserver", host: "api.central.lab.example.com:6443", tls: true, path: "", cluster: "central" },
+          { name: "OpenShift Console", namespace: "openshift-console", host: process.env.SERVICES_CONSOLE_HOST || `console-openshift-console.${process.env.SERVICES_APPS_DOMAIN || ""}`, tls: true, path: "", cluster: "services" },
+          { name: "OpenShift API", namespace: "openshift-apiserver", host: process.env.OCP_SERVICES_HOST || (process.env.OCP_SERVICES_SERVER || "").replace(/^https?:\/\//, ""), tls: true, path: "", cluster: "services" },
+          { name: "OpenShift Console", namespace: "openshift-console", host: process.env.CENTRAL_CONSOLE_HOST || `console-openshift-console.${process.env.CENTRAL_APPS_DOMAIN || ""}`, tls: true, path: "", cluster: "central" },
+          { name: "OpenShift API", namespace: "openshift-apiserver", host: process.env.OCP_CENTRAL_HOST || (process.env.OCP_CENTRAL_SERVER || "").replace(/^https?:\/\//, ""), tls: true, path: "", cluster: "central" },
         ];
 
         const allRoutes = [...servicesRoutes, ...centralRoutes, ...staticEntries];

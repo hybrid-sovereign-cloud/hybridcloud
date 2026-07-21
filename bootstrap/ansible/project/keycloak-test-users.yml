@@ -5,11 +5,11 @@
   gather_facts: false
 
   vars:
-    keycloak_central_url: "{{ lookup('env', 'KEYCLOAK_CENTRAL_URL') | default('https://rhbk-central.apps.central.example.com', true) }}"
-    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') | default('https://rhbk-services.apps.services.example.com', true) }}"
+    keycloak_central_url: "{{ lookup('env', 'KEYCLOAK_CENTRAL_URL') }}"
+    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') }}"
     keycloak_central_realm: "{{ lookup('env', 'KEYCLOAK_CENTRAL_REALM') | default('master', true) }}"
     keycloak_services_realm: "{{ lookup('env', 'KEYCLOAK_SERVICES_REALM') | default('sovereign-tenants', true) }}"
-    vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('https://vault-central.apps.central.example.com', true) }}"
+    vault_addr: "{{ lookup('env', 'VAULT_ADDR') }}"
     vault_token: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
     keycloak_central_vault_path: "{{ lookup('env', 'KEYCLOAK_CENTRAL_VAULT_PATH') | default('rhbk-central-admin', true) }}"
     keycloak_services_vault_path: "{{ lookup('env', 'KEYCLOAK_SERVICES_VAULT_PATH') | default('rhbk-services-admin', true) }}"
@@ -19,7 +19,7 @@
       ansible.builtin.command:
         cmd: >-
           oc get secret vault-init-secrets-copy -n vault-central
-          --context={{ lookup('env', 'OCP_CENTRAL_CONTEXT') | default('default/api-central-lab-signal9-gg:6443/kube:admin', true) }}
+          --context={{ lookup('env', 'OCP_CENTRAL_CONTEXT') }}
           -o jsonpath={.data.root_token}
       register: _vault_token_b64
       changed_when: false

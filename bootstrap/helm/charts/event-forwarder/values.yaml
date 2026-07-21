@@ -1,5 +1,5 @@
 image:
-  repository: quay.example.com/hybrid-sovereign/event-forwarder
+  repository: /hybrid-sovereign/event-forwarder
   tag: "0.2.0"
   pullPolicy: Always
 

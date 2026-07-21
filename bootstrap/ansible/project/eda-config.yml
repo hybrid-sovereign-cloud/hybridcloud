@@ -7,7 +7,7 @@
   vars:
     eda_controller_url: "{{ lookup('env', 'EDA_CONTROLLER_URL') }}"
     eda_organization: "Default"
-    de_registry: "quay.example.com/hybrid-sovereign"
+    de_registry: "{{ lookup('env', 'OCI_HOST') }}/{{ lookup('env', 'OCI_REPOSITORY_BASE') | default('hybrid-sovereign', true) }}"
     event_stream_name: "sovereign-operator-events"
     # Per-image tags — aligned with available Quay tags
     de_tags:

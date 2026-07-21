@@ -1,0 +1,20 @@
+# Lab topology values — EXAMPLE ONLY (safe to commit).
+# Copy to values-lab.yaml (gitignored) or generate via: make render-values-lab
+# ApplicationSet / central chart merges this over values.yaml placeholders.
+lab:
+  domain: ""
+  baseDomain: ""
+  centralClusterName: ""
+  servicesClusterName: ""
+  appsSubdomain: apps
+  centralAppsDomain: ""
+  servicesAppsDomain: ""
+  dnsForwarderZone: ""
+  dnsForwarderIps: []
+
+servicesCluster:
+  server: ""
+
+oci:
+  registry: ""
+  repositoryBase: hybrid-sovereign

@@ -40,7 +40,7 @@ oc apply -k samples/ --context=services-admin
 The following were stripped or replaced in all samples:
 
 - AWS account IDs → `000000000000`
-- Real hostnames (`*.example.com`, `*.opentlc.com`) → `*.example.com`
+- Real hostnames (`*.BASE_DOMAIN`, `*.opentlc.com`) → `*.example.com`
 - Environment-specific Vault paths (`shc_admin`) → `example-admin`
 - Credential fields → `REDACTED`
 

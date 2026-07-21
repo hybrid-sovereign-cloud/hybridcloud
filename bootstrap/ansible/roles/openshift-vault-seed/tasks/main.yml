@@ -45,7 +45,7 @@
       data:
         username: kubeadmin
         password: "{{ lookup('env', 'OCP_CENTRAL_KUBEADMIN_PASSWORD') }}"
-        api_host: "{{ lookup('env', 'OCP_CENTRAL_SERVER') | default('https://api.central.lab.example.com:6443', true) }}"
+        api_host: "{{ lookup('env', 'OCP_CENTRAL_SERVER') }}"
     validate_certs: false
     status_code: [200, 204]
   no_log: true
@@ -61,7 +61,7 @@
       data:
         username: kubeadmin
         password: "{{ lookup('env', 'OCP_SERVICES_KUBEADMIN_PASSWORD') }}"
-        api_host: "{{ lookup('env', 'OCP_SERVICES_SERVER') | default('https://api.services.lab.example.com:6443', true) }}"
+        api_host: "{{ lookup('env', 'OCP_SERVICES_SERVER') }}"
     validate_certs: false
     status_code: [200, 204]
   no_log: true

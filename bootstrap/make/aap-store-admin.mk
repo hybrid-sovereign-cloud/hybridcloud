@@ -1,10 +1,12 @@
+# Lab URLs from .env (VAULT_CENTRAL_URL, AAP_*_URL). Source .env before running.
 ##@ Seed Secrets — AAP Admin Credentials
 
 .PHONY: aap-store-admin-central
 aap-store-admin-central: check-env-central ## Read AAP controller admin password and store in Vault at central/aap-admin-central
 	@echo "$(BOLD)Storing AAP central admin credentials in Vault...$(RESET)"
 	@$(call sovereign_login_central)
-	@VAULT_ADDR="https://vault-central.apps.central.example.com"; \
+	@set -a; [ -f "$(CURDIR)/../.env" ] && . "$(CURDIR)/../.env"; [ -f "$(CURDIR)/.env" ] && . "$(CURDIR)/.env"; set +a; \
+	VAULT_ADDR="${VAULT_CENTRAL_URL:?Set VAULT_CENTRAL_URL in .env}"; \
 	ROOT_TOKEN=$$(oc get secret vault-init-secrets -n central-vault \
 	  -o jsonpath='{.data.root_token}' 2>/dev/null | base64 -d); \
 	if [ -z "$$ROOT_TOKEN" ]; then \
@@ -17,7 +19,7 @@ aap-store-admin-central: check-env-central ## Read AAP controller admin password
 	  printf "  $(RED)✗$(RESET)  sovereign-aap-controller-admin-password not found — AAP not installed\n"; \
 	  exit 1; \
 	fi; \
-	AAP_CTRL_URL="https://aap-controller.apps.central.example.com"; \
+	AAP_CTRL_URL="${AAP_CENTRAL_CONTROLLER_URL}"; \
 	printf "  Getting AAP controller token...\n"; \
 	AAP_TOKEN=$$(curl -sk -u "admin:$$AAP_PASS" -X POST "$$AAP_CTRL_URL/api/controller/v2/tokens/" \
 	  -H "Content-Type: application/json" \
@@ -42,7 +44,8 @@ aap-store-admin-central: check-env-central ## Read AAP controller admin password
 aap-store-admin-eda-central: check-env-central ## Read EDA admin password and store in Vault at central/eda-admin-central
 	@echo "$(BOLD)Storing EDA central admin credentials in Vault...$(RESET)"
 	@$(call sovereign_login_central)
-	@VAULT_ADDR="https://vault-central.apps.central.example.com"; \
+	@set -a; [ -f "$(CURDIR)/../.env" ] && . "$(CURDIR)/../.env"; [ -f "$(CURDIR)/.env" ] && . "$(CURDIR)/.env"; set +a; \
+	VAULT_ADDR="${VAULT_CENTRAL_URL:?Set VAULT_CENTRAL_URL in .env}"; \
 	ROOT_TOKEN=$$(oc get secret vault-init-secrets -n central-vault \
 	  -o jsonpath='{.data.root_token}' 2>/dev/null | base64 -d); \
 	if [ -z "$$ROOT_TOKEN" ]; then \
@@ -68,10 +71,11 @@ aap-store-admin-eda-central: check-env-central ## Read EDA admin password and st
 	fi
 
 .PHONY: aap-store-admin-services
-aap-store-admin-services: check-env-services ## Read AAP services admin password and store in Vault at central/aap-admin-services
+aap-store-admin-services: check-env ## Read AAP services admin password and store in Vault at central/aap-admin-services
 	@echo "$(BOLD)Storing AAP services admin credentials in Vault...$(RESET)"
 	@$(call sovereign_login_services)
-	@VAULT_ADDR="https://vault-central.apps.central.example.com"; \
+	@set -a; [ -f "$(CURDIR)/../.env" ] && . "$(CURDIR)/../.env"; [ -f "$(CURDIR)/.env" ] && . "$(CURDIR)/.env"; set +a; \
+	VAULT_ADDR="${VAULT_CENTRAL_URL:?Set VAULT_CENTRAL_URL in .env}"; \
 	$(call sovereign_login_central); \
 	ROOT_TOKEN=$$(oc get secret vault-init-secrets -n central-vault \
 	  -o jsonpath='{.data.root_token}' 2>/dev/null | base64 -d); \
@@ -92,7 +96,7 @@ aap-store-admin-services: check-env-services ## Read AAP services admin password
 	  printf "  $(RED)✗$(RESET)  sovereign-aap-controller-admin-password not found in aap namespace\n"; \
 	  exit 1; \
 	fi; \
-	AAP_CTRL_URL="https://sovereign-aap-controller-aap.apps.services.lab.example.com"; \
+	AAP_CTRL_URL="${AAP_SERVICES_CONTROLLER_URL:?Set AAP_SERVICES_CONTROLLER_URL in .env}"; \
 	printf "  Getting AAP services controller token...\n"; \
 	AAP_TOKEN=$$(curl -sk -u "admin:$$CTRL_PASS" -X POST "$$AAP_CTRL_URL/api/controller/v2/tokens/" \
 	  -H "Content-Type: application/json" \

@@ -9,8 +9,8 @@
 
 | Context | API Server (example) | Role |
 |---------|---------------------|------|
-| `central-admin` | `api.central.lab.example.com` | Bootstrap, Vault, RHBK, ACM, CNV, MTV |
-| `services-admin` | `api.shc-services.lab.example.com` | Tenant operators, entity namespaces, dashboards |
+| `central-admin` | `api.central.LAB_DOMAIN` | Bootstrap, Vault, RHBK, ACM, CNV, MTV |
+| `services-admin` | `api.shc-services.LAB_DOMAIN` | Tenant operators, entity namespaces, dashboards |
 
 Set contexts via `oc config` or inventory in test runner.
 
@@ -83,7 +83,7 @@ curl -sk -o /dev/null -w "%{http_code}" https://<rhbk-host>/realms/master/.well-
 
 ```bash
 # From any platform pod
-oc run pull-test --image=quay.example.com/hybrid-sovereign/namespace-operator:<tag> --restart=Never --context=services-admin
+oc run pull-test --image=quay.BASE_DOMAIN/hybrid-sovereign/namespace-operator:<tag> --restart=Never --context=services-admin
 oc get pod pull-test -o jsonpath='{.status.phase}'
 ```
 

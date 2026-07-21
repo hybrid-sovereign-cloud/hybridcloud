@@ -6,7 +6,7 @@
 
   vars:
     keycloak_central_url: "{{ lookup('env', 'KEYCLOAK_CENTRAL_URL') | default('http://sovereign-keycloak-central-service.rhbk.svc:8080', true) }}"
-    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') | default('https://keycloak-services.apps.services.lab.example.com', true) }}"
+    keycloak_services_url: "{{ lookup('env', 'KEYCLOAK_SERVICES_URL') }}"
     keycloak_admin_secret_name: "{{ lookup('env', 'KEYCLOAK_ADMIN_SECRET') | default('sovereign-keycloak-central-initial-admin', true) }}"
     keycloak_admin_secret_namespace: "{{ lookup('env', 'KEYCLOAK_ADMIN_SECRET_NS') | default('rhbk', true) }}"
     keycloak_services_admin_secret_name: "{{ lookup('env', 'KEYCLOAK_SERVICES_ADMIN_SECRET') | default('sovereign-keycloak-services-initial-admin', true) }}"

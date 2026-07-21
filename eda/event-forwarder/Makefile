@@ -1,4 +1,4 @@
-IMAGE_REGISTRY ?= quay.example.com
+IMAGE_REGISTRY ?= $(OCI_HOST)
 IMAGE_NAMESPACE ?= hybrid-sovereign
 IMAGE_NAME = event-forwarder
 IMAGE_TAG ?= 0.1.0

@@ -170,7 +170,7 @@ The Makefile automatically derives from `OCI_REGISTRY`:
 
 | Variable | Derivation | Example |
 |---|---|---|
-| `OCI_HOST` | Hostname extracted from URL | `quay.example.com` |
+| `OCI_HOST` | Hostname extracted from URL | `quay.BASE_DOMAIN` |
 | `OCI_NAMESPACE` | Organization from URL path | `hybrid-sovereign` |
 
 If `OCI_REGISTRY` is just a hostname (no path), `OCI_NAMESPACE` defaults to `sovereign`.

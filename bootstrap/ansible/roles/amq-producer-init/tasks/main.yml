@@ -47,7 +47,11 @@
       {{
         kafka_external_bootstrap
         if (kafka_external_bootstrap | length > 0)
-        else (kafka_cluster_name ~ '-kafka-bootstrap-' ~ kafka_namespace ~ '.apps.central.example.com:443')
+        else (
+          lookup('env', 'KAFKA_EXTERNAL_BOOTSTRAP')
+          if (lookup('env', 'KAFKA_EXTERNAL_BOOTSTRAP') | length > 0)
+          else (kafka_cluster_name ~ '-kafka-bootstrap-' ~ kafka_namespace ~ '.' ~ (lookup('env', 'CENTRAL_APPS_DOMAIN')) ~ ':443')
+        )
       }}
 
 - name: Retrieve Vault root token from Secret

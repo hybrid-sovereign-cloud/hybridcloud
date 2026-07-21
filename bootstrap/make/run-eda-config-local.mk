@@ -6,7 +6,7 @@ run-eda-config-local: check-env-central ## Run eda-config.yml locally against ce
 	@$(call sovereign_login_central)
 	$(call ok,Logged in to central cluster)
 	@echo "$(BOLD)Fetching job secrets from cluster...$(RESET)"
-	@export EDA_CONTROLLER_URL="https://sovereign-aap-aap.apps.central.lab.example.com" && \
+	@export EDA_CONTROLLER_URL="https://sovereign-aap-aap.apps.central.${LAB_DOMAIN}" && \
 	export AAP_CONTROLLER_URL="$$EDA_CONTROLLER_URL" && \
 	export AAP_RESOURCE_TOKEN=$$(oc get secret eda-admin-credentials -n sovereign-cloud-jobs -o jsonpath='{.data.token}' | base64 -d) && \
 	export RULEBOOK_REPO_URL="https://github.com/hybrid-sovereign-cloud/eda.git" && \
@@ -25,6 +25,6 @@ run-eda-config-local: check-env-central ## Run eda-config.yml locally against ce
 	  -e OCI_REGISTRY -e OCI_ROBOT_USERNAME -e OCI_ROBOT_PASSWORD \
 	  -e EDA_ADMIN_PASSWORD -e EVENT_STREAM_TOKEN \
 	  --entrypoint ansible-playbook \
-	  quay.example.com/hybrid-sovereign/ansible-runner:latest \
+	  ${OCI_HOST}/hybrid-sovereign/ansible-runner:latest \
 	  /runner/project/eda-config.yml
 	$(call ok,eda-config.yml completed successfully)

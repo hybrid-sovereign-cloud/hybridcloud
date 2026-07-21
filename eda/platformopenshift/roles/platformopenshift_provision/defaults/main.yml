@@ -1,12 +1,12 @@
 ---
 platformopenshift_operator_namespace: sovereign-cloud
-central_api_server: "https://api.central.example.com:6443"
+central_api_server: "https://api.central.{{ lookup('env', 'LAB_DOMAIN') }}:6443"
 central_sa_secret_name: awshelper-creator-sa
 oso_central_sa_secret_name: osohelper-creator-sa
 central_sa_secret_namespace: sovereign-cloud
 eda_central_work_namespace: sovereign-cloud-jobs
 keycloak_internal_url: "{{ lookup('env', 'KEYCLOAK_INTERNAL_URL') | default('http://rhbk-services-service.services-rhbk.svc:8080', true) }}"
-keycloak_external_url: "{{ lookup('env', 'KEYCLOAK_EXTERNAL_URL') | default('https://rhbk-services.apps.services.lab.example.com', true) }}"
+keycloak_external_url: "{{ lookup('env', 'KEYCLOAK_EXTERNAL_URL') }}"
 keycloak_realm: "{{ lookup('env', 'KEYCLOAK_REALM') | default('sovereign-tenants', true) }}"
 keycloak_admin_secret_name: "rhbk-admin-credentials"
 
@@ -26,4 +26,4 @@ vault_init_secret_namespace: "central-vault"
 vault_init_addr: "http://vault-active.central-vault.svc:8200"
 mce_cluster_build_chart_version: "0.2.0"
 
-eda_dashboard_host: "https://sovereign-aap-aap.apps.central.lab.example.com"
+eda_dashboard_host: "https://sovereign-aap-aap.apps.central.{{ lookup('env', 'LAB_DOMAIN') }}"

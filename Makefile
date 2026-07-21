@@ -27,8 +27,8 @@ build-operators:
 	$(MAKE) -C operator/namespace operator-build-push
 
 build-iaac:
-	podman build -t quay.example.com/hybrid-sovereign/iaac-git-sync:0.1.0 -f iaac/Dockerfile iaac/
-	podman push quay.example.com/hybrid-sovereign/iaac-git-sync:0.1.0
+	podman build -t $(OCI_HOST)/hybrid-sovereign/iaac-git-sync:0.1.0 -f iaac/Dockerfile iaac/
+	podman push $(OCI_HOST)/hybrid-sovereign/iaac-git-sync:0.1.0
 
 upload-hybrid-charts:
 	$(MAKE) -C bootstrap upload-amq-streams-chart upload-primary-operator-chart upload-iaac-chart

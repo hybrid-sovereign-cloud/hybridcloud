@@ -3,6 +3,55 @@
 # Every Application-level *.enabled below MUST be false for phased rebuild.
 # Enable one component per commit — see specs/005-phased-env-rebuild/quickstart.md
 # Do NOT change nested chart sub-values (vault HA, keycloak instance, etc.) here.
+#
+# Lab topology: real hostnames/IPs live in local .env (gitignored) and Vault
+# path central/data/lab-config. Generate overlay with: make render-values-lab
+# Merge values-lab.yaml (gitignored) over this file for local/bootstrap use.
+# Do not commit passwords, lab IPs, or private lab domains to git.
+
+# ─── Lab topology primitives (override via values-lab.yaml / Vault lab-config)
+# Keep empty in the public tree; populate from .env via make render-values-lab.
+# Lab topology — populated for live platform; override via values-lab.yaml / Vault.
+# After make sync-lab-helm-params, prefer empty placeholders in git and inject from .env.
+lab:
+  domain: "lab.example.com"
+  baseDomain: "example.com"
+  centralClusterName: "central"
+  servicesClusterName: "services"
+  appsSubdomain: apps
+  centralAppsDomain: "apps.central.example.com"
+  servicesAppsDomain: "apps.services.example.com"
+  dnsForwarderZone: "lab.example.com"
+  dnsForwarderIps:
+    - "127.0.0.1"
+    - "127.0.0.1"
+  extraDnsServers:
+    - name: ses4-slug-forwarder
+      zones:
+        - a4fce.lab.example.com
+      policy: Sequential
+      upstreams:
+        - "205.251.193.121"
+        - "205.251.195.171"
+        - "205.251.197.184"
+        - "205.251.198.181"
+    - name: designate-zone-forwarder
+      zones:
+        - shc.example.com
+      policy: Sequential
+      upstreams:
+        - "8.8.8.8"
+        - "8.8.4.4"
+        - "127.0.0.1"
+        - "127.0.0.1"
+
+# Pull lab-config from Vault after `make upload-lab-config`. Keep disabled until seeded.
+labConfigExternalSecret:
+  enabled: false
+  namespace: openshift-gitops
+  syncWave: "28"
+  secretStoreName: vault-backend
+  secretStoreKind: ClusterSecretStore
 
 # ─── ArgoCD namespace ─────────────────────────────────────────────────────────
 argocd:
@@ -26,7 +75,7 @@ servicesCluster:
 
 # ─── OCI registry that stores platform Helm charts ───────────────────────────
 oci:
-  registry: "quay.example.com"
+  registry: &oci_registry "quay.example.com"
   repositoryBase: "hybrid-sovereign"
 
 # ─── Sovereign Namespaces (central cluster) ──────────────────────────────────
@@ -924,15 +973,16 @@ dnsForwarderServices:
   enabled: true
   chartVersion: "0.1.0"
   syncWave: "2"
+  # Zone/IPs mirrored from lab.* (keep in sync via make render-values-lab)
   values:
     servers:
-      - name: lab-signal9-forwarder
+      - name: lab-domain-forwarder
         zones:
           - lab.example.com
         policy: Sequential
         upstreams:
-          - 127.0.0.1
-          - 127.0.0.1
+          - "127.0.0.1"
+          - "127.0.0.1"
 
 # ─── External Secrets Operator (services) ───────────────────────────────────
 externalSecretsServices:

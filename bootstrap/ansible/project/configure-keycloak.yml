@@ -43,7 +43,7 @@
         client_id: "openshift-central"
         name: "OpenShift Central"
         redirect_uris:
-          - "https://oauth-openshift.apps.shcstack-3.lab.example.com/oauth2callback/*"
+          - "{{ lookup('env', 'OAUTH_OPENSHIFT_CALLBACK_PATTERN') | default('', true) }}"
 
     # Services cluster clients (in services RHBK)
     services_clients:
@@ -59,7 +59,7 @@
         client_id: "openshift-services"
         name: "OpenShift Services"
         redirect_uris:
-          - "https://oauth-openshift.apps.services.lab.example.com/oauth2callback/*"
+          - "{{ lookup('env', 'OAUTH_OPENSHIFT_CALLBACK_PATTERN') | default('', true) }}"
 
   tasks:
     # --- Central RHBK configuration ---

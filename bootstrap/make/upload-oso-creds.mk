@@ -12,7 +12,7 @@ upload-oso-creds: check-env-central ## Parse OSO_CLOUDS yaml and write credentia
 	  exit 1; \
 	fi
 	@$(call sovereign_login_central)
-	@VAULT_ADDR="https://vault-central.apps.central.lab.example.com"; \
+	@VAULT_ADDR="${VAULT_CENTRAL_URL}"; \
 	ROOT_TOKEN=$$(oc get secret vault-init-secrets -n central-vault \
 	  -o jsonpath='{.data.root_token}' 2>/dev/null | base64 -d); \
 	if [ -z "$$ROOT_TOKEN" ]; then \

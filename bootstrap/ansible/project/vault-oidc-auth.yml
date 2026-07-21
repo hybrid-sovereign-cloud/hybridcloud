@@ -113,7 +113,7 @@
 
     - name: Fetch services cluster ingress CA
       ansible.builtin.uri:
-        url: "{{ lookup('env', 'OCP_SERVICES_SERVER') | default('https://api.services.lab.example.com:6443', true) }}/api/v1/namespaces/openshift-config-managed/configmaps/default-ingress-cert"
+        url: "{{ lookup('env', 'OCP_SERVICES_SERVER') }}/api/v1/namespaces/openshift-config-managed/configmaps/default-ingress-cert"
         method: GET
         validate_certs: false
         headers:

@@ -43,3 +43,10 @@ Thumbs.db
 
 # Go
 vendor/
+
+# Lab overlays / rendered values — never commit real endpoints
+values-lab.yaml
+**/values-lab.yaml
+bootstrap/helm/central/values.generated.yaml
+.env.local
+scripts/scrub-patterns.txt

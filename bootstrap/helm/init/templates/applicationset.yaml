@@ -3,6 +3,7 @@
 # ApplicationSet generates the central app-of-apps only.
 # All Applications (including those targeting the services cluster) live in helm/central.
 # Central ArgoCD manages both clusters via destination.server.
+# Lab topology helm.parameters come from Values.labTopology (set via make sync-lab-helm-params / init --set).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -31,6 +32,29 @@ spec:
         path: "{{`{{chartPath}}`}}"
         helm:
           releaseName: "sovereign-{{`{{cluster}}`}}"
+          {{- if .Values.labTopology }}
+          parameters:
+            - name: lab.domain
+              value: {{ .Values.labTopology.domain | default "" | quote }}
+            - name: lab.baseDomain
+              value: {{ .Values.labTopology.baseDomain | default "" | quote }}
+            - name: lab.centralClusterName
+              value: {{ .Values.labTopology.centralClusterName | default "" | quote }}
+            - name: lab.servicesClusterName
+              value: {{ .Values.labTopology.servicesClusterName | default "" | quote }}
+            - name: lab.centralAppsDomain
+              value: {{ .Values.labTopology.centralAppsDomain | default "" | quote }}
+            - name: lab.servicesAppsDomain
+              value: {{ .Values.labTopology.servicesAppsDomain | default "" | quote }}
+            - name: lab.dnsForwarderZone
+              value: {{ .Values.labTopology.dnsForwarderZone | default "" | quote }}
+            - name: servicesCluster.server
+              value: {{ .Values.labTopology.servicesClusterServer | default "" | quote }}
+            - name: oci.registry
+              value: {{ .Values.labTopology.ociRegistry | default "" | quote }}
+            - name: oci.repositoryBase
+              value: {{ .Values.labTopology.ociRepositoryBase | default "hybrid-sovereign" | quote }}
+          {{- end }}
       destination:
         server: https://kubernetes.default.svc
         namespace: {{ .Values.applicationSet.destinationNamespace }}

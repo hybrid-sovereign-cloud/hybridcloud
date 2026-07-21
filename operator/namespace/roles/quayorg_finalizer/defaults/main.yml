@@ -1,1 +1,1 @@
-quay_url: "{{ lookup('env', 'QUAY_URL') | default('https://svc-sovereign-registry-quay-quay-enterprise.apps.services.lab.example.com', true) }}"
+quay_url: "{{ lookup('env', 'QUAY_URL') }}"

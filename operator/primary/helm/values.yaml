@@ -3,7 +3,7 @@ pluginsNamespace: sovereign-cloud-plugins
 installCRDs: true
 
 image:
-  repository: quay.example.com/hybrid-sovereign/hybridsovereign-primary-operator
+  repository: /hybrid-sovereign/hybridsovereign-primary-operator
   tag: "0.1.0"
   pullPolicy: Always
 
@@ -12,7 +12,7 @@ imagePullSecrets:
 
 namespaceOperator:
   image:
-    repository: quay.example.com/hybrid-sovereign/hybridsovereign-namespace-operator
+    repository: /hybrid-sovereign/hybridsovereign-namespace-operator
     tag: "0.1.0"
   chartVersion: "0.1.0"
 

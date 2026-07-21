@@ -1,7 +1,7 @@
 namespace: sovereign-cloud-plugins
 
 image:
-  repository: quay.example.com/hybrid-sovereign/iaac-git-sync
+  repository: ""  # set via values-lab / OCI_HOST
   tag: "0.1.0"
   pullPolicy: Always
 
@@ -9,7 +9,7 @@ imagePullSecrets:
   - name: quay-pull-secret
 
 gitea:
-  url: "https://gitea-gitea.apps.central.lab.example.com"
+  url: ""  # set via GITEA_URL / values-lab
   repoOwner: gitea_admin
   repoName: tenancy_repo
   externalSecret:

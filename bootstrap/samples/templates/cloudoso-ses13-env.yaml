@@ -8,7 +8,7 @@ metadata:
   namespace: entity-acme-corp
 spec:
   vaultPath: "oso/accounts/shc_admin"
-  baseDomain: "shc.example.com"
+  baseDomain: "shc."
   projectDomain: "shc_domain"
   externalNetwork: "internet"
   landingzone: "default"

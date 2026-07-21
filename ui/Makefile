@@ -2,7 +2,7 @@
 
 SHELL := /bin/bash
 NPM := npm
-REGISTRY ?= quay.example.com/hybrid-sovereign
+REGISTRY ?= $(OCI_HOST)/hybrid-sovereign
 ADMIN_DASH_TAG ?= 2.0.11
 TENANT_DASH_TAG ?= 5.0.12
 ADMIN_PLUGIN_TAG ?= 1.2.10

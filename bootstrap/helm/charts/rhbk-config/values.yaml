@@ -2,7 +2,7 @@ namespace: rhbk
 
 ansibleJob:
   enabled: true
-  image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+  image: "/hybrid-sovereign/ansible-runner:latest"
   serviceAccount: sovereign-ansible-runner
   adminSecretName: "sovereign-keycloak-central-initial-admin"
   keycloakUrl: "http://sovereign-keycloak-central-service.rhbk.svc:8080"

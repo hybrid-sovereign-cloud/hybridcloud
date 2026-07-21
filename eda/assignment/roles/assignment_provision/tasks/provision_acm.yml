@@ -69,7 +69,7 @@
   ansible.builtin.command:
     cmd: >-
       helm pull
-      oci://quay.example.com/hybrid-sovereign/sovereign-assignment
+      oci://{{ lookup('env', 'OCI_HOST') }}/hybrid-sovereign/sovereign-assignment
       --version {{ sovereign_assignment_chart_version }}
       --untar
       --destination /tmp/sovereign-assignment-chart/

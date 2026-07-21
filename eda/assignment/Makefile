@@ -1,4 +1,4 @@
-IMAGE_REGISTRY ?= quay.example.com
+IMAGE_REGISTRY ?= $(OCI_HOST)
 IMAGE_NAMESPACE ?= hybrid-sovereign
 DE_NAME = de-assignment
 DE_TAG ?= 0.1.6

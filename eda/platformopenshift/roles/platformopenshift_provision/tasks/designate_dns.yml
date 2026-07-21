@@ -75,9 +75,9 @@
         auth=auth,
         region_name=cloud_cfg.get('region_name', 'regionOne'),
         identity_api_version='3')
-    zone = conn.dns.find_zone('shc.example.com.')
+    zone = conn.dns.find_zone('{{ lookup('env', 'BASE_DOMAIN') }}.')
     if zone is None:
-        raise SystemExit('Designate zone shc.example.com not found')
+        raise SystemExit('Designate zone {{ lookup('env', 'BASE_DOMAIN') }} not found')
     records = [
         ('api.{{ cb_cluster_name }}.{{ cb_cluster_domain }}.', '{{ cb_api_vip }}'),
         ('*.apps.{{ cb_cluster_name }}.{{ cb_cluster_domain }}.', '{{ cb_ingress_vip }}'),

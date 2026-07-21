@@ -59,7 +59,7 @@ spec:
           emptyDir: {}
       initContainers:
         - name: extract-db-uri
-          image: {{ .Values.dbInitJob.image | default "quay.example.com/hybrid-sovereign/ansible-runner:latest" }}
+          image: {{ .Values.dbInitJob.image | default "/hybrid-sovereign/ansible-runner:latest" }}
           env:
             - name: CRUNCHY_SECRET
               value: "{{ .Values.crunchy.name }}-pguser-quay"
@@ -107,7 +107,7 @@ spec:
                 echo "fuzzystrmatch enabled"
       containers:
         - name: inject-db-uri
-          image: {{ .Values.dbInitJob.image | default "quay.example.com/hybrid-sovereign/ansible-runner:latest" }}
+          image: {{ .Values.dbInitJob.image | default "/hybrid-sovereign/ansible-runner:latest" }}
           env:
             - name: CRUNCHY_SECRET
               value: "{{ .Values.crunchy.name }}-pguser-quay"

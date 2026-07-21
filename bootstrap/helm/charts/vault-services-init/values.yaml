@@ -1,6 +1,6 @@
 namespace: vault
 serviceAccount: vault-init-runner
-image: "quay.example.com/hybrid-sovereign/ansible-runner:latest"
+image: "/hybrid-sovereign/ansible-runner:latest"
 imagePullSecretName: "quay-pull-secret"
 secretName: "vault-services-init-secrets"
 vaultAddr: "http://vault-services-0.vault-services-internal.vault.svc:8200"
