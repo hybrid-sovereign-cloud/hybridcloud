@@ -2641,7 +2641,7 @@ amqStreams:
 # ─── HybridSovereign Primary Operator (services) ─────────────────────────────
 hybridsovereignPrimaryOperator:
   enabled: true
-  chartVersion: "0.1.18"
+  chartVersion: "0.1.19"
   syncWave: "38"
   destinationNamespace: sovereign-cloud
   values:

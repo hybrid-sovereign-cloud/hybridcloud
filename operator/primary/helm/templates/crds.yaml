@@ -3127,7 +3127,21 @@ spec:
                   format: int64
                 edaJobs:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      jobId:
+                        type: string
+                      url:
+                        type: string
+                      timestamp:
+                        type: string
+                      status:
+                        type: string
+                        enum: [running, success, failed]
+                    x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
                   items:
@@ -3252,7 +3266,21 @@ spec:
                   format: int64
                 edaJobs:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      jobId:
+                        type: string
+                      url:
+                        type: string
+                      timestamp:
+                        type: string
+                      status:
+                        type: string
+                        enum: [running, success, failed]
+                    x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
                   items:
@@ -3363,7 +3391,21 @@ spec:
                   format: int64
                 edaJobs:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      jobId:
+                        type: string
+                      url:
+                        type: string
+                      timestamp:
+                        type: string
+                      status:
+                        type: string
+                        enum: [running, success, failed]
+                    x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
                   items:
@@ -3475,7 +3517,21 @@ spec:
                   format: int64
                 edaJobs:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      jobId:
+                        type: string
+                      url:
+                        type: string
+                      timestamp:
+                        type: string
+                      status:
+                        type: string
+                        enum: [running, success, failed]
+                    x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
                   items:
@@ -3594,7 +3650,21 @@ spec:
                   format: int64
                 edaJobs:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      jobId:
+                        type: string
+                      url:
+                        type: string
+                      timestamp:
+                        type: string
+                      status:
+                        type: string
+                        enum: [running, success, failed]
+                    x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
                   items:
@@ -3744,7 +3814,21 @@ spec:
                   format: int64
                 edaJobs:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      jobId:
+                        type: string
+                      url:
+                        type: string
+                      timestamp:
+                        type: string
+                      status:
+                        type: string
+                        enum: [running, success, failed]
+                    x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
                   items:
