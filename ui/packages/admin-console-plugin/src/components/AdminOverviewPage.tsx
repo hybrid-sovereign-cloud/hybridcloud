@@ -6,6 +6,7 @@ import {
   HealthStrip,
   KindIcon,
   HybridSovereignKind,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
 
@@ -32,7 +33,7 @@ const AdminOverviewPage: React.FC = () => (
       <PageHeader
         title="Sovereign Cloud Overview"
         subtitle="Platform health and CR topology — OpenShift Console native"
-        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Overview' }]}
+        breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: t('pages.overviewTitle') }]}
       />
       <HealthStrip
         tiles={[

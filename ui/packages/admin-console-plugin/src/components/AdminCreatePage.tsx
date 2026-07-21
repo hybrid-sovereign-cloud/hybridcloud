@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { Alert, PageSection } from '@patternfly/react-core';
-import { CreateResourceForm, SelfServiceFormType } from '@hybridsovereign/shared';
+import { CreateResourceForm, SelfServiceFormType,
+  useTranslation,
+} from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
 
 const LIST_PATH: Record<string, string> = {
@@ -10,6 +12,7 @@ const LIST_PATH: Record<string, string> = {
 };
 
 const AdminCreatePage: React.FC = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { kind } = useParams<{ kind: string }>();
   const formType = (kind ?? 'entity') as SelfServiceFormType;

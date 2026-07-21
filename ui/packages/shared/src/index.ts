@@ -3,6 +3,19 @@ export * from './hooks';
 export * from './theme';
 export * from './components';
 export * from './icons';
+export * from './forms/specFieldMeta';
+export { GenericSpecEditor } from './forms/GenericSpecEditor';
+export {
+  initI18n,
+  i18n,
+  getStoredLocale,
+  setStoredLocale,
+  LOCALE_STORAGE_KEY,
+  SovereignI18nProvider,
+  LanguageToggle,
+} from './i18n';
+export type { AppLocale, SovereignI18nProviderProps, LanguageToggleProps } from './i18n';
+export { useTranslation } from 'react-i18next';
 export {
   createAccessFlagHook,
   type AccessCheck,

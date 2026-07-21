@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PageSection } from '@patternfly/react-core';
-import { ResourceDetail } from '@hybridsovereign/shared';
+import { ResourceDetail,
+  useTranslation,
+} from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
 
 const ENTITY_NS = 'sovereign-cloud';

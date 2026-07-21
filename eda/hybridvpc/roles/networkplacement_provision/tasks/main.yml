@@ -1,0 +1,137 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        networkplacement_cr_name: "{{ event_payload.regarding.name }}"
+        networkplacement_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        networkplacement_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Stub debug for NetworkPlacement
+      ansible.builtin.debug:
+        msg: "Stub provision NetworkPlacement/{{ networkplacement_cr_name }} in {{ networkplacement_cr_namespace }}"
+
+    - name: Read CR generation
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: NetworkPlacement
+        name: "{{ networkplacement_cr_name }}"
+        namespace: "{{ networkplacement_cr_namespace }}"
+      register: networkplacement_cr_lookup
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        networkplacement_generation: "{{ networkplacement_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Read NetworkPlacement CR
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: NetworkPlacement
+        name: "{{ networkplacement_cr_name }}"
+        namespace: "{{ networkplacement_cr_namespace }}"
+      register: np_cr_lookup
+
+    - name: Resolve placement stub facts
+      ansible.builtin.set_fact:
+        np_spec: "{{ np_cr_lookup.resources[0].spec | default({}) }}"
+        np_entity: "{{ networkplacement_cr_namespace | regex_replace('^entity-', '') | regex_replace('^sovereign-', '') }}"
+        np_prefixes: "{{ (np_cr_lookup.resources[0].spec.prefixes | default([])) }}"
+        np_target_backend: >-
+          {{
+            'aws' if (np_cr_lookup.resources[0].spec.backend.kind | default('')) == 'CloudAWS'
+            else ('openstack' if (np_cr_lookup.resources[0].spec.backend.kind | default('')) == 'CloudOSO'
+            else 'openshift')
+          }}
+
+    - name: Read referenced HybridNetwork for numbering
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: HybridNetwork
+        name: "{{ np_spec.network | default('') }}"
+        namespace: "{{ networkplacement_cr_namespace }}"
+      register: hn_lookup
+      when: (np_spec.network | default('')) | length > 0
+
+    - name: Copy numbering from HybridNetwork when present
+      ansible.builtin.set_fact:
+        np_network_id: "{{ hn_lookup.resources[0].status.networkId | default('stub-network') }}"
+        np_vni: "{{ hn_lookup.resources[0].status.vni | default(50001) }}"
+        np_vrf: "{{ hn_lookup.resources[0].status.vrfName | default(np_spec.network) }}"
+        np_rt: "{{ hn_lookup.resources[0].status.canonicalRt | default('65000:50001') }}"
+      when: hn_lookup.resources | default([]) | length > 0
+
+    - name: Get timestamp
+      ansible.builtin.set_fact:
+        networkplacement_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark NetworkPlacement ready (stub)
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: networkplacements
+        cr_name: "{{ networkplacement_cr_name }}"
+        cr_namespace: "{{ networkplacement_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          message: "Stub provisioned by EDA hybridvpc (no infra changes)"
+          lastReconciledAt: "{{ networkplacement_status_transition_time }}"
+          observedGeneration: "{{ networkplacement_generation }}"
+          entity: "{{ np_entity | default('') }}"
+          networkId: "{{ np_network_id | default('stub-network') }}"
+          targetBackend: "{{ np_target_backend }}"
+          vni: "{{ np_vni | default(50001) }}"
+          vrfName: "{{ np_vrf | default(networkplacement_cr_name) }}"
+          canonicalRt: "{{ np_rt | default('65000:50001') }}"
+          backendRt: "{{ np_rt | default('65000:50001') }}"
+          rtStrategy: native
+          domainAsn: 65000
+          backendReady: true
+          prerequisiteReady: true
+          fabricApplied: true
+          backendApplied: true
+          validated: true
+          realizedPrefixes: "{{ np_prefixes }}"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ networkplacement_status_transition_time }}"
+              reason: EDASucceeded
+              message: Stub provision complete
+
+  rescue:
+    - name: Mark NetworkPlacement failed
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: networkplacements
+        cr_name: "{{ networkplacement_cr_name }}"
+        cr_namespace: "{{ networkplacement_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          message: "{{ ansible_failed_result.msg | default('EDA stub provision failed') }}"
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default('EDA stub provision failed') }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise
+      ansible.builtin.fail:
+        msg: "NetworkPlacement {{ networkplacement_cr_name | default('unknown') }} stub provision failed"

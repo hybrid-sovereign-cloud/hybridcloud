@@ -236,6 +236,72 @@ export interface VaultKVSpec {
 
 export type VaultKV = K8sResource<VaultKVSpec>;
 
+/** HybridFabric — platform EVPN fabric */
+export interface HybridFabricSpec {
+  enabled?: boolean;
+  domainAsn?: number;
+  routeReflectors?: Array<{ name: string; address: string }>;
+  vniPool?: { start: number; end: number };
+  borderGateway?: { name?: string; loopback?: string; vaultCredentialRef?: string };
+  transportDefaults?: {
+    mtu?: number;
+    innerMssClamp?: number;
+    defaultTunnelType?: 'wireguard' | 'ipsec' | 'macsec' | 'none';
+  };
+}
+export type HybridFabric = K8sResource<HybridFabricSpec>;
+
+/** CloudGateway — cloud landing zone */
+export interface CloudGatewaySpec {
+  enabled?: boolean;
+  cloud?: 'aws' | 'openstack' | 'openshift';
+  region?: string;
+  domainAsn?: number;
+  fabricRef?: string;
+  landingZoneTemplate?: string;
+  transport?: { type?: string; vaultPeerConfigRef?: string };
+  awsAccountId?: string;
+  openstackCloudOSORef?: string;
+}
+export type CloudGateway = K8sResource<CloudGatewaySpec>;
+
+/** TransportLink — fabric↔gateway tunnel */
+export interface TransportLinkSpec {
+  enabled?: boolean;
+  fabricRef?: string;
+  cloudGatewayRef?: string;
+  tunnelType?: 'wireguard' | 'ipsec' | 'macsec' | 'none';
+  vaultConfigRef?: string;
+}
+export type TransportLink = K8sResource<TransportLinkSpec>;
+
+/** HybridNetwork — tenant network identity */
+export interface HybridNetworkSpec {
+  description?: string;
+  networkViewerRbac?: string[];
+}
+export type HybridNetwork = K8sResource<HybridNetworkSpec>;
+
+/** NetworkPlacement — backend attachment */
+export interface NetworkPlacementSpec {
+  network: string;
+  backend: { kind: 'CloudAWS' | 'CloudOSO' | 'PlatformOpenshift'; name: string };
+  prefixes?: string[];
+  state?: 'present' | 'absent';
+}
+export type NetworkPlacement = K8sResource<NetworkPlacementSpec>;
+
+/** UIHealthChecker — browser probe target */
+export interface UIHealthCheckerSpec {
+  url: string;
+  displayName?: string;
+  description?: string;
+  group?: string;
+  expectedStatus?: number;
+  timeoutSeconds?: number;
+}
+export type UIHealthChecker = K8sResource<UIHealthCheckerSpec>;
+
 /** Union of all Hybrid Sovereign CR kinds */
 export type HybridSovereignKind =
   | 'Entity'
@@ -254,7 +320,13 @@ export type HybridSovereignKind =
   | 'QuayOrg'
   | 'QuayConfig'
   | 'Vault'
-  | 'VaultKV';
+  | 'VaultKV'
+  | 'HybridFabric'
+  | 'CloudGateway'
+  | 'TransportLink'
+  | 'HybridNetwork'
+  | 'NetworkPlacement'
+  | 'UIHealthChecker';
 
 /** Plural resource names for K8s API paths */
 export const KIND_PLURALS: Record<HybridSovereignKind, string> = {
@@ -275,7 +347,32 @@ export const KIND_PLURALS: Record<HybridSovereignKind, string> = {
   QuayConfig: 'quayconfigs',
   Vault: 'vaults',
   VaultKV: 'vaultkvs',
+  HybridFabric: 'hybridfabrics',
+  CloudGateway: 'cloudgateways',
+  TransportLink: 'transportlinks',
+  HybridNetwork: 'hybridnetworks',
+  NetworkPlacement: 'networkplacements',
+  UIHealthChecker: 'uihealthcheckers',
 };
+
+/** Namespaced kinds shown on the tenancy Overview */
+export const TENANT_OVERVIEW_KINDS: HybridSovereignKind[] = [
+  'Team',
+  'Project',
+  'PlatformOpenshift',
+  'Assignment',
+  'CloudOSO',
+  'CloudAWS',
+  'OpenStackMigration',
+  'Persona',
+  'Rbac',
+  'Vault',
+  'VaultKV',
+  'AAPOrg',
+  'QuayOrg',
+  'HybridNetwork',
+  'NetworkPlacement',
+];
 
 export type HybridSovereignResource =
   | Entity
@@ -294,4 +391,10 @@ export type HybridSovereignResource =
   | QuayOrg
   | QuayConfig
   | Vault
-  | VaultKV;
+  | VaultKV
+  | HybridFabric
+  | CloudGateway
+  | TransportLink
+  | HybridNetwork
+  | NetworkPlacement
+  | UIHealthChecker;

@@ -3,10 +3,10 @@
 SHELL := /bin/bash
 NPM := npm
 REGISTRY ?= $(OCI_HOST)/hybrid-sovereign
-ADMIN_DASH_TAG ?= 2.0.11
-TENANT_DASH_TAG ?= 5.0.12
-ADMIN_PLUGIN_TAG ?= 1.2.10
-TENANT_PLUGIN_TAG ?= 1.3.8
+ADMIN_DASH_TAG ?= 2.0.13
+TENANT_DASH_TAG ?= 5.0.14
+ADMIN_PLUGIN_TAG ?= 1.2.12
+TENANT_PLUGIN_TAG ?= 1.3.10
 
 .PHONY: help install build build-shared build-admin build-tenant \
         build-admin-plugin build-tenant-plugin typecheck dev-admin dev-tenant clean \

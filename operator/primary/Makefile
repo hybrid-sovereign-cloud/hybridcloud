@@ -1,5 +1,5 @@
 OPERATOR_IMAGE ?= $(OCI_HOST)/hybrid-sovereign/hybridsovereign-primary-operator
-OPERATOR_TAG ?= 0.1.0
+OPERATOR_TAG ?= 0.1.17
 CHART_NAME := hybridsovereign-primary-operator
 CHART_VERSION := $(shell grep '^version:' helm/Chart.yaml | awk '{print $$2}')
 

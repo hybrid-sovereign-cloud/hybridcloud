@@ -7,6 +7,7 @@ import {
   ResourceDetail,
   useEntityNamespace,
   configureK8sClient,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';

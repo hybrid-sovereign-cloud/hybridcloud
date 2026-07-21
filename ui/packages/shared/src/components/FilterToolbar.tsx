@@ -8,6 +8,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@patternfly/react-core';
+import { useTranslation } from 'react-i18next';
 
 export type StatusFilter = 'all' | 'ready' | 'failed' | 'pending' | 'reconciling';
 
@@ -29,26 +30,27 @@ export function FilterToolbar({
   statusFilter,
   onStatusFilterChange,
   onRefresh,
-  searchPlaceholder = 'Filter by name…',
+  searchPlaceholder,
 }: FilterToolbarProps): React.ReactElement {
+  const { t } = useTranslation();
   return (
     <Toolbar className="sc-filter-bar" id="sc-filter-toolbar">
       <ToolbarContent>
         <ToolbarItem>
           <SearchInput
-            aria-label="Filter resources"
-            placeholder={searchPlaceholder}
+            aria-label={t('common.filterResources')}
+            placeholder={searchPlaceholder ?? t('common.filterByName')}
             value={search}
             onChange={(_e, v) => onSearchChange(v)}
             onClear={() => onSearchChange('')}
           />
         </ToolbarItem>
         <ToolbarItem>
-          <ToggleGroup aria-label="Status filter">
+          <ToggleGroup aria-label={t('common.statusFilter')}>
             {FILTERS.map((f) => (
               <ToggleGroupItem
                 key={f}
-                text={f}
+                text={t(`status.${f}`)}
                 buttonId={`status-${f}`}
                 isSelected={statusFilter === f}
                 onChange={() => onStatusFilterChange(f)}
@@ -58,7 +60,7 @@ export function FilterToolbar({
         </ToolbarItem>
         <ToolbarItem align={{ default: 'alignRight' }}>
           <Button variant="secondary" onClick={onRefresh}>
-            Refresh
+            {t('common.refresh')}
           </Button>
         </ToolbarItem>
       </ToolbarContent>

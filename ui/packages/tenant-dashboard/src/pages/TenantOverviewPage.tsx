@@ -31,11 +31,32 @@ import {
   normalizeHealth,
   useK8sResourceList,
   K8sResource,
+  useTranslation,
+  TENANT_OVERVIEW_KINDS,
+  HybridSovereignKind,
 } from '@hybridsovereign/shared';
 
 interface TenantOverviewPageProps {
   namespace: string;
 }
+
+const KIND_PATH: Partial<Record<HybridSovereignKind, string>> = {
+  Team: '/teams',
+  Project: '/projects',
+  PlatformOpenshift: '/platforms',
+  Assignment: '/assignments',
+  CloudOSO: '/cloudoso',
+  CloudAWS: '/cloudaws',
+  OpenStackMigration: '/migrations',
+  Persona: '/personas',
+  Rbac: '/rbac',
+  Vault: '/vaults',
+  VaultKV: '/vaultkvs',
+  AAPOrg: '/aaporgs',
+  QuayOrg: '/quayorgs',
+  HybridNetwork: '/networks',
+  NetworkPlacement: '/placements',
+};
 
 function bucket(items: K8sResource[]) {
   let ready = 0;
@@ -51,75 +72,84 @@ function bucket(items: K8sResource[]) {
 }
 
 export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): React.ReactElement {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const opts = { namespace };
+
   const teams = useK8sResourceList<K8sResource>('Team', opts);
   const projects = useK8sResourceList<K8sResource>('Project', opts);
   const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', opts);
   const assignments = useK8sResourceList<K8sResource>('Assignment', opts);
   const cloudoso = useK8sResourceList<K8sResource>('CloudOSO', opts);
   const cloudaws = useK8sResourceList<K8sResource>('CloudAWS', opts);
+  const migrations = useK8sResourceList<K8sResource>('OpenStackMigration', opts);
+  const personas = useK8sResourceList<K8sResource>('Persona', opts);
+  const rbacs = useK8sResourceList<K8sResource>('Rbac', opts);
+  const vaults = useK8sResourceList<K8sResource>('Vault', opts);
+  const vaultkvs = useK8sResourceList<K8sResource>('VaultKV', opts);
+  const aaporgs = useK8sResourceList<K8sResource>('AAPOrg', opts);
+  const quayorgs = useK8sResourceList<K8sResource>('QuayOrg', opts);
+  const hybridnetworks = useK8sResourceList<K8sResource>('HybridNetwork', opts);
+  const networkplacements = useK8sResourceList<K8sResource>('NetworkPlacement', opts);
 
-  const lists: Record<string, K8sResource[]> = {
-    Team: teams.items,
-    Project: projects.items,
-    PlatformOpenshift: platforms.items,
-    Assignment: assignments.items,
-    CloudOSO: cloudoso.items,
-    CloudAWS: cloudaws.items,
+  const hookByKind: Record<string, { items: K8sResource[]; loading: boolean; error: Error | null; refresh: () => void }> = {
+    Team: teams,
+    Project: projects,
+    PlatformOpenshift: platforms,
+    Assignment: assignments,
+    CloudOSO: cloudoso,
+    CloudAWS: cloudaws,
+    OpenStackMigration: migrations,
+    Persona: personas,
+    Rbac: rbacs,
+    Vault: vaults,
+    VaultKV: vaultkvs,
+    AAPOrg: aaporgs,
+    QuayOrg: quayorgs,
+    HybridNetwork: hybridnetworks,
+    NetworkPlacement: networkplacements,
   };
+
+  const lists: Record<string, K8sResource[]> = Object.fromEntries(
+    TENANT_OVERVIEW_KINDS.map((k) => [k, hookByKind[k].items]),
+  );
 
   const all = useMemo(
-    () => Object.values(lists).flat(),
+    () => TENANT_OVERVIEW_KINDS.flatMap((k) => hookByKind[k].items),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [teams.items, projects.items, platforms.items, assignments.items, cloudoso.items, cloudaws.items],
+    TENANT_OVERVIEW_KINDS.map((k) => hookByKind[k].items),
   );
   const overall = bucket(all);
-  const loading =
-    teams.loading ||
-    projects.loading ||
-    platforms.loading ||
-    assignments.loading ||
-    cloudoso.loading ||
-    cloudaws.loading;
-  const firstError =
-    teams.error || projects.error || platforms.error || assignments.error || cloudoso.error || cloudaws.error;
+  const loading = TENANT_OVERVIEW_KINDS.some((k) => hookByKind[k].loading);
+  const firstError = TENANT_OVERVIEW_KINDS.map((k) => hookByKind[k].error).find(Boolean) ?? null;
   const failedItems = all
     .filter((i) => normalizeHealth(i.status?.ready, i.status?.status) === 'failed')
-    .slice(0, 8);
+    .slice(0, 12);
 
   const refreshAll = () => {
-    teams.refresh();
-    projects.refresh();
-    platforms.refresh();
-    assignments.refresh();
-    cloudoso.refresh();
-    cloudaws.refresh();
+    TENANT_OVERVIEW_KINDS.forEach((k) => hookByKind[k].refresh());
   };
 
-  const kindRows = [
-    { kind: 'Team', label: 'Teams', path: '/teams' },
-    { kind: 'Project', label: 'Projects', path: '/projects' },
-    { kind: 'PlatformOpenshift', label: 'Platforms', path: '/platforms' },
-    { kind: 'Assignment', label: 'Assignments', path: '/assignments' },
-    { kind: 'CloudOSO', label: 'Cloud OSO', path: '/cloudoso' },
-    { kind: 'CloudAWS', label: 'Cloud AWS', path: '/cloudaws' },
-  ];
+  const kindRows = TENANT_OVERVIEW_KINDS.map((kind) => ({
+    kind,
+    label: t(`kinds.${kind}`),
+    path: KIND_PATH[kind] ?? '/',
+  }));
 
   return (
     <>
       <PageHeader
-        title="Overview"
+        title={t('pages.overviewTitle')}
         subtitle={`Entity namespace ${namespace}`}
         actions={
           <Button variant="secondary" icon={<SyncIcon />} onClick={refreshAll}>
-            Refresh
+            {t('common.refresh')}
           </Button>
         }
       />
 
       {firstError && (
-        <Alert variant="warning" isInline title="Some resources failed to load" className="sc-mb">
+        <Alert variant="warning" isInline title={t('common.k8sUnavailable')} className="sc-mb">
           {firstError.message}
         </Alert>
       )}
@@ -130,53 +160,37 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
         <>
           <div className="sc-overview-top">
             <Card className="sc-panel">
-              <CardTitle>Health summary</CardTitle>
+              <CardTitle>{t('pages.platformHealth')}</CardTitle>
               <CardBody>
                 <HealthDonut ready={overall.ready} failed={overall.failed} pending={overall.pending} />
               </CardBody>
             </Card>
             <div className="sc-inventory-grid">
-              <InventoryCard
-                title="Teams"
-                count={teams.items.length}
-                hint={`${bucket(teams.items).ready} ready`}
-                kind="Team"
-                href="/teams"
-              />
-              <InventoryCard
-                title="Platforms"
-                count={platforms.items.length}
-                hint={`${bucket(platforms.items).ready} ready`}
-                kind="PlatformOpenshift"
-                href="/platforms"
-              />
-              <InventoryCard
-                title="Assignments"
-                count={assignments.items.length}
-                hint={`${bucket(assignments.items).ready} ready`}
-                kind="Assignment"
-                href="/assignments"
-              />
-              <InventoryCard
-                title="Projects"
-                count={projects.items.length}
-                hint={`${bucket(projects.items).ready} ready`}
-                kind="Project"
-                href="/projects"
-              />
+              {(['Team', 'PlatformOpenshift', 'Assignment', 'HybridNetwork'] as HybridSovereignKind[]).map(
+                (kind) => (
+                  <InventoryCard
+                    key={kind}
+                    title={t(`kinds.${kind}`)}
+                    count={lists[kind]?.length ?? 0}
+                    hint={`${bucket(lists[kind] ?? []).ready} ${t('status.ready')}`}
+                    kind={kind}
+                    href={KIND_PATH[kind]}
+                  />
+                ),
+              )}
             </div>
           </div>
 
           <Title headingLevel="h2" size="lg" className="sc-section-title">
-            Quick actions
+            {t('pages.selfService')}
           </Title>
           <div className="sc-card-grid sc-mb">
             {[
-              { label: 'Create Team', path: '/create/team', kind: 'Team' },
-              { label: 'Create Project', path: '/create/project', kind: 'Project' },
-              { label: 'Request CloudOSO', path: '/create/cloudoso', kind: 'CloudOSO' },
-              { label: 'Request Cloud AWS', path: '/create/cloudaws', kind: 'CloudAWS' },
-              { label: 'Create Assignment', path: '/create/assignment', kind: 'Assignment' },
+              { labelKey: 'nav.teams', path: '/create/team', kind: 'Team' as const },
+              { labelKey: 'nav.projects', path: '/create/project', kind: 'Project' as const },
+              { labelKey: 'nav.hybridNetworks', path: '/create/hybridnetwork', kind: 'HybridNetwork' as const },
+              { labelKey: 'nav.networkPlacements', path: '/create/networkplacement', kind: 'NetworkPlacement' as const },
+              { labelKey: 'nav.assignments', path: '/create/assignment', kind: 'Assignment' as const },
             ].map((a) => (
               <Card
                 key={a.path}
@@ -187,7 +201,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
               >
                 <CardTitle>
                   <KindIcon kind={a.kind} size="sm" />
-                  {a.label}
+                  {t(a.labelKey)}
                 </CardTitle>
               </Card>
             ))}
@@ -202,19 +216,19 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                   </FlexItem>
                   <FlexItem>
                     <CardTitle component="span">
-                      Issues <Label color="orange">{failedItems.length}</Label>
+                      {t('pages.failedResources')} <Label color="orange">{failedItems.length}</Label>
                     </CardTitle>
                   </FlexItem>
                 </Flex>
               </CardHeader>
               <CardBody>
                 <div className="sc-table-wrap">
-                  <Table variant="compact" aria-label="Failed resources">
+                  <Table variant="compact" aria-label={t('pages.failedResources')}>
                     <Thead>
                       <Tr>
-                        <Th>Kind</Th>
-                        <Th>Name</Th>
-                        <Th>Status</Th>
+                        <Th>{t('common.resources')}</Th>
+                        <Th>{t('common.name')}</Th>
+                        <Th>{t('common.status')}</Th>
                       </Tr>
                     </Thead>
                     <Tbody>
@@ -239,17 +253,17 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
           )}
 
           <Title headingLevel="h2" size="lg" className="sc-section-title">
-            Tenancy resources
+            {t('pages.inventory')}
           </Title>
           <div className="sc-table-wrap sc-mb">
-            <Table variant="compact" aria-label="Tenancy kind status">
+            <Table variant="compact" aria-label={t('pages.inventory')}>
               <Thead>
                 <Tr>
-                  <Th>Kind</Th>
-                  <Th>Total</Th>
-                  <Th>Ready</Th>
-                  <Th>Failed</Th>
-                  <Th>Health</Th>
+                  <Th>{t('common.resources')}</Th>
+                  <Th>{t('pages.totalResources')}</Th>
+                  <Th>{t('pages.readyCount')}</Th>
+                  <Th>{t('pages.failedCount')}</Th>
+                  <Th>{t('pages.platformHealth')}</Th>
                   <Th />
                 </Tr>
               </Thead>
@@ -276,7 +290,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
                         <Progress value={health} size={ProgressSize.sm} aria-label={`${row.label} health`} />
                       </Td>
                       <Td>
-                        <Link to={row.path}>View</Link>
+                        <Link to={row.path}>{t('common.view')}</Link>
                       </Td>
                     </Tr>
                   );
@@ -286,7 +300,7 @@ export function TenantOverviewPage({ namespace }: TenantOverviewPageProps): Reac
           </div>
 
           <Title headingLevel="h2" size="lg" className="sc-section-title">
-            <TopologyIcon className="sc-inline-icon" /> Live entity topology
+            <TopologyIcon className="sc-inline-icon" /> {t('common.topology')}
           </Title>
           <Card className="sc-panel">
             <CardBody>

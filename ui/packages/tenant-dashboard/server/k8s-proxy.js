@@ -88,6 +88,8 @@ const KIND_PLURALS = {
   QuayOrg: "quayorgs",
   Iaac: "iaacs",
   Persona: "personas",
+  HybridNetwork: "hybridnetworks",
+  NetworkPlacement: "networkplacements",
 };
 
 const PERSONA_TYPES = new Set([

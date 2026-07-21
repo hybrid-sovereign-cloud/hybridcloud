@@ -1,0 +1,7 @@
+apiVersion: hybridsovereign.redhat/v1alpha1
+kind: HybridNetwork
+metadata:
+  name: payments-vpc
+  namespace: entity-acme-corp
+spec:
+  description: Application payments tier hybrid network

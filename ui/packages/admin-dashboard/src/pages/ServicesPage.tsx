@@ -1,17 +1,20 @@
 import React from 'react';
 import { Tabs, Tab, TabTitleText } from '@patternfly/react-core';
-import { PageHeader } from '@hybridsovereign/shared';
+import { PageHeader,
+  useTranslation,
+} from '@hybridsovereign/shared';
 import { ResourceListPage } from './ResourceListPage';
 
 export function ServicesPage(): React.ReactElement {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = React.useState<string | number>(0);
 
   return (
     <>
       <PageHeader
-        title="Service URLs"
+        title={t('nav.serviceUrls')}
         subtitle="Platform service resources and configuration health"
-        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Platform' }, { label: 'Service URLs' }]}
+        breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: 'Platform' }, { label: 'Service URLs' }]}
       />
       <Tabs activeKey={activeTab} onSelect={(_e, key) => setActiveTab(key)} mountOnEnter unmountOnExit>
         <Tab eventKey={0} title={<TabTitleText>AAP</TabTitleText>}>

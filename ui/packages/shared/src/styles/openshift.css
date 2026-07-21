@@ -1165,3 +1165,19 @@ select.sc-entity-select,
 .sc-table-wrap a.sc-resource-link:hover {
   text-decoration: underline;
 }
+
+/* Language toggle (EN / FR) */
+.sc-lang-toggle {
+  margin-inline-start: 0.5rem;
+}
+.sc-lang-toggle .pf-v5-c-toggle-group__button {
+  min-width: 2.5rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.sc-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}

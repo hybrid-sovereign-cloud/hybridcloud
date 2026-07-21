@@ -88,6 +88,55 @@
     }
   },
   {
+    "type": "console.navigation/separator",
+    "properties": {
+      "id": "hybridsovereign-tenant-hybridvpc-sep",
+      "section": "hybridsovereign-tenancy-section",
+      "perspective": "hybridsovereign",
+      "name": "Hybrid VPC"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-networks",
+      "section": "hybridsovereign-tenancy-section",
+      "perspective": "hybridsovereign",
+      "name": "Hybrid Networks",
+      "href": "/hybridsovereign/tenant/networks"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-tenant-placements",
+      "section": "hybridsovereign-tenancy-section",
+      "perspective": "hybridsovereign",
+      "name": "Network Placements",
+      "href": "/hybridsovereign/tenant/placements"
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/hybridsovereign/tenant/networks",
+      "component": {
+        "$codeRef": "TenantHybridNetworksPage.default"
+      },
+      "perspective": "hybridsovereign"
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "path": "/hybridsovereign/tenant/placements",
+      "component": {
+        "$codeRef": "TenantNetworkPlacementsPage.default"
+      },
+      "perspective": "hybridsovereign"
+    }
+  },
+  {
     "type": "console.navigation/section",
     "properties": {
       "id": "hybridsovereign-access-section",

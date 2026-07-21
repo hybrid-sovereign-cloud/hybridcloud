@@ -16,6 +16,7 @@ import {
   useK8sResourceList,
   K8sResource,
   configureK8sClient,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
@@ -33,6 +34,7 @@ type SovereignResource = K8sResource & {
 const ENTITY_NS = 'sovereign-cloud';
 
 const AdminEntitiesPage: React.FC = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
@@ -53,16 +55,16 @@ const AdminEntitiesPage: React.FC = () => {
     <PageSection className="sc-console-page">
       <div className="sc-page">
         <PageHeader
-          title="Entities"
-          subtitle="Top-level tenants — create and monitor entity namespaces"
-          breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Entities' }]}
+          title={t('nav.entities')}
+          subtitle={t('pages.entitiesSubtitle')}
+          breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: t('nav.entities') }]}
           actions={
             <Button
               variant="primary"
               icon={<PlusCircleIcon />}
               onClick={() => history.push('/hybridsovereign/create/entity')}
             >
-              Create
+              {t('common.create')}
             </Button>
           }
         />
@@ -74,7 +76,7 @@ const AdminEntitiesPage: React.FC = () => {
           onRefresh={refresh}
         />
         {error && (
-          <Alert variant="warning" isInline title="Unable to list Entities">
+          <Alert variant="warning" isInline title={t('common.unableToList', { kind: t('nav.entities') })}>
             {error.message}
           </Alert>
         )}
@@ -82,18 +84,18 @@ const AdminEntitiesPage: React.FC = () => {
           <Spinner />
         ) : (
           <div className="sc-table-wrap">
-            <Table variant="compact" aria-label="Entities">
+            <Table variant="compact" aria-label={t('nav.entities')}>
               <Thead>
                 <Tr>
-                  <Th>Name</Th>
-                  <Th>Status</Th>
-                  <Th>Last Reconciled</Th>
+                  <Th>{t('common.name')}</Th>
+                  <Th>{t('common.status')}</Th>
+                  <Th>{t('common.lastReconciled')}</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {filtered.length === 0 ? (
                   <Tr>
-                    <Td colSpan={3}>No Entity resources match the current filters</Td>
+                    <Td colSpan={3}>{t('pages.noMatch', { kind: 'Entity' })}</Td>
                   </Tr>
                 ) : (
                   filtered.map((item) => (
@@ -133,12 +135,14 @@ export const makeKindListPage = (
 ): React.FC => {
   const listPath = opts?.listPath ?? `/hybridsovereign/${KIND_PLURALS[kind] ?? kind.toLowerCase()}`;
   const Page: React.FC = () => {
+    const { t } = useTranslation();
     const history = useHistory();
     const [search, setSearch] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
     const { items, loading, error, refresh } = useK8sResourceList<SovereignResource>(kind, {
       ...(kind === 'Entity' ? { namespace: ENTITY_NS } : {}),
     });
+    const kindTitle = t(`kinds.${kind}`, { defaultValue: title });
 
     const filtered = React.useMemo(() => {
       const q = search.trim().toLowerCase();
@@ -162,8 +166,8 @@ export const makeKindListPage = (
       <PageSection className="sc-console-page">
         <div className="sc-page">
           <PageHeader
-            title={title}
-            breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: title }]}
+            title={kindTitle}
+            breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: kindTitle }]}
             actions={
               opts?.createKind ? (
                 <Button
@@ -171,7 +175,7 @@ export const makeKindListPage = (
                   icon={<PlusCircleIcon />}
                   onClick={() => history.push(`/hybridsovereign/create/${opts.createKind}`)}
                 >
-                  Create
+                  {t('common.create')}
                 </Button>
               ) : undefined
             }
@@ -184,26 +188,30 @@ export const makeKindListPage = (
             onRefresh={refresh}
           />
           {error && (
-            <Alert variant="warning" isInline title={`Unable to list ${KIND_PLURALS[kind] ?? kind}`}>
+            <Alert
+              variant="warning"
+              isInline
+              title={t('common.unableToList', { kind: kindTitle })}
+            >
               {error.message}
             </Alert>
           )}
           {loading && items.length === 0 ? (
-            <Spinner />
+            <Spinner aria-label={t('common.loading')} />
           ) : (
             <div className="sc-table-wrap">
-              <Table variant="compact" aria-label={title}>
+              <Table variant="compact" aria-label={kindTitle}>
                 <Thead>
                   <Tr>
-                    <Th>Name</Th>
-                    <Th>Namespace</Th>
-                    <Th>Status</Th>
+                    <Th>{t('common.name')}</Th>
+                    <Th>{t('common.namespace')}</Th>
+                    <Th>{t('common.status')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
                   {filtered.length === 0 ? (
                     <Tr>
-                      <Td colSpan={3}>No {kind} resources match the current filters</Td>
+                      <Td colSpan={3}>{t('pages.noMatch', { kind })}</Td>
                     </Tr>
                   ) : (
                     filtered.map((item) => (

@@ -1,30 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
-  Form,
-  FormGroup,
-  FormSelect,
-  FormSelectOption,
   Label,
   Modal,
   ModalVariant,
   Spinner,
-  Switch,
   Tab,
   Tabs,
   TabTitleText,
-  TextInput,
 } from '@patternfly/react-core';
 import { ArrowLeftIcon, SyncAltIcon, TrashIcon } from '@patternfly/react-icons';
 import {
   deleteDashboardResource,
   forceReconcile,
-  updateDashboardResource,
   useK8sResource,
-  useK8sResourceList,
 } from '../hooks/k8s';
 import { HybridSovereignKind, K8sResource } from '../types';
+import { GenericSpecEditor } from '../forms/GenericSpecEditor';
 import { PageHeader } from './PageHeader';
 import { StatusBadge } from './StatusBadge';
 
@@ -120,166 +113,13 @@ function ConditionsTab({ item }: { item: K8sResource }): React.ReactElement {
   );
 }
 
-function names(items: K8sResource[]): string[] {
-  return items.map((i) => i.metadata.name).filter(Boolean);
-}
-
-function SpecEditor({
-  kind,
-  namespace,
-  item,
-  onSaved,
-}: {
+function SpecEditor(props: {
   kind: HybridSovereignKind;
   namespace: string;
   item: K8sResource;
   onSaved: () => void;
 }): React.ReactElement {
-  const spec = (item.spec ?? {}) as Record<string, unknown>;
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  // Team
-  const [istio, setIstio] = useState(Boolean((spec.features as { istio?: boolean } | undefined)?.istio));
-  const [argo, setArgo] = useState(Boolean((spec.features as { argo?: boolean } | undefined)?.argo));
-
-  // Assignment
-  const [team, setTeam] = useState(typeof spec.team === 'string' ? spec.team : '');
-  const [projects, setProjects] = useState(
-    Array.isArray(spec.projects) ? (spec.projects as string[]).join(', ') : '',
-  );
-  const [openshift, setOpenshift] = useState(typeof spec.openshift === 'string' ? spec.openshift : '');
-
-  const teams = useK8sResourceList<K8sResource>('Team', {
-    namespace,
-    enabled: kind === 'Assignment',
-  });
-  const projectList = useK8sResourceList<K8sResource>('Project', {
-    namespace,
-    enabled: kind === 'Assignment',
-  });
-  const platforms = useK8sResourceList<K8sResource>('PlatformOpenshift', {
-    namespace,
-    enabled: kind === 'Assignment',
-  });
-
-  useEffect(() => {
-    const s = (item.spec ?? {}) as Record<string, unknown>;
-    setIstio(Boolean((s.features as { istio?: boolean } | undefined)?.istio));
-    setArgo(Boolean((s.features as { argo?: boolean } | undefined)?.argo));
-    setTeam(typeof s.team === 'string' ? s.team : '');
-    setProjects(Array.isArray(s.projects) ? (s.projects as string[]).join(', ') : '');
-    setOpenshift(typeof s.openshift === 'string' ? s.openshift : '');
-  }, [item]);
-
-  const save = async (nextSpec: Record<string, unknown>) => {
-    setSaving(true);
-    setError(null);
-    try {
-      await updateDashboardResource(kind, item.metadata.name, namespace, { spec: nextSpec });
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Update failed');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (kind === 'Team') {
-    return (
-      <Form className="sc-form" onSubmit={(e) => e.preventDefault()}>
-        {error && (
-          <Alert variant="danger" title="Update failed" isInline style={{ marginBottom: '1rem' }}>
-            {error}
-          </Alert>
-        )}
-        <FormGroup label="Istio" fieldId="team-istio">
-          <Switch id="team-istio" isChecked={istio} onChange={(_e, v) => setIstio(v)} label={istio ? 'Enabled' : 'Disabled'} />
-        </FormGroup>
-        <FormGroup label="Argo CD" fieldId="team-argo">
-          <Switch id="team-argo" isChecked={argo} onChange={(_e, v) => setArgo(v)} label={argo ? 'Enabled' : 'Disabled'} />
-        </FormGroup>
-        <Button
-          variant="primary"
-          isDisabled={saving}
-          onClick={() => save({ features: { istio, argo } })}
-        >
-          {saving ? 'Saving…' : 'Save changes'}
-        </Button>
-      </Form>
-    );
-  }
-
-  if (kind === 'Assignment') {
-    return (
-      <Form className="sc-form" onSubmit={(e) => e.preventDefault()}>
-        {error && (
-          <Alert variant="danger" title="Update failed" isInline style={{ marginBottom: '1rem' }}>
-            {error}
-          </Alert>
-        )}
-        <FormGroup label="Team" fieldId="asg-team" isRequired>
-          <FormSelect id="asg-team" value={team} onChange={(_e, v) => setTeam(v)} aria-label="Team">
-            <FormSelectOption value="" label="Select a team" />
-            {names(teams.items).map((n) => (
-              <FormSelectOption key={n} value={n} label={n} />
-            ))}
-          </FormSelect>
-        </FormGroup>
-        <FormGroup label="Projects (comma-separated)" fieldId="asg-projects">
-          <TextInput
-            id="asg-projects"
-            value={projects}
-            onChange={(_e, v) => setProjects(v)}
-            list="asg-project-options"
-          />
-          <datalist id="asg-project-options">
-            {names(projectList.items).map((n) => (
-              <option key={n} value={n} />
-            ))}
-          </datalist>
-        </FormGroup>
-        <FormGroup label="Platform Openshift" fieldId="asg-openshift">
-          <FormSelect
-            id="asg-openshift"
-            value={openshift}
-            onChange={(_e, v) => setOpenshift(v)}
-            aria-label="Platform Openshift"
-          >
-            <FormSelectOption value="" label="None" />
-            {names(platforms.items).map((n) => (
-              <FormSelectOption key={n} value={n} label={n} />
-            ))}
-          </FormSelect>
-        </FormGroup>
-        <Button
-          variant="primary"
-          isDisabled={saving || !team}
-          onClick={() =>
-            save({
-              team,
-              projects: projects
-                .split(',')
-                .map((p) => p.trim())
-                .filter(Boolean),
-              ...(openshift ? { openshift } : {}),
-            })
-          }
-        >
-          {saving ? 'Saving…' : 'Save changes'}
-        </Button>
-      </Form>
-    );
-  }
-
-  return (
-    <>
-      <p className="sc-text-muted" style={{ marginBottom: '1rem' }}>
-        Spec fields for this kind are shown read-only. Use Reconcile Now after changing the CR via YAML/API.
-      </p>
-      <FieldGrid data={spec} />
-    </>
-  );
+  return <GenericSpecEditor {...props} />;
 }
 
 export function ResourceDetail({

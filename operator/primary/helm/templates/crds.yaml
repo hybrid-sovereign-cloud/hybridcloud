@@ -3014,4 +3014,691 @@ spec:
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: hybridfabrics.hybridsovereign.redhat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: hybridsovereign.redhat
+  names:
+    kind: HybridFabric
+    listKind: HybridFabricList
+    plural: hybridfabrics
+    singular: hybridfabric
+    shortNames:
+      - hfab
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Platform EVPN fabric configuration for Hybrid VPC.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                domainAsn:
+                  type: integer
+                  minimum: 1
+                  maximum: 4294967295
+                routeReflectors:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, address]
+                    properties:
+                      name:
+                        type: string
+                      address:
+                        type: string
+                vniPool:
+                  type: object
+                  required: [start, end]
+                  properties:
+                    start:
+                      type: integer
+                    end:
+                      type: integer
+                borderGateway:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    loopback:
+                      type: string
+                    vaultCredentialRef:
+                      type: string
+                transportDefaults:
+                  type: object
+                  properties:
+                    mtu:
+                      type: integer
+                      default: 9000
+                    innerMssClamp:
+                      type: integer
+                      default: 1360
+                    defaultTunnelType:
+                      type: string
+                      enum: [wireguard, ipsec, macsec, none]
+                      default: wireguard
+                numberingAuthority:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+            status:
+              type: object
+              properties:
+                fabricBaseReady:
+                  type: boolean
+                borderBgwReady:
+                  type: boolean
+                allocatedVniCount:
+                  type: integer
+                availableVniCount:
+                  type: integer
+                status:
+                  type: string
+                message:
+                  type: string
+                ready:
+                  type: boolean
+                deletionComplete:
+                  type: boolean
+                lastReconciledAt:
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                edaJobs:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+                conditions:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Enabled
+          type: boolean
+          jsonPath: .spec.enabled
+        - name: ASN
+          type: integer
+          jsonPath: .spec.domainAsn
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: cloudgateways.hybridsovereign.redhat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: hybridsovereign.redhat
+  names:
+    kind: CloudGateway
+    listKind: CloudGatewayList
+    plural: cloudgateways
+    singular: cloudgateway
+    shortNames:
+      - cgw
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Cloud landing-zone gateway for Hybrid VPC.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                cloud:
+                  type: string
+                  enum: [aws, openstack, openshift]
+                region:
+                  type: string
+                domainAsn:
+                  type: integer
+                landingZoneTemplate:
+                  type: string
+                  default: default
+                fabricRef:
+                  type: string
+                transport:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [wireguard, ipsec, macsec, none]
+                    vaultPeerConfigRef:
+                      type: string
+                awsAccountId:
+                  type: string
+                openstackCloudOSORef:
+                  type: string
+            status:
+              type: object
+              properties:
+                landingZoneReady:
+                  type: boolean
+                gatewayAddress:
+                  type: string
+                transportReady:
+                  type: boolean
+                peerCount:
+                  type: integer
+                status:
+                  type: string
+                message:
+                  type: string
+                ready:
+                  type: boolean
+                deletionComplete:
+                  type: boolean
+                lastReconciledAt:
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                edaJobs:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+                conditions:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Cloud
+          type: string
+          jsonPath: .spec.cloud
+        - name: Region
+          type: string
+          jsonPath: .spec.region
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: transportlinks.hybridsovereign.redhat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: hybridsovereign.redhat
+  names:
+    kind: TransportLink
+    listKind: TransportLinkList
+    plural: transportlinks
+    singular: transportlink
+    shortNames:
+      - tlink
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Transport tunnel between fabric and cloud gateway.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  default: false
+                fabricRef:
+                  type: string
+                cloudGatewayRef:
+                  type: string
+                tunnelType:
+                  type: string
+                  enum: [wireguard, ipsec, macsec, none]
+                vaultConfigRef:
+                  type: string
+            status:
+              type: object
+              properties:
+                tunnelUp:
+                  type: boolean
+                borderEndpoint:
+                  type: string
+                cloudEndpoint:
+                  type: string
+                lastHandshakeAt:
+                  type: string
+                  format: date-time
+                status:
+                  type: string
+                message:
+                  type: string
+                ready:
+                  type: boolean
+                deletionComplete:
+                  type: boolean
+                lastReconciledAt:
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                edaJobs:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+                conditions:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Fabric
+          type: string
+          jsonPath: .spec.fabricRef
+        - name: Gateway
+          type: string
+          jsonPath: .spec.cloudGatewayRef
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: uihealthcheckers.hybridsovereign.redhat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: hybridsovereign.redhat
+  names:
+    kind: UIHealthChecker
+    listKind: UIHealthCheckerList
+    plural: uihealthcheckers
+    singular: uihealthchecker
+    shortNames:
+      - uihc
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Declares a URL for admin UI browser health probes.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: Absolute HTTPS URL the admin dashboard probes from the browser.
+                displayName:
+                  type: string
+                description:
+                  type: string
+                group:
+                  type: string
+                  description: Logical group (central, services, quay, custom).
+                expectedStatus:
+                  type: integer
+                  default: 200
+                timeoutSeconds:
+                  type: integer
+                  default: 10
+                  minimum: 1
+                  maximum: 120
+            status:
+              type: object
+              properties:
+                url:
+                  type: string
+                group:
+                  type: string
+                status:
+                  type: string
+                message:
+                  type: string
+                ready:
+                  type: boolean
+                deletionComplete:
+                  type: boolean
+                lastReconciledAt:
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                edaJobs:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+                conditions:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Group
+          type: string
+          jsonPath: .spec.group
+        - name: URL
+          type: string
+          jsonPath: .spec.url
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: hybridnetworks.hybridsovereign.redhat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: hybridsovereign.redhat
+  names:
+    kind: HybridNetwork
+    listKind: HybridNetworkList
+    plural: hybridnetworks
+    singular: hybridnetwork
+    shortNames:
+      - hnet
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Tenant hybrid network identity for Hybrid VPC.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                description:
+                  type: string
+                  maxLength: 512
+                networkViewerRbac:
+                  type: array
+                  items:
+                    type: string
+            status:
+              type: object
+              properties:
+                entity:
+                  type: string
+                billingId:
+                  type: string
+                networkId:
+                  type: string
+                vni:
+                  type: integer
+                vrfName:
+                  type: string
+                canonicalRt:
+                  type: string
+                fabric:
+                  type: string
+                placementCount:
+                  type: integer
+                placementsReady:
+                  type: integer
+                allocated:
+                  type: boolean
+                fabricVniReady:
+                  type: boolean
+                status:
+                  type: string
+                message:
+                  type: string
+                ready:
+                  type: boolean
+                deletionComplete:
+                  type: boolean
+                lastReconciledAt:
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                edaJobs:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+                conditions:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Entity
+          type: string
+          jsonPath: .status.entity
+        - name: VNI
+          type: integer
+          jsonPath: .status.vni
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: networkplacements.hybridsovereign.redhat
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: Replace=true
+spec:
+  group: hybridsovereign.redhat
+  names:
+    kind: NetworkPlacement
+    listKind: NetworkPlacementList
+    plural: networkplacements
+    singular: networkplacement
+    shortNames:
+      - nplace
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: Places a HybridNetwork onto a cloud backend.
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                network:
+                  type: string
+                backend:
+                  type: object
+                  required: [kind, name]
+                  properties:
+                    kind:
+                      type: string
+                      enum: [CloudAWS, CloudOSO, PlatformOpenshift]
+                    name:
+                      type: string
+                prefixes:
+                  type: array
+                  items:
+                    type: string
+                state:
+                  type: string
+                  enum: [present, absent]
+                  default: present
+            status:
+              type: object
+              properties:
+                entity:
+                  type: string
+                networkId:
+                  type: string
+                targetBackend:
+                  type: string
+                vni:
+                  type: integer
+                vrfName:
+                  type: string
+                canonicalRt:
+                  type: string
+                backendRt:
+                  type: string
+                rtStrategy:
+                  type: string
+                domainAsn:
+                  type: integer
+                backendReady:
+                  type: boolean
+                prerequisiteReady:
+                  type: boolean
+                fabricApplied:
+                  type: boolean
+                backendApplied:
+                  type: boolean
+                validated:
+                  type: boolean
+                lastValidatedAt:
+                  type: string
+                  format: date-time
+                realizedPrefixes:
+                  type: array
+                  items:
+                    type: string
+                microNvaName:
+                  type: string
+                cloudGatewayRef:
+                  type: string
+                transportLinkRef:
+                  type: string
+                status:
+                  type: string
+                message:
+                  type: string
+                ready:
+                  type: boolean
+                deletionComplete:
+                  type: boolean
+                lastReconciledAt:
+                  type: string
+                  format: date-time
+                observedGeneration:
+                  type: integer
+                  format: int64
+                edaJobs:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+                conditions:
+                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
+
+              x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Network
+          type: string
+          jsonPath: .spec.network
+        - name: Backend
+          type: string
+          jsonPath: .spec.backend.kind
+        - name: Ready
+          type: boolean
+          jsonPath: .status.ready
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+
 {{- end }}

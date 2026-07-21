@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PageSection } from '@patternfly/react-core';
-import { HybridSovereignKind, ResourceDetail } from '@hybridsovereign/shared';
+import { HybridSovereignKind, ResourceDetail,
+  useTranslation,
+} from '@hybridsovereign/shared';
 import '@hybridsovereign/shared/styles/openshift.css';
 
 function makeNamespacedDetailPage(

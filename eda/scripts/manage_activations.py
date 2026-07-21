@@ -18,6 +18,8 @@ CR_TYPES = [
     "platformopenshift", "cloudoso", "cloudaws",
     "rbac", "rbacconfig", "vault", "vaultkv",
     "aapconfig", "aaporg", "quayconfig", "quayorg",
+    "hybridfabric", "cloudgateway", "transportlink",
+    "hybridnetwork", "networkplacement", "uihealthchecker",
 ]
 
 DE_MAP = {
@@ -37,6 +39,12 @@ DE_MAP = {
     "aaporg": "de-plugin-aap",
     "quayconfig": "de-plugin-quay",
     "quayorg": "de-plugin-quay",
+    "hybridfabric": "de-hybridvpc",
+    "cloudgateway": "de-hybridvpc",
+    "transportlink": "de-hybridvpc",
+    "hybridnetwork": "de-hybridvpc",
+    "networkplacement": "de-hybridvpc",
+    "uihealthchecker": "de-hybridvpc",
 }
 
 

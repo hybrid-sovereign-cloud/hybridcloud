@@ -17,6 +17,7 @@ import {
   KindIcon,
   configureK8sClient,
   SelfServiceFormType,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
@@ -43,6 +44,8 @@ const KIND_META: Partial<
   QuayOrg: { path: 'quayorgs', form: 'quayorg' },
   Persona: { path: 'personas', form: 'persona' },
   Rbac: { path: 'rbac', form: 'rbac' },
+  HybridNetwork: { path: 'networks', form: 'hybridnetwork' },
+  NetworkPlacement: { path: 'placements', form: 'networkplacement' },
 };
 
 export function makeTenantKindPage(kind: HybridSovereignKind, title: string): React.FC {
@@ -50,6 +53,7 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
   const listPath = `/hybridsovereign/tenant/${meta.path}`;
 
   const Page: React.FC = () => {
+    const { t } = useTranslation();
     const history = useHistory();
     const { namespace, entities, selectEntity, entity } = useEntityNamespace();
     const [search, setSearch] = React.useState('');
@@ -57,6 +61,7 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
     const { items, loading, error, refresh } = useK8sResourceList<K8sResource>(kind, {
       namespace,
     });
+    const kindTitle = t(`kinds.${kind}`, { defaultValue: title });
     const filtered = React.useMemo(() => {
       const q = search.trim().toLowerCase();
       return items.filter((item) => {
@@ -76,12 +81,12 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
             onSelectEntity={selectEntity}
           />
           <PageHeader
-            title={title}
-            subtitle={`${kind} in ${namespace || '—'}`}
+            title={kindTitle}
+            subtitle={`${kindTitle} — ${namespace || '—'}`}
             breadcrumbs={[
-              { label: 'Sovereign Cloud' },
-              { label: 'Tenancy' },
-              { label: title },
+              { label: t('nav.sovereignCloud') },
+              { label: t('nav.tenancy') },
+              { label: kindTitle },
             ]}
             actions={
               meta.form && namespace ? (
@@ -91,7 +96,7 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
                   icon={<PlusCircleIcon />}
                   onClick={() => history.push(`/hybridsovereign/tenant/create/${meta.form}`)}
                 >
-                  Create
+                  {t('common.create')}
                 </Button>
               ) : undefined
             }
@@ -104,20 +109,24 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
             onRefresh={refresh}
           />
           {error && (
-            <Alert variant="warning" isInline title={`Unable to list ${kind}`}>
+            <Alert
+              variant="warning"
+              isInline
+              title={t('common.unableToList', { kind: kindTitle })}
+            >
               {error.message}
             </Alert>
           )}
           {loading && items.length === 0 ? (
-            <Spinner />
+            <Spinner aria-label={t('common.loading')} />
           ) : (
             <div className="sc-table-wrap">
-              <Table variant="compact" aria-label={title}>
+              <Table variant="compact" aria-label={kindTitle}>
                 <Thead>
                   <Tr>
-                    <Th>Name</Th>
-                    <Th>Status</Th>
-                    <Th>Last Reconciled</Th>
+                    <Th>{t('common.name')}</Th>
+                    <Th>{t('common.status')}</Th>
+                    <Th>{t('common.lastReconciled')}</Th>
                   </Tr>
                 </Thead>
                 <Tbody>

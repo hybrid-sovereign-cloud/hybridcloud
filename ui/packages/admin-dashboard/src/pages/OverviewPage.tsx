@@ -32,6 +32,7 @@ import {
   useOverviewCRs,
   K8sResource,
   HybridSovereignKind,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import { adminDetailHref } from './ResourceListPage';
 
@@ -52,6 +53,12 @@ const KIND_LIST_PATH: Partial<Record<string, string>> = {
   QuayConfig: '/services/quayconfigs',
   Vault: '/services/vaults',
   VaultKV: '/services/vaultkvs',
+  HybridFabric: '/networking/fabrics',
+  CloudGateway: '/networking/gateways',
+  TransportLink: '/networking/transport',
+  HybridNetwork: '/networks',
+  NetworkPlacement: '/placements',
+  UIHealthChecker: '/networking/uihealth',
 };
 
 function overviewItemHref(item: K8sResource): string | null {
@@ -75,6 +82,7 @@ function bucket(items: K8sResource[]) {
 }
 
 export function OverviewPage(): React.ReactElement {
+  const { t } = useTranslation();
   const { items, loading, error, refresh } = useOverviewCRs();
 
   const byKind = useMemo(() => {
@@ -101,16 +109,17 @@ export function OverviewPage(): React.ReactElement {
   return (
     <>
       <PageHeader
-        title="Overview"
+        title={t('pages.overviewTitle')}
+        showLanguageToggle={false}
         actions={
           <Button variant="secondary" icon={<SyncIcon />} onClick={refresh}>
-            Refresh
+            {t('common.refresh')}
           </Button>
         }
       />
 
       {error && (
-        <Alert variant="warning" isInline title="Unable to load overview" className="sc-mb">
+        <Alert variant="warning" isInline title={t('pages.overviewUnable')} className="sc-mb">
           {error.message}
         </Alert>
       )}
@@ -134,7 +143,7 @@ export function OverviewPage(): React.ReactElement {
 
             <div className="sc-inventory-grid">
               <InventoryCard
-                title="Entities"
+                title={t('nav.entities')}
                 count={(byKind.get('Entity') ?? []).length}
                 hint={`${bucket(byKind.get('Entity') ?? []).ready} ready`}
                 kind="Entity"
@@ -142,7 +151,7 @@ export function OverviewPage(): React.ReactElement {
                 status="success"
               />
               <InventoryCard
-                title="Teams"
+                title={t('nav.teams')}
                 count={(byKind.get('Team') ?? []).length}
                 hint={`${bucket(byKind.get('Team') ?? []).ready} ready`}
                 kind="Team"
@@ -157,7 +166,7 @@ export function OverviewPage(): React.ReactElement {
                 status={bucket(platforms).failed ? 'danger' : 'default'}
               />
               <InventoryCard
-                title="Assignments"
+                title={t('nav.assignments')}
                 count={(byKind.get('Assignment') ?? []).length}
                 hint={`${bucket(byKind.get('Assignment') ?? []).ready} ready`}
                 kind="Assignment"
@@ -254,7 +263,7 @@ export function OverviewPage(): React.ReactElement {
                         return (
                           <Tr key={`${item.kind}/${item.metadata.namespace}/${item.metadata.name}`}>
                             <Td dataLabel="Kind">{item.kind}</Td>
-                            <Td dataLabel="Name">
+                            <Td dataLabel={t('common.name')}>
                               {href ? (
                                 <Link className="sc-resource-link" to={href}>
                                   <KindIcon kind={item.kind || 'Unknown'} size="sm" />
@@ -264,7 +273,7 @@ export function OverviewPage(): React.ReactElement {
                                 item.metadata.name
                               )}
                             </Td>
-                            <Td dataLabel="Namespace">{item.metadata.namespace ?? '—'}</Td>
+                            <Td dataLabel={t('common.namespace')}>{item.metadata.namespace ?? '—'}</Td>
                             <Td dataLabel="Message">
                               <StatusBadge
                                 status={item.status?.status}

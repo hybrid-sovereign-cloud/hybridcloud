@@ -84,12 +84,19 @@ const HS_KINDS = [
   { path: "/apis/hybridsovereign.redhat/v1alpha1/projects", kind: "Project" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/platformopenshifts", kind: "PlatformOpenshift" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/cloudosos", kind: "CloudOSO" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/cloudawss", kind: "CloudAWS" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/rbacs", kind: "Rbac" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/vaultkvs", kind: "VaultKV" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/aaporgs", kind: "AAPOrg" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/quayorgs", kind: "QuayOrg" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/iaacs", kind: "Iaac" },
   { path: "/apis/hybridsovereign.redhat/v1alpha1/personas", kind: "Persona" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/hybridfabrics", kind: "HybridFabric" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/cloudgateways", kind: "CloudGateway" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/transportlinks", kind: "TransportLink" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/hybridnetworks", kind: "HybridNetwork" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/networkplacements", kind: "NetworkPlacement" },
+  { path: "/apis/hybridsovereign.redhat/v1alpha1/uihealthcheckers", kind: "UIHealthChecker" },
 ];
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
@@ -114,6 +121,12 @@ const KIND_PLURALS = {
   QuayOrg: "quayorgs",
   Iaac: "iaacs",
   Persona: "personas",
+  HybridFabric: "hybridfabrics",
+  CloudGateway: "cloudgateways",
+  TransportLink: "transportlinks",
+  HybridNetwork: "hybridnetworks",
+  NetworkPlacement: "networkplacements",
+  UIHealthChecker: "uihealthcheckers",
 };
 
 const PERSONA_TYPES = new Set([

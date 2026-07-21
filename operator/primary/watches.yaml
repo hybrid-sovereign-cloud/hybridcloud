@@ -38,3 +38,43 @@
     role: quayconfig_finalizer
   maxConcurrentReconciles: 10
   watchAnnotationsChanges: true
+
+- version: v1alpha1
+  group: hybridsovereign.redhat
+  kind: HybridFabric
+  role: hybridfabric
+  finalizer:
+    name: hybridfabrics.hybridsovereign.redhat/finalizer
+    role: hybridfabric_delete
+  maxConcurrentReconciles: 10
+  watchAnnotationsChanges: true
+
+- version: v1alpha1
+  group: hybridsovereign.redhat
+  kind: CloudGateway
+  role: cloudgateway
+  finalizer:
+    name: cloudgateways.hybridsovereign.redhat/finalizer
+    role: cloudgateway_delete
+  maxConcurrentReconciles: 10
+  watchAnnotationsChanges: true
+
+- version: v1alpha1
+  group: hybridsovereign.redhat
+  kind: TransportLink
+  role: transportlink
+  finalizer:
+    name: transportlinks.hybridsovereign.redhat/finalizer
+    role: transportlink_delete
+  maxConcurrentReconciles: 10
+  watchAnnotationsChanges: true
+
+- version: v1alpha1
+  group: hybridsovereign.redhat
+  kind: UIHealthChecker
+  role: uihealthchecker
+  finalizer:
+    name: uihealthcheckers.hybridsovereign.redhat/finalizer
+    role: uihealthchecker_delete
+  maxConcurrentReconciles: 10
+  watchAnnotationsChanges: true

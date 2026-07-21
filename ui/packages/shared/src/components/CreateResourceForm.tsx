@@ -30,7 +30,13 @@ export type SelfServiceFormType =
   | 'vaultkv'
   | 'aaporg'
   | 'quayorg'
-  | 'entity';
+  | 'entity'
+  | 'hybridnetwork'
+  | 'networkplacement'
+  | 'hybridfabric'
+  | 'cloudgateway'
+  | 'transportlink'
+  | 'uihealthchecker';
 
 export interface CreateResourceFormProps {
   formType: SelfServiceFormType;
@@ -54,6 +60,12 @@ const FORM_TITLES: Record<SelfServiceFormType, string> = {
   aaporg: 'Create AAP Org',
   quayorg: 'Create Quay Org',
   entity: 'Create Entity',
+  hybridnetwork: 'Create Hybrid Network',
+  networkplacement: 'Create Network Placement',
+  hybridfabric: 'Create Hybrid Fabric',
+  cloudgateway: 'Create Cloud Gateway',
+  transportlink: 'Create Transport Link',
+  uihealthchecker: 'Create UI Health Checker',
 };
 
 const FORM_KINDS: Record<SelfServiceFormType, HybridSovereignKind> = {
@@ -70,6 +82,12 @@ const FORM_KINDS: Record<SelfServiceFormType, HybridSovereignKind> = {
   aaporg: 'AAPOrg',
   quayorg: 'QuayOrg',
   entity: 'Entity',
+  hybridnetwork: 'HybridNetwork',
+  networkplacement: 'NetworkPlacement',
+  hybridfabric: 'HybridFabric',
+  cloudgateway: 'CloudGateway',
+  transportlink: 'TransportLink',
+  uihealthchecker: 'UIHealthChecker',
 };
 
 const PERSONA_TYPES = [
@@ -146,6 +164,19 @@ export function CreateResourceForm({
   const [quayConfig, setQuayConfig] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [networkRef, setNetworkRef] = useState('');
+  const [backendKind, setBackendKind] = useState('CloudAWS');
+  const [backendName, setBackendName] = useState('');
+  const [prefixes, setPrefixes] = useState('10.50.0.0/24');
+  const [domainAsn, setDomainAsn] = useState('65000');
+  const [vniStart, setVniStart] = useState('50000');
+  const [vniEnd, setVniEnd] = useState('50511');
+  const [fabricRef, setFabricRef] = useState('lab-fabric');
+  const [cloudProvider, setCloudProvider] = useState('aws');
+  const [region, setRegion] = useState('us-east-1');
+  const [gatewayRef, setGatewayRef] = useState('');
+  const [healthUrl, setHealthUrl] = useState('https://');
+  const [healthGroup, setHealthGroup] = useState('custom');
 
   const type = formType;
   const title = FORM_TITLES[type] ?? 'Create Resource';
@@ -164,8 +195,8 @@ export function CreateResourceForm({
     namespace: 'sovereign-cloud',
     enabled: type === 'persona' && !namespace,
   });
-  const teams = useK8sResourceList<K8sResource>('Team', { namespace: entityNs, enabled: type === 'assignment' });
-  const projects = useK8sResourceList<K8sResource>('Project', {
+
+  const teams = useK8sResourceList<K8sResource>('Team', { namespace: entityNs, enabled: type === 'assignment' });  const projects = useK8sResourceList<K8sResource>('Project', {
     namespace: entityNs,
     enabled: type === 'assignment',
   });
@@ -194,6 +225,13 @@ export function CreateResourceForm({
   });
   const aapConfigs = useK8sResourceList<K8sResource>('AAPConfig', { enabled: type === 'aaporg' });
   const quayConfigs = useK8sResourceList<K8sResource>('QuayConfig', { enabled: type === 'quayorg' });
+  const hybridNetworks = useK8sResourceList<K8sResource>('HybridNetwork', { namespace: entityNs, enabled: type === 'networkplacement' && !!entityNs });
+  const cloudAwssForPlacement = useK8sResourceList<K8sResource>('CloudAWS', { namespace: entityNs, enabled: type === 'networkplacement' && backendKind === 'CloudAWS' && !!entityNs });
+  const cloudososForPlacement = useK8sResourceList<K8sResource>('CloudOSO', { namespace: entityNs, enabled: type === 'networkplacement' && backendKind === 'CloudOSO' && !!entityNs });
+  const platformsForPlacement = useK8sResourceList<K8sResource>('PlatformOpenshift', { namespace: entityNs, enabled: type === 'networkplacement' && backendKind === 'PlatformOpenshift' && !!entityNs });
+  const fabrics = useK8sResourceList<K8sResource>('HybridFabric', { namespace: 'sovereign-cloud', enabled: type === 'cloudgateway' || type === 'transportlink' });
+  const gateways = useK8sResourceList<K8sResource>('CloudGateway', { namespace: 'sovereign-cloud', enabled: type === 'transportlink' });
+
 
   const names = (items: K8sResource[]) => items.map((i) => ({ value: i.metadata.name, label: i.metadata.name }));
 
@@ -272,6 +310,48 @@ export function CreateResourceForm({
         return { aapConfig, aapAdminRbac: [], aapJobExecutorRbac: [] };
       case 'quayorg':
         return { quayConfig, quayAdminRbac: [], quayCreatorRbac: [], quayMemberRbac: [] };
+      case 'hybridnetwork':
+        return { description };
+      case 'networkplacement':
+        return {
+          network: networkRef,
+          backend: { kind: backendKind, name: backendName },
+          prefixes: prefixes.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
+          state: 'present',
+        };
+      case 'hybridfabric':
+        return {
+          enabled: true,
+          domainAsn: Number(domainAsn) || 65000,
+          routeReflectors: [{ name: 'rr1', address: '10.0.0.1' }],
+          vniPool: { start: Number(vniStart) || 50000, end: Number(vniEnd) || 50511 },
+          transportDefaults: { mtu: 9000, defaultTunnelType: 'wireguard' },
+        };
+      case 'cloudgateway':
+        return {
+          enabled: true,
+          cloud: cloudProvider,
+          region,
+          domainAsn: Number(domainAsn) || 65001,
+          fabricRef,
+          transport: { type: 'wireguard' },
+        };
+      case 'transportlink':
+        return {
+          enabled: true,
+          fabricRef,
+          cloudGatewayRef: gatewayRef,
+          tunnelType: 'wireguard',
+        };
+      case 'uihealthchecker':
+        return {
+          url: healthUrl,
+          displayName: description || name,
+          description,
+          group: healthGroup,
+          expectedStatus: 200,
+          timeoutSeconds: 10,
+        };
       default:
         return {};
     }
@@ -288,6 +368,11 @@ export function CreateResourceForm({
     if ((type === 'team' || type === 'vault' || type === 'rbac') && !rbacConfig) return false;
     if (type === 'aaporg' && !aapConfig) return false;
     if (type === 'quayorg' && !quayConfig) return false;
+    if (type === 'networkplacement' && (!networkRef || !backendName || !prefixes.trim())) return false;
+    if (type === 'hybridfabric' && !domainAsn) return false;
+    if (type === 'cloudgateway' && (!fabricRef || !region)) return false;
+    if (type === 'transportlink' && (!fabricRef || !gatewayRef)) return false;
+    if (type === 'uihealthchecker' && !healthUrl.startsWith('http')) return false;
     return true;
   };
 
@@ -296,7 +381,11 @@ export function CreateResourceForm({
     setSubmitting(true);
     setResult(null);
     try {
-      await createDashboardResource(kind, { name, namespace: entityNs, spec: buildSpec() }, entityNs);
+      const targetNs =
+        type === 'hybridfabric' || type === 'cloudgateway' || type === 'transportlink' || type === 'uihealthchecker'
+          ? 'sovereign-cloud'
+          : entityNs;
+      await createDashboardResource(kind, { name, namespace: targetNs, spec: buildSpec() }, targetNs);
       setResult({ ok: true, message: `${kind} "${name}" submitted.` });
       setTimeout(() => onSuccess(listPath), 1200);
     } catch (err) {
@@ -508,6 +597,129 @@ export function CreateResourceForm({
                     options={names(cloudosos.items)}
                     isRequired
                   />
+                </>
+              )}
+
+
+              {type === 'hybridnetwork' && (
+                <FormGroup label="Description" fieldId="hn-desc">
+                  <TextArea id="hn-desc" value={description} onChange={(_e, v) => setDescription(v)} rows={3} />
+                </FormGroup>
+              )}
+
+              {type === 'networkplacement' && (
+                <>
+                  <RefSelect id="np-network" label="Hybrid Network" value={networkRef} onChange={setNetworkRef} options={names(hybridNetworks.items)} isRequired />
+                  <RefSelect
+                    id="np-backend-kind"
+                    label="Backend kind"
+                    value={backendKind}
+                    onChange={(v) => { setBackendKind(v); setBackendName(''); }}
+                    options={[
+                      { value: 'CloudAWS', label: 'CloudAWS' },
+                      { value: 'CloudOSO', label: 'CloudOSO' },
+                      { value: 'PlatformOpenshift', label: 'PlatformOpenshift' },
+                    ]}
+                    isRequired
+                  />
+                  <RefSelect
+                    id="np-backend-name"
+                    label="Backend instance"
+                    value={backendName}
+                    onChange={setBackendName}
+                    options={names(
+                      backendKind === 'CloudOSO'
+                        ? cloudososForPlacement.items
+                        : backendKind === 'PlatformOpenshift'
+                          ? platformsForPlacement.items
+                          : cloudAwssForPlacement.items,
+                    )}
+                    isRequired
+                  />
+                  <FormGroup label="Prefixes (CIDR, comma-separated)" fieldId="np-prefixes" isRequired>
+                    <TextArea id="np-prefixes" value={prefixes} onChange={(_e, v) => setPrefixes(v)} rows={2} />
+                  </FormGroup>
+                </>
+              )}
+
+              {type === 'hybridfabric' && (
+                <>
+                  <FormGroup label="Domain ASN" fieldId="hf-asn" isRequired>
+                    <TextInput id="hf-asn" value={domainAsn} onChange={(_e, v) => setDomainAsn(v)} />
+                  </FormGroup>
+                  <FormGroup label="VNI pool start" fieldId="hf-vni-start">
+                    <TextInput id="hf-vni-start" value={vniStart} onChange={(_e, v) => setVniStart(v)} />
+                  </FormGroup>
+                  <FormGroup label="VNI pool end" fieldId="hf-vni-end">
+                    <TextInput id="hf-vni-end" value={vniEnd} onChange={(_e, v) => setVniEnd(v)} />
+                  </FormGroup>
+                </>
+              )}
+
+              {type === 'cloudgateway' && (
+                <>
+                  <RefSelect
+                    id="cg-cloud"
+                    label="Cloud"
+                    value={cloudProvider}
+                    onChange={setCloudProvider}
+                    options={[
+                      { value: 'aws', label: 'AWS' },
+                      { value: 'openstack', label: 'OpenStack' },
+                      { value: 'openshift', label: 'OpenShift' },
+                    ]}
+                    isRequired
+                  />
+                  <FormGroup label="Region" fieldId="cg-region" isRequired>
+                    <TextInput id="cg-region" value={region} onChange={(_e, v) => setRegion(v)} />
+                  </FormGroup>
+                  <FormGroup label="Domain ASN" fieldId="cg-asn">
+                    <TextInput id="cg-asn" value={domainAsn} onChange={(_e, v) => setDomainAsn(v)} />
+                  </FormGroup>
+                  <RefSelect
+                    id="cg-fabric"
+                    label="Fabric"
+                    value={fabricRef}
+                    onChange={setFabricRef}
+                    options={
+                      names(fabrics.items).length
+                        ? names(fabrics.items)
+                        : [{ value: 'lab-fabric', label: 'lab-fabric' }]
+                    }
+                    isRequired
+                  />
+                </>
+              )}
+
+              {type === 'transportlink' && (
+                <>
+                  <RefSelect
+                    id="tl-fabric"
+                    label="Fabric"
+                    value={fabricRef}
+                    onChange={setFabricRef}
+                    options={
+                      names(fabrics.items).length
+                        ? names(fabrics.items)
+                        : [{ value: 'lab-fabric', label: 'lab-fabric' }]
+                    }
+                    isRequired
+                  />
+                  <RefSelect id="tl-gw" label="Cloud Gateway" value={gatewayRef} onChange={setGatewayRef} options={names(gateways.items)} isRequired />
+                </>
+              )}
+
+              {type === 'uihealthchecker' && (
+                <>
+                  <FormGroup label="URL" fieldId="uh-url" isRequired>
+                    <TextInput id="uh-url" value={healthUrl} onChange={(_e, v) => setHealthUrl(v)} />
+                  </FormGroup>
+                  <FormGroup label="Group" fieldId="uh-group">
+                    <TextInput id="uh-group" value={healthGroup} onChange={(_e, v) => setHealthGroup(v)} />
+                  </FormGroup>
+                  <FormGroup label="Display name / description" fieldId="uh-desc">
+                    <TextInput id="uh-desc" value={description} onChange={(_e, v) => setDescription(v)} />
+                  </FormGroup>
                 </>
               )}
 

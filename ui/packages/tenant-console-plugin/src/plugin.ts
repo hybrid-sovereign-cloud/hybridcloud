@@ -1,5 +1,7 @@
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
-import { configureK8sClient, configurePermissionsClient } from '@hybridsovereign/shared';
+import { configureK8sClient, configurePermissionsClient, initI18n } from '@hybridsovereign/shared';
+
+initI18n();
 
 configureK8sClient({
   baseUrl: '/api/kubernetes',
@@ -26,6 +28,8 @@ export { default as TenantVaultsPage } from './components/TenantVaultsPage';
 export { default as TenantVaultKVsPage } from './components/TenantVaultKVsPage';
 export { default as TenantAAPOrgsPage } from './components/TenantAAPOrgsPage';
 export { default as TenantQuayOrgsPage } from './components/TenantQuayOrgsPage';
+export { default as TenantHybridNetworksPage } from './components/TenantHybridNetworksPage';
+export { default as TenantNetworkPlacementsPage } from './components/TenantNetworkPlacementsPage';
 export { default as TenantCreatePage } from './components/TenantCreatePage';
 export { default as TenantTeamDetailPage } from './components/TenantTeamDetailPage';
 export { default as TenantProjectDetailPage } from './components/TenantProjectDetailPage';

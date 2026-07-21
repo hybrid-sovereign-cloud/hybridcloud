@@ -182,5 +182,53 @@
         "$codeRef": "AdminOperatorDetailPage"
       }
     }
+  },
+  {
+    "type": "console.navigation/section",
+    "properties": {
+      "id": "hybridsovereign-networking-section",
+      "perspective": "hybridsovereign",
+      "name": "Hybrid VPC"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-fabrics",
+      "section": "hybridsovereign-networking-section",
+      "perspective": "hybridsovereign",
+      "name": "Hybrid Fabrics",
+      "href": "/hybridsovereign/networking/fabrics"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-gateways",
+      "section": "hybridsovereign-networking-section",
+      "perspective": "hybridsovereign",
+      "name": "Cloud Gateways",
+      "href": "/hybridsovereign/networking/gateways"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-transport",
+      "section": "hybridsovereign-networking-section",
+      "perspective": "hybridsovereign",
+      "name": "Transport Links",
+      "href": "/hybridsovereign/networking/transport"
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "hybridsovereign-uihealth",
+      "section": "hybridsovereign-networking-section",
+      "perspective": "hybridsovereign",
+      "name": "UI Health",
+      "href": "/hybridsovereign/networking/uihealth"
+    }
   }
 ]

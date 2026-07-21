@@ -1,0 +1,17 @@
+apiVersion: hybridsovereign.redhat/v1alpha1
+kind: HybridFabric
+metadata:
+  name: lab-fabric
+  namespace: sovereign-cloud
+spec:
+  enabled: true
+  domainAsn: 65000
+  routeReflectors:
+    - name: rr1
+      address: 10.0.0.1
+  vniPool:
+    start: 50000
+    end: 50511
+  transportDefaults:
+    mtu: 9000
+    defaultTunnelType: wireguard

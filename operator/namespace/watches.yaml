@@ -139,3 +139,25 @@
     role: vaultkv_finalizer
   maxConcurrentReconciles: 20
   reconcileInterval: 600s
+
+- version: v1alpha1
+  group: hybridsovereign.redhat
+  kind: HybridNetwork
+  role: hybridnetwork
+  maxConcurrentReconciles: 20
+  reconcileInterval: 300s
+  watchAnnotationsChanges: true
+  finalizer:
+    name: hybridsovereign.redhat/hybridnetwork-cleanup
+    role: hybridnetwork_delete
+
+- version: v1alpha1
+  group: hybridsovereign.redhat
+  kind: NetworkPlacement
+  role: networkplacement
+  maxConcurrentReconciles: 20
+  reconcileInterval: 300s
+  watchAnnotationsChanges: true
+  finalizer:
+    name: hybridsovereign.redhat/networkplacement-cleanup
+    role: networkplacement_delete

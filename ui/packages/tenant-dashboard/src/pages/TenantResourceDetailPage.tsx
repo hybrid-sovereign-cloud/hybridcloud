@@ -1,7 +1,9 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert } from '@patternfly/react-core';
-import { HybridSovereignKind, ResourceDetail } from '@hybridsovereign/shared';
+import { HybridSovereignKind, ResourceDetail,
+  useTranslation,
+} from '@hybridsovereign/shared';
 
 interface TenantResourceDetailPageProps {
   kind: HybridSovereignKind;

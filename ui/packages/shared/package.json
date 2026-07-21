@@ -13,7 +13,10 @@
     },
     "./styles/openshift.css": "./src/styles/openshift.css"
   },
-  "files": ["dist", "src/styles"],
+  "files": [
+    "dist",
+    "src/styles"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -26,7 +29,9 @@
   "dependencies": {
     "@patternfly/react-core": "^5.4.1",
     "@patternfly/react-icons": "^5.4.0",
-    "@patternfly/react-styles": "^5.4.0"
+    "@patternfly/react-styles": "^5.4.0",
+    "i18next": "^26.3.6",
+    "react-i18next": "^17.0.10"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

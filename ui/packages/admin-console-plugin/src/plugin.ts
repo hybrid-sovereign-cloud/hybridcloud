@@ -1,5 +1,7 @@
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
-import { configureK8sClient, configurePermissionsClient } from '@hybridsovereign/shared';
+import { configureK8sClient, configurePermissionsClient, initI18n } from '@hybridsovereign/shared';
+
+initI18n();
 
 configureK8sClient({
   baseUrl: '/api/kubernetes',

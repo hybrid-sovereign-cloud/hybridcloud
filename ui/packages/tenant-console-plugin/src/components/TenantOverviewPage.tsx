@@ -9,6 +9,7 @@ import {
   useEntityNamespace,
   K8sResource,
   configureK8sClient,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
@@ -20,6 +21,7 @@ configureK8sClient({
 });
 
 const TenantOverviewPage: React.FC = () => {
+  const { t } = useTranslation();
   const { namespace, entities, selectEntity, entity } = useEntityNamespace();
 
   const teams = useK8sResourceList<K8sResource>('Team', { namespace });
@@ -41,18 +43,18 @@ const TenantOverviewPage: React.FC = () => {
         <PageHeader
           title="Entity Overview"
           subtitle="Tenant-scoped health and live topology"
-          breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Tenancy' }, { label: 'Overview' }]}
+          breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: 'Tenancy' }, { label: t('pages.overviewTitle') }]}
         />
         <div className="sc-inventory-grid sc-mb">
           <InventoryCard
-            title="Teams"
+            title={t('nav.teams')}
             count={teams.items.length}
             hint={`${ready(teams.items)} ready`}
             kind="Team"
             href="/hybridsovereign/tenant/teams"
           />
           <InventoryCard
-            title="Projects"
+            title={t('nav.projects')}
             count={projects.items.length}
             hint={`${ready(projects.items)} ready`}
             kind="Project"
@@ -66,7 +68,7 @@ const TenantOverviewPage: React.FC = () => {
             href="/hybridsovereign/tenant/platforms"
           />
           <InventoryCard
-            title="Assignments"
+            title={t('nav.assignments')}
             count={assignments.items.length}
             hint={`${ready(assignments.items)} ready`}
             kind="Assignment"

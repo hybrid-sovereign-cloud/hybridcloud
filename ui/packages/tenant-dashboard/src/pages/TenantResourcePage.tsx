@@ -15,6 +15,7 @@ import {
   FilterToolbar,
   StatusFilter,
   normalizeHealth,
+  useTranslation,
 } from '@hybridsovereign/shared';
 
 type FormType =
@@ -29,7 +30,9 @@ type FormType =
   | 'vault'
   | 'vaultkv'
   | 'aaporg'
-  | 'quayorg';
+  | 'quayorg'
+  | 'hybridnetwork'
+  | 'networkplacement';
 
 interface TenantResourcePageProps {
   kind: HybridSovereignKind;
@@ -46,6 +49,7 @@ export function TenantResourcePage({
   listPath,
   formType,
 }: TenantResourcePageProps): React.ReactElement {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -69,7 +73,7 @@ export function TenantResourcePage({
       <PageHeader
         title={title}
         subtitle={`Namespaced ${kind} resources in ${namespace}`}
-        breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: 'Tenancy' }, { label: title }]}
+        breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: 'Tenancy' }, { label: title }]}
         actions={
           formType && canCreate ? (
             <Button
@@ -101,8 +105,8 @@ export function TenantResourcePage({
           <Table aria-label={`${kind} table`} variant="compact">
             <Thead>
               <Tr>
-                <Th>Name</Th>
-                <Th>Status</Th>
+                <Th>{t('common.name')}</Th>
+                <Th>{t('common.status')}</Th>
                 <Th>Last Reconciled</Th>
               </Tr>
             </Thead>

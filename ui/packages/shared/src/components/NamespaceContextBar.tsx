@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button, FormSelect, FormSelectOption, Title } from '@patternfly/react-core';
 import { TopologyIcon } from '@patternfly/react-icons';
+import { useTranslation } from 'react-i18next';
 import { K8sResource } from '../types';
 
 export interface NamespaceContextBarProps {
@@ -28,6 +29,7 @@ export function NamespaceContextBar({
   entities = [],
   onSelectEntity,
 }: NamespaceContextBarProps): React.ReactElement {
+  const { t } = useTranslation();
   const displayEntity = entityName ?? namespace.replace(/^entity-/, '');
   const currentSlug = namespace.replace(/^entity-/, '');
   const options =
@@ -38,11 +40,11 @@ export function NamespaceContextBar({
         : [];
 
   return (
-    <div className="sc-ns-bar" aria-label="Entity namespace context">
+    <div className="sc-ns-bar" aria-label={t('common.entityNamespace')}>
       <div className="sc-ns-bar__main">
         <div className="sc-ns-bar__title-row">
           <label htmlFor="sc-entity-select" className="sc-ns-bar__label">
-            Entity
+            {t('common.entity')}
           </label>
           {onSelectEntity ? (
             <FormSelect
@@ -50,7 +52,7 @@ export function NamespaceContextBar({
               className="sc-entity-select"
               value={currentSlug || displayEntity}
               onChange={(_e, value) => onSelectEntity(value)}
-              aria-label="Switch entity"
+              aria-label={t('common.switchEntity')}
             >
               {options.map((ent) => (
                 <FormSelectOption
@@ -64,26 +66,26 @@ export function NamespaceContextBar({
             <strong className="sc-ns-bar__entity">{displayEntity}</strong>
           )}
           <Title headingLevel="h2" size="md" className="sc-ns-bar__title pf-v5-u-screen-reader">
-            Entity namespace · {displayEntity}
+            {t('common.entityNamespace')} · {displayEntity}
           </Title>
         </div>
         <div className="sc-ns-bar__meta">
           <span>
-            Namespace <strong>{namespace}</strong>
+            {t('common.namespace')} <strong>{namespace}</strong>
           </span>
           {billingId && (
             <span>
-              Billing: <strong>{billingId}</strong>
+              {t('common.billing')}: <strong>{billingId}</strong>
             </span>
           )}
           {typeof resourceCount === 'number' && (
             <span>
-              <strong>{resourceCount}</strong> resources
+              <strong>{resourceCount}</strong> {t('common.resources').toLowerCase()}
             </span>
           )}
           {typeof healthyPercent === 'number' && (
             <span>
-              <strong>{healthyPercent}%</strong> healthy
+              <strong>{healthyPercent}%</strong> {t('common.healthy').toLowerCase()}
             </span>
           )}
         </div>
@@ -91,7 +93,7 @@ export function NamespaceContextBar({
       <div className="sc-ns-bar__actions">
         {onTopologyClick && (
           <Button variant="secondary" size="sm" icon={<TopologyIcon />} onClick={onTopologyClick}>
-            Topology
+            {t('common.topology')}
           </Button>
         )}
         {actions}

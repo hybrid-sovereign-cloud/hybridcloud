@@ -14,6 +14,7 @@ import {
   SyncAltIcon,
   OutlinedQuestionCircleIcon,
 } from '@patternfly/react-icons';
+import { useTranslation } from 'react-i18next';
 
 export type ResourceHealth = 'ready' | 'pending' | 'failed' | 'reconciling' | 'unknown';
 
@@ -56,11 +57,12 @@ export function StatusBadge({
   message,
   lastTransition,
 }: StatusBadgeProps): React.ReactElement {
+  const { t } = useTranslation();
   const health = normalizeHealth(ready, status);
   const Icon = HEALTH_ICON[health];
   const label = (
     <Label color={COLOR[health]} icon={<Icon />} className="sc-status-badge">
-      {health}
+      {t(`status.${health}`)}
     </Label>
   );
 
@@ -70,18 +72,18 @@ export function StatusBadge({
 
   return (
     <Popover
-      headerContent="Status"
+      headerContent={t('common.status')}
       bodyContent={
         <DescriptionList isCompact isHorizontal>
           {message && (
             <DescriptionListGroup>
-              <DescriptionListTerm>Message</DescriptionListTerm>
+              <DescriptionListTerm>{t('common.message')}</DescriptionListTerm>
               <DescriptionListDescription>{message}</DescriptionListDescription>
             </DescriptionListGroup>
           )}
           {lastTransition && (
             <DescriptionListGroup>
-              <DescriptionListTerm>Last transition</DescriptionListTerm>
+              <DescriptionListTerm>{t('common.lastTransition')}</DescriptionListTerm>
               <DescriptionListDescription>{lastTransition}</DescriptionListDescription>
             </DescriptionListGroup>
           )}

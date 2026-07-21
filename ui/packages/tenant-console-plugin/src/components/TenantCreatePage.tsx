@@ -7,6 +7,7 @@ import {
   SelfServiceFormType,
   useEntityNamespace,
   configureK8sClient,
+  useTranslation,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
 import '@hybridsovereign/shared/styles/openshift.css';
@@ -33,6 +34,7 @@ const LIST_PATH: Record<string, string> = {
 };
 
 const TenantCreatePage: React.FC = () => {
+  const { t } = useTranslation();
   const history = useHistory();
   const { formType } = useParams<{ formType: string }>();
   const { namespace, entities, selectEntity, entity } = useEntityNamespace();

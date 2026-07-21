@@ -20,6 +20,7 @@ import {
   CatalogIcon,
   ServerIcon,
   LayerGroupIcon,
+  TopologyIcon,
 } from '@patternfly/react-icons';
 import { HybridSovereignKind } from '../types';
 
@@ -49,6 +50,12 @@ export const KIND_VISUALS: Record<string, KindVisual> = {
   AAPConfig: { icon: GlobeIcon, label: 'Service URL' },
   RbacConfig: { icon: CogIcon, label: 'Operator' },
   QuayConfig: { icon: CatalogIcon, label: 'Quay Config' },
+  HybridFabric: { icon: TopologyIcon, label: 'Hybrid Fabric' },
+  CloudGateway: { icon: GlobeIcon, label: 'Cloud Gateway' },
+  TransportLink: { icon: ProjectDiagramIcon, label: 'Transport Link' },
+  HybridNetwork: { icon: TopologyIcon, label: 'Hybrid Network' },
+  NetworkPlacement: { icon: LayerGroupIcon, label: 'Network Placement' },
+  UIHealthChecker: { icon: TachometerAltIcon, label: 'UI Health' },
   Server: { icon: ServerIcon, label: 'Server' },
 };
 

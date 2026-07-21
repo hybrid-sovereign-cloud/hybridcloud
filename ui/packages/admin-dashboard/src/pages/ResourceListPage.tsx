@@ -13,6 +13,7 @@ import {
   StatusFilter,
   normalizeHealth,
   KindIcon,
+  useTranslation,
 } from '@hybridsovereign/shared';
 
 interface ResourceListPageProps {
@@ -40,14 +41,20 @@ function matchesFilter(item: K8sResource, search: string, statusFilter: StatusFi
   return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
 }
 
-/** Build detail URL — Entity uses /entities/:name; other kinds use /path/:namespace/:name */
+/** Build detail URL — Entity and platform networking CRs use /path/:name; others use /path/:namespace/:name */
 export function adminDetailHref(
   listPath: string,
   kind: HybridSovereignKind,
   item: K8sResource,
 ): string {
   const name = encodeURIComponent(item.metadata.name);
-  if (kind === 'Entity') {
+  if (
+    kind === 'Entity' ||
+    kind === 'HybridFabric' ||
+    kind === 'CloudGateway' ||
+    kind === 'TransportLink' ||
+    kind === 'UIHealthChecker'
+  ) {
     return `${listPath}/${name}`;
   }
   const ns = encodeURIComponent(item.metadata.namespace ?? 'default');
@@ -67,36 +74,37 @@ function ResourceTable({
   error: Error | null;
   listPath: string;
 }): React.ReactElement {
+  const { t } = useTranslation();
   if (loading && items.length === 0) {
-    return <Spinner aria-label={`Loading ${kind} resources`} />;
+    return <Spinner aria-label={t('pages.loadingKind', { kind })} />;
   }
 
   return (
     <>
       {error && (
-        <Alert variant="warning" title="K8s proxy unavailable" isInline style={{ marginBottom: '1rem' }}>
-          {error.message}. Showing scaffold UI — connect the K8s proxy to load live data.
+        <Alert variant="warning" title={t('common.k8sUnavailable')} isInline style={{ marginBottom: '1rem' }}>
+          {error.message}. {t('common.k8sUnavailableHint')}
         </Alert>
       )}
       <div className="sc-table-wrap">
         <Table aria-label={`${kind} table`} variant="compact">
           <Thead>
             <Tr>
-              <Th>Name</Th>
-              <Th>Namespace</Th>
-              <Th>Status</Th>
-              <Th>Last Reconciled</Th>
+              <Th>{t('common.name')}</Th>
+              <Th>{t('common.namespace')}</Th>
+              <Th>{t('common.status')}</Th>
+              <Th>{t('common.lastReconciled')}</Th>
             </Tr>
           </Thead>
           <Tbody>
             {items.length === 0 ? (
               <Tr>
-                <Td colSpan={4}>No {kind} resources match the current filters</Td>
+                <Td colSpan={4}>{t('pages.noMatch', { kind })}</Td>
               </Tr>
             ) : (
               items.map((item) => (
                 <Tr key={`${item.metadata.namespace}/${item.metadata.name}`}>
-                  <Td dataLabel="Name">
+                  <Td dataLabel={t('common.name')}>
                     <Link
                       className="sc-resource-link"
                       to={adminDetailHref(listPath, kind, item)}
@@ -105,8 +113,8 @@ function ResourceTable({
                       {item.metadata.name}
                     </Link>
                   </Td>
-                  <Td dataLabel="Namespace">{item.metadata.namespace ?? '—'}</Td>
-                  <Td dataLabel="Status">
+                  <Td dataLabel={t('common.namespace')}>{item.metadata.namespace ?? '—'}</Td>
+                  <Td dataLabel={t('common.status')}>
                     <StatusBadge
                       status={item.status?.status}
                       ready={item.status?.ready}
@@ -114,7 +122,7 @@ function ResourceTable({
                       lastTransition={item.status?.lastReconciledAt}
                     />
                   </Td>
-                  <Td dataLabel="Last Reconciled">{item.status?.lastReconciledAt ?? '—'}</Td>
+                  <Td dataLabel={t('common.lastReconciled')}>{item.status?.lastReconciledAt ?? '—'}</Td>
                 </Tr>
               ))
             )}
@@ -137,6 +145,7 @@ export function ResourceListPage({
   hideHeader = false,
 }: ResourceListPageProps): React.ReactElement {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -166,12 +175,13 @@ export function ResourceListPage({
       {!hideHeader && (
         <PageHeader
           title={title}
-          subtitle={subtitle ?? `${kind} resources across the platform`}
-          breadcrumbs={[{ label: 'Sovereign Cloud' }, { label: title }]}
+          subtitle={subtitle}
+          breadcrumbs={[{ label: t('nav.sovereignCloud') }, { label: title }]}
+          showLanguageToggle={false}
           actions={
             createPath ? (
               <Button variant="primary" icon={<PlusCircleIcon />} onClick={() => navigate(createPath)}>
-                Create
+                {t('common.create')}
               </Button>
             ) : undefined
           }
@@ -193,7 +203,10 @@ export function ResourceListPage({
       />
       {secondaryKind && (
         <div style={{ marginTop: '1rem' }}>
-          <PageHeader title={secondaryKind} subtitle={`Secondary kind list`} />
+          <PageHeader
+            title={t(`kinds.${secondaryKind}`, { defaultValue: secondaryKind })}
+            showLanguageToggle={false}
+          />
           <ResourceTable
             kind={secondaryKind}
             items={secondaryFiltered}

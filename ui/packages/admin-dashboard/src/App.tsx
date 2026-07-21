@@ -42,58 +42,96 @@ import {
   UserEditIcon,
 } from '@patternfly/react-icons';
 import { NavLink, Routes, Route, useLocation } from 'react-router-dom';
-import { SovereignThemeProvider, useTheme, HybridSovereignKind } from '@hybridsovereign/shared';
+import {
+  SovereignThemeProvider,
+  SovereignI18nProvider,
+  useTheme,
+  useTranslation,
+  LanguageToggle,
+  HybridSovereignKind,
+} from '@hybridsovereign/shared';
 import { OverviewPage } from './pages/OverviewPage';
 import { ResourceListPage } from './pages/ResourceListPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { CreateResourcePage } from './pages/CreateResourcePage';
 import { AdminResourceDetailPage } from './pages/AdminResourceDetailPage';
+import { UIHealthPage } from './pages/UIHealthPage';
 
 type NavEntry =
   | {
       type: 'link';
       path: string;
-      label: string;
+      labelKey: string;
       icon: React.ComponentType;
       end?: boolean;
       kind?: HybridSovereignKind;
     }
-  | { type: 'sep'; label: string };
+  | { type: 'sep'; labelKey: string };
 
 /** Static sidebar — all links always visible; pages fetch K8s only on navigate/refresh */
 const NAV: NavEntry[] = [
-  { type: 'link', path: '/', label: 'Overview', icon: TachometerAltIcon, end: true },
-  { type: 'link', path: '/entities', label: 'Entities', icon: BuildingIcon, kind: 'Entity' },
-  { type: 'link', path: '/personas', label: 'Personas', icon: UserEditIcon, kind: 'Persona' },
-  { type: 'sep', label: 'Platform' },
-  { type: 'link', path: '/services', label: 'Service URLs', icon: GlobeIcon, kind: 'AAPConfig' },
-  { type: 'link', path: '/operators', label: 'Operators', icon: CogIcon, kind: 'RbacConfig' },
-  { type: 'sep', label: 'Tenancy (read)' },
-  { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon, kind: 'Team' },
-  { type: 'link', path: '/projects', label: 'Projects', icon: FolderOpenIcon, kind: 'Project' },
+  { type: 'link', path: '/', labelKey: 'nav.overview', icon: TachometerAltIcon, end: true },
+  { type: 'link', path: '/entities', labelKey: 'nav.entities', icon: BuildingIcon, kind: 'Entity' },
+  { type: 'link', path: '/personas', labelKey: 'nav.personas', icon: UserEditIcon, kind: 'Persona' },
+  { type: 'sep', labelKey: 'nav.platform' },
+  { type: 'link', path: '/services', labelKey: 'nav.serviceUrls', icon: GlobeIcon, kind: 'AAPConfig' },
+  { type: 'link', path: '/operators', labelKey: 'nav.operators', icon: CogIcon, kind: 'RbacConfig' },
+  { type: 'sep', labelKey: 'nav.tenancyRead' },
+  { type: 'link', path: '/teams', labelKey: 'nav.teams', icon: UsersIcon, kind: 'Team' },
+  { type: 'link', path: '/projects', labelKey: 'nav.projects', icon: FolderOpenIcon, kind: 'Project' },
   {
     type: 'link',
     path: '/platforms',
-    label: 'Platform Openshift',
+    labelKey: 'nav.platformOpenshift',
     icon: ClusterIcon,
     kind: 'PlatformOpenshift',
   },
-  { type: 'link', path: '/clouds', label: 'Cloud Environments', icon: LayerGroupIcon, kind: 'CloudOSO' },
+  { type: 'link', path: '/clouds', labelKey: 'nav.cloudEnvironments', icon: LayerGroupIcon, kind: 'CloudOSO' },
   {
     type: 'link',
     path: '/assignments',
-    label: 'Assignments',
+    labelKey: 'nav.assignments',
     icon: ProjectDiagramIcon,
     kind: 'Assignment',
+  },
+  { type: 'sep', labelKey: 'nav.hybridVpc' },
+  {
+    type: 'link',
+    path: '/networking/fabrics',
+    labelKey: 'nav.hybridFabrics',
+    icon: TopologyIcon,
+    kind: 'HybridFabric',
+  },
+  {
+    type: 'link',
+    path: '/networking/gateways',
+    labelKey: 'nav.cloudGateways',
+    icon: GlobeIcon,
+    kind: 'CloudGateway',
+  },
+  {
+    type: 'link',
+    path: '/networking/transport',
+    labelKey: 'nav.transportLinks',
+    icon: ProjectDiagramIcon,
+    kind: 'TransportLink',
+  },
+  {
+    type: 'link',
+    path: '/networking/uihealth',
+    labelKey: 'nav.uiHealth',
+    icon: TachometerAltIcon,
+    kind: 'UIHealthChecker',
   },
 ];
 
 function ThemeToggle(): React.ReactElement {
   const { mode, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Button
       variant="plain"
-      aria-label="Toggle theme"
+      aria-label={t('common.toggleTheme')}
       onClick={toggleTheme}
       icon={mode === 'dark' ? <SunIcon /> : <MoonIcon />}
     />
@@ -102,13 +140,14 @@ function ThemeToggle(): React.ReactElement {
 
 function AdminNav(): React.ReactElement {
   const location = useLocation();
+  const { t } = useTranslation();
   const groups = React.useMemo(() => {
-    const result: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
-    let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
+    const result: { titleKey?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
+    let current: { titleKey?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
     for (const entry of NAV) {
       if (entry.type === 'sep') {
         if (current.items.length) result.push(current);
-        current = { title: entry.label, items: [] };
+        current = { titleKey: entry.labelKey, items: [] };
       } else {
         current.items.push(entry);
       }
@@ -118,12 +157,12 @@ function AdminNav(): React.ReactElement {
   }, []);
 
   return (
-    <Nav theme="dark" aria-label="Sovereign Admin navigation">
+    <Nav theme="dark" aria-label={t('nav.adminNav')}>
       {groups.map((group, gi) => (
-        <NavList key={group.title ?? `group-${gi}`}>
-          {group.title ? (
+        <NavList key={group.titleKey ?? `group-${gi}`}>
+          {group.titleKey ? (
             <li className="sc-nav-separator" role="presentation">
-              {group.title}
+              {t(group.titleKey)}
             </li>
           ) : null}
           {group.items.map((item) => {
@@ -137,7 +176,7 @@ function AdminNav(): React.ReactElement {
                   <span className="sc-nav-link__icon">
                     <Icon />
                   </span>
-                  {item.label}
+                  {t(item.labelKey)}
                 </NavLink>
               </NavItem>
             );
@@ -150,13 +189,14 @@ function AdminNav(): React.ReactElement {
 
 function AdminLayout(): React.ReactElement {
   const [isSidebarOpen, setSidebarOpen] = React.useState(true);
+  const { t } = useTranslation();
 
   const header = (
     <Masthead className="sc-pf-masthead">
       <MastheadToggle>
         <PageToggleButton
           variant="plain"
-          aria-label="Global navigation"
+          aria-label={t('common.globalNav')}
           isSidebarOpen={isSidebarOpen}
           onSidebarToggle={() => setSidebarOpen((o) => !o)}
           id="admin-nav-toggle"
@@ -170,7 +210,7 @@ function AdminLayout(): React.ReactElement {
             <span className="sc-masthead-brand__mark" aria-hidden>
               <TopologyIcon />
             </span>
-            <span>Sovereign Admin Console</span>
+            <span>{t('nav.sovereignAdminConsole')}</span>
           </NavLink>
         </MastheadBrand>
       </MastheadMain>
@@ -179,17 +219,20 @@ function AdminLayout(): React.ReactElement {
           <ToolbarContent>
             <ToolbarGroup align={{ default: 'alignRight' }}>
               <ToolbarItem>
-                <Button variant="plain" aria-label="Notifications" icon={<OutlinedBellIcon />} />
+                <LanguageToggle isCompact />
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="plain" aria-label="Help" icon={<QuestionCircleIcon />} />
+                <Button variant="plain" aria-label={t('common.notifications')} icon={<OutlinedBellIcon />} />
+              </ToolbarItem>
+              <ToolbarItem>
+                <Button variant="plain" aria-label={t('common.help')} icon={<QuestionCircleIcon />} />
               </ToolbarItem>
               <ToolbarItem>
                 <ThemeToggle />
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="plain" aria-label="User" icon={<UserIcon />}>
-                  admin
+                <Button variant="plain" aria-label={t('common.user')} icon={<UserIcon />}>
+                  {t('common.admin')}
                 </Button>
               </ToolbarItem>
             </ToolbarGroup>
@@ -202,7 +245,7 @@ function AdminLayout(): React.ReactElement {
   const sidebar = (
     <PageSidebar theme="dark" isSidebarOpen={isSidebarOpen} id="admin-sidebar">
       <PageSidebarBody>
-        <div className="sc-sidebar-title">Sovereign Admin</div>
+        <div className="sc-sidebar-title">{t('nav.sovereignAdmin')}</div>
         <AdminNav />
       </PageSidebarBody>
     </PageSidebar>
@@ -217,7 +260,7 @@ function AdminLayout(): React.ReactElement {
             <Route
               path="/entities"
               element={
-                <ResourceListPage kind="Entity" title="Entities" listPath="/entities" createPath="/create/entity" />
+                <ResourceListPage kind="Entity" title={t('nav.entities')} listPath="/entities" createPath="/create/entity" />
               }
             />
             <Route
@@ -225,39 +268,39 @@ function AdminLayout(): React.ReactElement {
               element={
                 <AdminResourceDetailPage
                   kind="Entity"
-                  title="Entities"
+                  title={t('nav.entities')}
                   listPath="/entities"
                   fixedNamespace="sovereign-cloud"
                 />
               }
             />
-            <Route path="/teams" element={<ResourceListPage kind="Team" title="Teams" listPath="/teams" />} />
+            <Route path="/teams" element={<ResourceListPage kind="Team" title={t('nav.teams')} listPath="/teams" />} />
             <Route
               path="/teams/:namespace/:name"
-              element={<AdminResourceDetailPage kind="Team" title="Teams" listPath="/teams" />}
+              element={<AdminResourceDetailPage kind="Team" title={t('nav.teams')} listPath="/teams" />}
             />
             <Route
               path="/assignments"
-              element={<ResourceListPage kind="Assignment" title="Assignments" listPath="/assignments" />}
+              element={<ResourceListPage kind="Assignment" title={t('nav.assignments')} listPath="/assignments" />}
             />
             <Route
               path="/assignments/:namespace/:name"
-              element={<AdminResourceDetailPage kind="Assignment" title="Assignments" listPath="/assignments" />}
+              element={<AdminResourceDetailPage kind="Assignment" title={t('nav.assignments')} listPath="/assignments" />}
             />
             <Route
               path="/projects"
-              element={<ResourceListPage kind="Project" title="Projects" listPath="/projects" />}
+              element={<ResourceListPage kind="Project" title={t('nav.projects')} listPath="/projects" />}
             />
             <Route
               path="/projects/:namespace/:name"
-              element={<AdminResourceDetailPage kind="Project" title="Projects" listPath="/projects" />}
+              element={<AdminResourceDetailPage kind="Project" title={t('nav.projects')} listPath="/projects" />}
             />
             <Route
               path="/personas"
               element={
                 <ResourceListPage
                   kind="Persona"
-                  title="Personas"
+                  title={t('nav.personas')}
                   listPath="/personas"
                   createPath="/create/persona"
                 />
@@ -265,12 +308,12 @@ function AdminLayout(): React.ReactElement {
             />
             <Route
               path="/personas/:namespace/:name"
-              element={<AdminResourceDetailPage kind="Persona" title="Personas" listPath="/personas" />}
+              element={<AdminResourceDetailPage kind="Persona" title={t('nav.personas')} listPath="/personas" />}
             />
             <Route
               path="/platforms"
               element={
-                <ResourceListPage kind="PlatformOpenshift" title="Platform Openshift" listPath="/platforms" />
+                <ResourceListPage kind="PlatformOpenshift" title={t('nav.platformOpenshift')} listPath="/platforms" />
               }
             />
             <Route
@@ -278,7 +321,7 @@ function AdminLayout(): React.ReactElement {
               element={
                 <AdminResourceDetailPage
                   kind="PlatformOpenshift"
-                  title="Platform Openshift"
+                  title={t('nav.platformOpenshift')}
                   listPath="/platforms"
                 />
               }
@@ -288,8 +331,8 @@ function AdminLayout(): React.ReactElement {
               element={
                 <ResourceListPage
                   kind="CloudOSO"
-                  title="Cloud Environments"
-                  subtitle="CloudOSO and CloudAWS resources"
+                  title={t('nav.cloudEnvironments')}
+                  subtitle={t('pages.cloudEnvironmentsSubtitle')}
                   secondaryKind="CloudAWS"
                   listPath="/clouds/cloudoso"
                   secondaryListPath="/clouds/cloudaws"
@@ -299,13 +342,13 @@ function AdminLayout(): React.ReactElement {
             <Route
               path="/clouds/cloudoso/:namespace/:name"
               element={
-                <AdminResourceDetailPage kind="CloudOSO" title="Cloud Environments" listPath="/clouds" />
+                <AdminResourceDetailPage kind="CloudOSO" title={t('nav.cloudEnvironments')} listPath="/clouds" />
               }
             />
             <Route
               path="/clouds/cloudaws/:namespace/:name"
               element={
-                <AdminResourceDetailPage kind="CloudAWS" title="Cloud Environments" listPath="/clouds" />
+                <AdminResourceDetailPage kind="CloudAWS" title={t('nav.cloudEnvironments')} listPath="/clouds" />
               }
             />
             <Route
@@ -313,8 +356,8 @@ function AdminLayout(): React.ReactElement {
               element={
                 <ResourceListPage
                   kind="Rbac"
-                  title="Operators"
-                  subtitle="RBAC roles and platform operator configs"
+                  title={t('nav.operators')}
+                  subtitle={t('pages.operatorsSubtitle')}
                   secondaryKind="RbacConfig"
                   listPath="/operators/rbacs"
                   secondaryListPath="/operators/rbacconfigs"
@@ -323,38 +366,116 @@ function AdminLayout(): React.ReactElement {
             />
             <Route
               path="/operators/rbacs/:namespace/:name"
-              element={<AdminResourceDetailPage kind="Rbac" title="Operators" listPath="/operators" />}
+              element={<AdminResourceDetailPage kind="Rbac" title={t('nav.operators')} listPath="/operators" />}
             />
             <Route
               path="/operators/rbacconfigs/:namespace/:name"
               element={
-                <AdminResourceDetailPage kind="RbacConfig" title="Operators" listPath="/operators" />
+                <AdminResourceDetailPage kind="RbacConfig" title={t('nav.operators')} listPath="/operators" />
               }
             />
             <Route path="/services" element={<ServicesPage />} />
             <Route
               path="/services/aaporgs/:namespace/:name"
-              element={<AdminResourceDetailPage kind="AAPOrg" title="Service URLs" listPath="/services" />}
+              element={<AdminResourceDetailPage kind="AAPOrg" title={t('nav.serviceUrls')} listPath="/services" />}
             />
             <Route
               path="/services/aapconfigs/:namespace/:name"
-              element={<AdminResourceDetailPage kind="AAPConfig" title="Service URLs" listPath="/services" />}
+              element={<AdminResourceDetailPage kind="AAPConfig" title={t('nav.serviceUrls')} listPath="/services" />}
             />
             <Route
               path="/services/quayorgs/:namespace/:name"
-              element={<AdminResourceDetailPage kind="QuayOrg" title="Service URLs" listPath="/services" />}
+              element={<AdminResourceDetailPage kind="QuayOrg" title={t('nav.serviceUrls')} listPath="/services" />}
             />
             <Route
               path="/services/quayconfigs/:namespace/:name"
-              element={<AdminResourceDetailPage kind="QuayConfig" title="Service URLs" listPath="/services" />}
+              element={<AdminResourceDetailPage kind="QuayConfig" title={t('nav.serviceUrls')} listPath="/services" />}
             />
             <Route
               path="/services/vaults/:namespace/:name"
-              element={<AdminResourceDetailPage kind="Vault" title="Service URLs" listPath="/services" />}
+              element={<AdminResourceDetailPage kind="Vault" title={t('nav.serviceUrls')} listPath="/services" />}
             />
             <Route
               path="/services/vaultkvs/:namespace/:name"
-              element={<AdminResourceDetailPage kind="VaultKV" title="Service URLs" listPath="/services" />}
+              element={<AdminResourceDetailPage kind="VaultKV" title={t('nav.serviceUrls')} listPath="/services" />}
+            />
+            <Route
+              path="/networking/fabrics"
+              element={
+                <ResourceListPage
+                  kind="HybridFabric"
+                  title={t('nav.hybridFabrics')}
+                  listPath="/networking/fabrics"
+                  createPath="/create/hybridfabric"
+                />
+              }
+            />
+            <Route
+              path="/networking/fabrics/:name"
+              element={
+                <AdminResourceDetailPage
+                  kind="HybridFabric"
+                  title={t('nav.hybridFabrics')}
+                  listPath="/networking/fabrics"
+                  fixedNamespace="sovereign-cloud"
+                />
+              }
+            />
+            <Route
+              path="/networking/gateways"
+              element={
+                <ResourceListPage
+                  kind="CloudGateway"
+                  title={t('nav.cloudGateways')}
+                  listPath="/networking/gateways"
+                  createPath="/create/cloudgateway"
+                />
+              }
+            />
+            <Route
+              path="/networking/gateways/:name"
+              element={
+                <AdminResourceDetailPage
+                  kind="CloudGateway"
+                  title={t('nav.cloudGateways')}
+                  listPath="/networking/gateways"
+                  fixedNamespace="sovereign-cloud"
+                />
+              }
+            />
+            <Route
+              path="/networking/transport"
+              element={
+                <ResourceListPage
+                  kind="TransportLink"
+                  title={t('nav.transportLinks')}
+                  listPath="/networking/transport"
+                  createPath="/create/transportlink"
+                />
+              }
+            />
+            <Route
+              path="/networking/transport/:name"
+              element={
+                <AdminResourceDetailPage
+                  kind="TransportLink"
+                  title={t('nav.transportLinks')}
+                  listPath="/networking/transport"
+                  fixedNamespace="sovereign-cloud"
+                />
+              }
+            />
+            <Route path="/networking/uihealth" element={<UIHealthPage />} />
+            <Route
+              path="/networking/uihealth/:name"
+              element={
+                <AdminResourceDetailPage
+                  kind="UIHealthChecker"
+                  title={t('nav.uiHealth')}
+                  listPath="/networking/uihealth"
+                  fixedNamespace="sovereign-cloud"
+                />
+              }
             />
             <Route path="/create/:kind" element={<CreateResourcePage />} />
             <Route
@@ -362,9 +483,9 @@ function AdminLayout(): React.ReactElement {
               element={
                 <EmptyState>
                   <Title headingLevel="h4" size="lg">
-                    Page not found
+                    {t('common.pageNotFound')}
                   </Title>
-                  <EmptyStateBody>Select a resource from the Sovereign Admin navigation.</EmptyStateBody>
+                  <EmptyStateBody>{t('nav.pageNotFoundHint')}</EmptyStateBody>
                 </EmptyState>
               }
             />
@@ -377,8 +498,10 @@ function AdminLayout(): React.ReactElement {
 
 export function App(): React.ReactElement {
   return (
-    <SovereignThemeProvider>
-      <AdminLayout />
-    </SovereignThemeProvider>
+    <SovereignI18nProvider>
+      <SovereignThemeProvider>
+        <AdminLayout />
+      </SovereignThemeProvider>
+    </SovereignI18nProvider>
   );
 }

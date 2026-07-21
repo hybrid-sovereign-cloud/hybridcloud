@@ -1,5 +1,6 @@
 import React from 'react';
 import { Title, Breadcrumb, BreadcrumbItem } from '@patternfly/react-core';
+import { LanguageToggle } from '../i18n/LanguageToggle';
 
 export interface PageHeaderCrumb {
   label: string;
@@ -11,6 +12,8 @@ export interface PageHeaderProps {
   subtitle?: string;
   breadcrumbs?: PageHeaderCrumb[];
   actions?: React.ReactNode;
+  /** Show EN/FR toggle in the header actions (default true). */
+  showLanguageToggle?: boolean;
 }
 
 /** OpenShift ListPage-style title row: breadcrumbs, title left, actions right */
@@ -19,6 +22,7 @@ export function PageHeader({
   subtitle,
   breadcrumbs,
   actions,
+  showLanguageToggle = true,
 }: PageHeaderProps): React.ReactElement {
   return (
     <div className="sc-page-header">
@@ -41,7 +45,12 @@ export function PageHeader({
         </Title>
         {subtitle && <div className="sc-page-header__subtitle">{subtitle}</div>}
       </div>
-      {actions && <div className="sc-page-header__actions">{actions}</div>}
+      {(actions || showLanguageToggle) && (
+        <div className="sc-page-header__actions">
+          {actions}
+          {showLanguageToggle ? <LanguageToggle isCompact /> : null}
+        </div>
+      )}
     </div>
   );
 }

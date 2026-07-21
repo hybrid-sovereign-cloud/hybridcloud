@@ -1,0 +1,21 @@
+---
+- name: HybridFabric Delete Rulebook
+  hosts: all
+  sources:
+    - ansible.eda.kafka:
+        host: "{{ lookup('env', 'KAFKA_BOOTSTRAP_HOST') }}"
+        port: "{{ lookup('env', 'KAFKA_BOOTSTRAP_PORT') | default('443') | int }}"
+        topic: "{{ lookup('env', 'KAFKA_TOPIC') | default('hybridsovereign-events', true) }}"
+        group_id: "{{ lookup('env', 'KAFKA_CONSUMER_GROUP') | default('eda-sovereign-operators', true) }}"
+        security_protocol: "{{ lookup('env', 'KAFKA_SECURITY_PROTOCOL') | default('SASL_SSL', true) }}"
+        sasl_mechanism: "{{ lookup('env', 'KAFKA_SASL_MECHANISM') | default('SCRAM-SHA-512', true) }}"
+        sasl_plain_username: "{{ lookup('env', 'KAFKA_USERNAME') }}"
+        sasl_plain_password: "{{ lookup('env', 'KAFKA_PASSWORD') }}"
+  rules:
+    - name: Handle HybridFabric Delete
+      condition: event.body.payload.reason in ["HybridFabricDeleteRequested"] and event.body.payload.regarding.kind == "HybridFabric"
+      action:
+        run_playbook:
+          name: hybridfabric-teardown-playbook.yml
+          extra_vars:
+            event_payload: "{{ event.body.payload }}"

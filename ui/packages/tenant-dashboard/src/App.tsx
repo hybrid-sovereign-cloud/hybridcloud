@@ -45,7 +45,10 @@ import {
 import { NavLink, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import {
   SovereignThemeProvider,
+  SovereignI18nProvider,
   useTheme,
+  useTranslation,
+  LanguageToggle,
   useEntityNamespace,
   NamespaceContextBar,
   HybridSovereignKind,
@@ -61,33 +64,33 @@ type NavEntry =
   | {
       type: 'link';
       path: string;
-      label: string;
+      labelKey: string;
       icon: React.ComponentType;
       end?: boolean;
       kind?: HybridSovereignKind;
       form?: string;
     }
-  | { type: 'sep'; label: string };
+  | { type: 'sep'; labelKey: string };
 
 /** Static sidebar — all links always visible; pages fetch K8s only on navigate/refresh */
 const NAV: NavEntry[] = [
-  { type: 'link', path: '/', label: 'Overview', icon: TachometerAltIcon, end: true },
-  { type: 'sep', label: 'Tenancy' },
-  { type: 'link', path: '/teams', label: 'Teams', icon: UsersIcon, kind: 'Team', form: 'team' },
-  { type: 'link', path: '/projects', label: 'Projects', icon: FolderOpenIcon, kind: 'Project', form: 'project' },
+  { type: 'link', path: '/', labelKey: 'nav.overview', icon: TachometerAltIcon, end: true },
+  { type: 'sep', labelKey: 'nav.tenancy' },
+  { type: 'link', path: '/teams', labelKey: 'nav.teams', icon: UsersIcon, kind: 'Team', form: 'team' },
+  { type: 'link', path: '/projects', labelKey: 'nav.projects', icon: FolderOpenIcon, kind: 'Project', form: 'project' },
   {
     type: 'link',
     path: '/platforms',
-    label: 'Platform Openshift',
+    labelKey: 'nav.platformOpenshift',
     icon: ClusterIcon,
     kind: 'PlatformOpenshift',
   },
-  { type: 'link', path: '/cloudoso', label: 'Cloud OSO', icon: LayerGroupIcon, kind: 'CloudOSO', form: 'cloudoso' },
-  { type: 'link', path: '/cloudaws', label: 'Cloud AWS', icon: AwsIcon, kind: 'CloudAWS', form: 'cloudaws' },
+  { type: 'link', path: '/cloudoso', labelKey: 'nav.cloudOso', icon: LayerGroupIcon, kind: 'CloudOSO', form: 'cloudoso' },
+  { type: 'link', path: '/cloudaws', labelKey: 'nav.cloudAws', icon: AwsIcon, kind: 'CloudAWS', form: 'cloudaws' },
   {
     type: 'link',
     path: '/migrations',
-    label: 'Migrate to OpenStack',
+    labelKey: 'nav.migrateOpenStack',
     icon: MigrationIcon,
     kind: 'OpenStackMigration',
     form: 'migration',
@@ -95,41 +98,58 @@ const NAV: NavEntry[] = [
   {
     type: 'link',
     path: '/assignments',
-    label: 'Assignments',
+    labelKey: 'nav.assignments',
     icon: ProjectDiagramIcon,
     kind: 'Assignment',
     form: 'assignment',
   },
-  { type: 'sep', label: 'Access Control' },
-  { type: 'link', path: '/personas', label: 'Personas', icon: UserEditIcon, kind: 'Persona', form: 'persona' },
-  { type: 'link', path: '/rbac', label: 'RBAC', icon: LockIcon, kind: 'Rbac', form: 'rbac' },
-  { type: 'sep', label: 'Integrations' },
-  { type: 'link', path: '/vaults', label: 'Vaults', icon: SecurityIcon, kind: 'Vault', form: 'vault' },
-  { type: 'link', path: '/vaultkvs', label: 'Vault KVs', icon: KeyIcon, kind: 'VaultKV', form: 'vaultkv' },
-  { type: 'link', path: '/aaporgs', label: 'AAP Orgs', icon: ProcessAutomationIcon, kind: 'AAPOrg', form: 'aaporg' },
-  { type: 'link', path: '/quayorgs', label: 'Quay Orgs', icon: BundleIcon, kind: 'QuayOrg', form: 'quayorg' },
+  { type: 'sep', labelKey: 'nav.hybridVpc' },
+  {
+    type: 'link',
+    path: '/networks',
+    labelKey: 'nav.hybridNetworks',
+    icon: TopologyIcon,
+    kind: 'HybridNetwork',
+    form: 'hybridnetwork',
+  },
+  {
+    type: 'link',
+    path: '/placements',
+    labelKey: 'nav.networkPlacements',
+    icon: ProjectDiagramIcon,
+    kind: 'NetworkPlacement',
+    form: 'networkplacement',
+  },
+  { type: 'sep', labelKey: 'nav.accessControl' },  { type: 'link', path: '/personas', labelKey: 'nav.personas', icon: UserEditIcon, kind: 'Persona', form: 'persona' },
+  { type: 'link', path: '/rbac', labelKey: 'nav.rbac', icon: LockIcon, kind: 'Rbac', form: 'rbac' },
+  { type: 'sep', labelKey: 'nav.integrations' },
+  { type: 'link', path: '/vaults', labelKey: 'nav.vaults', icon: SecurityIcon, kind: 'Vault', form: 'vault' },
+  { type: 'link', path: '/vaultkvs', labelKey: 'nav.vaultKvs', icon: KeyIcon, kind: 'VaultKV', form: 'vaultkv' },
+  { type: 'link', path: '/aaporgs', labelKey: 'nav.aapOrgs', icon: ProcessAutomationIcon, kind: 'AAPOrg', form: 'aaporg' },
+  { type: 'link', path: '/quayorgs', labelKey: 'nav.quayOrgs', icon: BundleIcon, kind: 'QuayOrg', form: 'quayorg' },
 ];
 
 function ThemeToggle(): React.ReactElement {
   const { mode, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   return (
     <Button
       variant="plain"
       size="sm"
-      aria-label="Toggle theme"
+      aria-label={t('common.toggleTheme')}
       onClick={toggleTheme}
       icon={mode === 'dark' ? <SunIcon /> : <MoonIcon />}
     />
   );
 }
 
-function staticNavGroups(): { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] {
-  const groups: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
-  let current: { title?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
+function staticNavGroups(): { titleKey?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] {
+  const groups: { titleKey?: string; items: Extract<NavEntry, { type: 'link' }>[] }[] = [];
+  let current: { titleKey?: string; items: Extract<NavEntry, { type: 'link' }>[] } = { items: [] };
   for (const entry of NAV) {
     if (entry.type === 'sep') {
       if (current.items.length) groups.push(current);
-      current = { title: entry.label, items: [] };
+      current = { titleKey: entry.labelKey, items: [] };
     } else {
       current.items.push(entry);
     }
@@ -141,6 +161,7 @@ function staticNavGroups(): { title?: string; items: Extract<NavEntry, { type: '
 function TenantLayout(): React.ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const [isSidebarOpen, setSidebarOpen] = React.useState(true);
   const {
     namespace: tenantNamespace,
@@ -158,7 +179,7 @@ function TenantLayout(): React.ReactElement {
       <MastheadToggle>
         <PageToggleButton
           variant="plain"
-          aria-label="Global navigation"
+          aria-label={t('common.globalNav')}
           isSidebarOpen={isSidebarOpen}
           onSidebarToggle={() => setSidebarOpen((o) => !o)}
           id="tenant-nav-toggle"
@@ -172,7 +193,7 @@ function TenantLayout(): React.ReactElement {
             <span className="sc-masthead-brand__mark" aria-hidden>
               <TopologyIcon />
             </span>
-            <span>Sovereign Cloud</span>
+            <span>{t('nav.sovereignCloud')}</span>
           </NavLink>
         </MastheadBrand>
       </MastheadMain>
@@ -181,17 +202,20 @@ function TenantLayout(): React.ReactElement {
           <ToolbarContent>
             <ToolbarGroup align={{ default: 'alignRight' }}>
               <ToolbarItem>
-                <Button variant="plain" size="sm" aria-label="Notifications" icon={<OutlinedBellIcon />} />
+                <LanguageToggle isCompact />
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="plain" size="sm" aria-label="Help" icon={<QuestionCircleIcon />} />
+                <Button variant="plain" size="sm" aria-label={t('common.notifications')} icon={<OutlinedBellIcon />} />
+              </ToolbarItem>
+              <ToolbarItem>
+                <Button variant="plain" size="sm" aria-label={t('common.help')} icon={<QuestionCircleIcon />} />
               </ToolbarItem>
               <ToolbarItem>
                 <ThemeToggle />
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="plain" size="sm" aria-label="User" icon={<UserIcon />}>
-                  tenant
+                <Button variant="plain" size="sm" aria-label={t('common.user')} icon={<UserIcon />}>
+                  {t('common.tenant')}
                 </Button>
               </ToolbarItem>
             </ToolbarGroup>
@@ -204,13 +228,13 @@ function TenantLayout(): React.ReactElement {
   const sidebar = (
     <PageSidebar theme="dark" isSidebarOpen={isSidebarOpen} id="tenant-sidebar">
       <PageSidebarBody>
-        <div className="sc-sidebar-title">Sovereign Cloud</div>
-        <Nav theme="dark" aria-label="Tenant navigation">
+        <div className="sc-sidebar-title">{t('nav.sovereignCloud')}</div>
+        <Nav theme="dark" aria-label={t('nav.tenantNav')}>
           {navGroups.map((group, gi) => (
-            <NavList key={group.title ?? `group-${gi}`}>
-              {group.title ? (
+            <NavList key={group.titleKey ?? `group-${gi}`}>
+              {group.titleKey ? (
                 <li className="sc-nav-separator" role="presentation">
-                  {group.title}
+                  {t(group.titleKey)}
                 </li>
               ) : null}
               {group.items.map((item) => {
@@ -224,7 +248,7 @@ function TenantLayout(): React.ReactElement {
                       <span className="sc-nav-link__icon">
                         <Icon />
                       </span>
-                      {item.label}
+                      {t(item.labelKey)}
                     </NavLink>
                   </NavItem>
                 );
@@ -266,7 +290,7 @@ function TenantLayout(): React.ReactElement {
                 element={
                   <TenantResourceDetailPage
                     kind={item.kind as 'Team'}
-                    title={item.label}
+                    title={t(item.labelKey)}
                     listPath={item.path}
                     namespace={tenantNamespace}
                   />
@@ -278,7 +302,7 @@ function TenantLayout(): React.ReactElement {
                 element={
                   <TenantResourcePage
                     kind={item.kind as 'Team'}
-                    title={item.label}
+                    title={t(item.labelKey)}
                     namespace={tenantNamespace}
                     listPath={item.path}
                     formType={item.form as 'team' | undefined}
@@ -296,9 +320,11 @@ function TenantLayout(): React.ReactElement {
 
 export function App(): React.ReactElement {
   return (
-    <SovereignThemeProvider>
-      <TenantLayout />
-    </SovereignThemeProvider>
+    <SovereignI18nProvider>
+      <SovereignThemeProvider>
+        <TenantLayout />
+      </SovereignThemeProvider>
+    </SovereignI18nProvider>
   );
 }
 
