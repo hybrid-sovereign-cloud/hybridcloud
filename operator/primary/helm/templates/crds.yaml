@@ -3130,7 +3130,20 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
 
               x-kubernetes-preserve-unknown-fields: true
       subresources:
@@ -3242,7 +3255,20 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
 
               x-kubernetes-preserve-unknown-fields: true
       subresources:
@@ -3340,7 +3366,20 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
 
               x-kubernetes-preserve-unknown-fields: true
       subresources:
@@ -3439,7 +3478,20 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
 
               x-kubernetes-preserve-unknown-fields: true
       subresources:
@@ -3545,7 +3597,20 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
 
               x-kubernetes-preserve-unknown-fields: true
       subresources:
@@ -3682,7 +3747,20 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 conditions:
                   type: array
-                  x-kubernetes-preserve-unknown-fields: true
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                        format: date-time
+                      reason:
+                        type: string
+                      message:
+                        type: string
 
               x-kubernetes-preserve-unknown-fields: true
       subresources:
