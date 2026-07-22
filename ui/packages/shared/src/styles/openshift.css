@@ -1181,3 +1181,111 @@ select.sc-entity-select,
   gap: 0.75rem;
   flex-wrap: wrap;
 }
+
+/* Rich resource list tables */
+.sc-list-summary {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.sc-list-summary .sc-health-strip {
+  flex: 1;
+  min-width: 12rem;
+}
+.sc-list-summary__count {
+  font-size: var(--sc-font-sm);
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+}
+.sc-resource-list .sc-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.sc-chip-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+.sc-ext-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 18rem;
+  color: var(--sc-link);
+  text-decoration: none;
+  font-size: var(--sc-font-sm);
+}
+.sc-ext-link:hover {
+  text-decoration: underline;
+}
+.sc-ext-link__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-mono-copy {
+  font-family: var(--pf-v5-global--FontFamily--monospace, ui-monospace, monospace);
+  font-size: 0.75rem;
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: var(--sc-radius);
+  color: var(--sc-text);
+  cursor: pointer;
+  padding: 0 0.15rem;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-mono-copy:hover {
+  border-color: var(--sc-border);
+  background: var(--sc-surface-alt);
+}
+.sc-truncate {
+  display: inline-block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.sc-rel-time {
+  color: var(--sc-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sc-list-expand {
+  padding: 0.75rem 1rem 1rem 2.5rem;
+  background: var(--sc-surface-alt);
+  border-top: 1px solid var(--sc-border);
+}
+.sc-list-expand__dl {
+  margin: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.sc-list-expand__row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.75rem;
+  font-size: var(--sc-font-sm);
+}
+.sc-list-expand__row dt {
+  color: var(--sc-text-muted);
+  font-weight: 600;
+}
+.sc-list-expand__row dd {
+  margin: 0;
+  word-break: break-word;
+}
+.sc-list-expand__actions {
+  margin-top: 0.75rem;
+}
+.sc-muted {
+  color: var(--sc-text-muted);
+  font-size: var(--sc-font-sm);
+}

@@ -6,6 +6,13 @@ export * from './icons';
 export * from './forms/specFieldMeta';
 export { GenericSpecEditor } from './forms/GenericSpecEditor';
 export {
+  getListColumns,
+  formatRelativeTime,
+  resourceSearchBlob,
+  getExpandRows,
+} from './list/listColumns';
+export type { ListColumnDef, ListColumnContext, ListLinkMode, CellMarker } from './list/listColumns';
+export {
   initI18n,
   i18n,
   getStoredLocale,

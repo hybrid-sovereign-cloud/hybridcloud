@@ -1,11 +1,9 @@
 import * as React from 'react';
 import { useHistory } from 'react-router-dom';
-import { PageSection, Spinner, Alert, Button } from '@patternfly/react-core';
+import { PageSection, Button } from '@patternfly/react-core';
 import { PlusCircleIcon } from '@patternfly/react-icons';
-import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   PageHeader,
-  StatusBadge,
   FilterToolbar,
   StatusFilter,
   normalizeHealth,
@@ -14,9 +12,10 @@ import {
   NamespaceContextBar,
   K8sResource,
   HybridSovereignKind,
-  KindIcon,
   configureK8sClient,
   SelfServiceFormType,
+  ResourceListTable,
+  filterResourcesByQuery,
   useTranslation,
 } from '@hybridsovereign/shared';
 import { consoleFetch } from '@openshift-console/dynamic-plugin-sdk';
@@ -63,13 +62,11 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
     });
     const kindTitle = t(`kinds.${kind}`, { defaultValue: title });
     const filtered = React.useMemo(() => {
-      const q = search.trim().toLowerCase();
-      return items.filter((item) => {
-        if (q && !item.metadata.name.toLowerCase().includes(q)) return false;
+      return filterResourcesByQuery(items, kind, search, false).filter((item) => {
         if (statusFilter === 'all') return true;
         return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
       });
-    }, [items, search, statusFilter]);
+    }, [items, kind, search, statusFilter]);
 
     return (
       <PageSection className="sc-console-page">
@@ -107,50 +104,17 @@ export function makeTenantKindPage(kind: HybridSovereignKind, title: string): Re
             statusFilter={statusFilter}
             onStatusFilterChange={setStatusFilter}
             onRefresh={refresh}
+            searchPlaceholder={t('common.filterResources')}
           />
-          {error && (
-            <Alert
-              variant="warning"
-              isInline
-              title={t('common.unableToList', { kind: kindTitle })}
-            >
-              {error.message}
-            </Alert>
-          )}
-          {loading && items.length === 0 ? (
-            <Spinner aria-label={t('common.loading')} />
-          ) : (
-            <div className="sc-table-wrap">
-              <Table variant="compact" aria-label={kindTitle}>
-                <Thead>
-                  <Tr>
-                    <Th>{t('common.name')}</Th>
-                    <Th>{t('common.status')}</Th>
-                    <Th>{t('common.lastReconciled')}</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {filtered.map((item) => (
-                    <Tr key={item.metadata.name}>
-                      <Td>
-                        <a
-                          className="sc-resource-link"
-                          href={`${listPath}/${encodeURIComponent(item.metadata.name)}`}
-                        >
-                          <KindIcon kind={kind} size="sm" />
-                          {item.metadata.name}
-                        </a>
-                      </Td>
-                      <Td>
-                        <StatusBadge status={item.status?.status} ready={item.status?.ready} />
-                      </Td>
-                      <Td>{item.status?.lastReconciledAt ?? '—'}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </div>
-          )}
+          <ResourceListTable
+            kind={kind}
+            items={filtered}
+            loading={loading}
+            error={error}
+            showNamespace={false}
+            linkMode="anchor"
+            detailHref={(item) => `${listPath}/${encodeURIComponent(item.metadata.name)}`}
+          />
         </div>
       </PageSection>
     );

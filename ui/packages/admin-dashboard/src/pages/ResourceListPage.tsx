@@ -1,18 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Spinner, Alert, Button } from '@patternfly/react-core';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@patternfly/react-core';
 import { PlusCircleIcon } from '@patternfly/react-icons';
-import { Table, Thead, Tr, Th, Tbody, Td } from '@patternfly/react-table';
 import {
   HybridSovereignKind,
   useK8sResourceList,
   K8sResource,
   PageHeader,
-  StatusBadge,
   FilterToolbar,
   StatusFilter,
   normalizeHealth,
-  KindIcon,
+  ResourceListTable,
+  filterResourcesByQuery,
   useTranslation,
 } from '@hybridsovereign/shared';
 
@@ -32,11 +31,7 @@ interface ResourceListPageProps {
   hideHeader?: boolean;
 }
 
-function matchesFilter(item: K8sResource, search: string, statusFilter: StatusFilter): boolean {
-  const name = item.metadata.name.toLowerCase();
-  const ns = (item.metadata.namespace ?? '').toLowerCase();
-  const q = search.trim().toLowerCase();
-  if (q && !name.includes(q) && !ns.includes(q)) return false;
+function matchesStatus(item: K8sResource, statusFilter: StatusFilter): boolean {
   if (statusFilter === 'all') return true;
   return normalizeHealth(item.status?.ready, item.status?.status) === statusFilter;
 }
@@ -61,78 +56,6 @@ export function adminDetailHref(
   return `${listPath}/${ns}/${name}`;
 }
 
-function ResourceTable({
-  kind,
-  items,
-  loading,
-  error,
-  listPath,
-}: {
-  kind: HybridSovereignKind;
-  items: K8sResource[];
-  loading: boolean;
-  error: Error | null;
-  listPath: string;
-}): React.ReactElement {
-  const { t } = useTranslation();
-  if (loading && items.length === 0) {
-    return <Spinner aria-label={t('pages.loadingKind', { kind })} />;
-  }
-
-  return (
-    <>
-      {error && (
-        <Alert variant="warning" title={t('common.k8sUnavailable')} isInline style={{ marginBottom: '1rem' }}>
-          {error.message}. {t('common.k8sUnavailableHint')}
-        </Alert>
-      )}
-      <div className="sc-table-wrap">
-        <Table aria-label={`${kind} table`} variant="compact">
-          <Thead>
-            <Tr>
-              <Th>{t('common.name')}</Th>
-              <Th>{t('common.namespace')}</Th>
-              <Th>{t('common.status')}</Th>
-              <Th>{t('common.lastReconciled')}</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {items.length === 0 ? (
-              <Tr>
-                <Td colSpan={4}>{t('pages.noMatch', { kind })}</Td>
-              </Tr>
-            ) : (
-              items.map((item) => (
-                <Tr key={`${item.metadata.namespace}/${item.metadata.name}`}>
-                  <Td dataLabel={t('common.name')}>
-                    <Link
-                      className="sc-resource-link"
-                      to={adminDetailHref(listPath, kind, item)}
-                    >
-                      <KindIcon kind={kind} size="sm" />
-                      {item.metadata.name}
-                    </Link>
-                  </Td>
-                  <Td dataLabel={t('common.namespace')}>{item.metadata.namespace ?? '—'}</Td>
-                  <Td dataLabel={t('common.status')}>
-                    <StatusBadge
-                      status={item.status?.status}
-                      ready={item.status?.ready}
-                      message={item.status?.message}
-                      lastTransition={item.status?.lastReconciledAt}
-                    />
-                  </Td>
-                  <Td dataLabel={t('common.lastReconciled')}>{item.status?.lastReconciledAt ?? '—'}</Td>
-                </Tr>
-              ))
-            )}
-          </Tbody>
-        </Table>
-      </div>
-    </>
-  );
-}
-
 export function ResourceListPage({
   kind,
   title,
@@ -154,14 +77,18 @@ export function ResourceListPage({
     enabled: enabled && !!secondaryKind,
   });
 
-  const primaryFiltered = useMemo(
-    () => primary.items.filter((i) => matchesFilter(i, search, statusFilter)),
-    [primary.items, search, statusFilter],
-  );
-  const secondaryFiltered = useMemo(
-    () => (secondaryKind ? secondary.items.filter((i) => matchesFilter(i, search, statusFilter)) : []),
-    [secondary.items, secondaryKind, search, statusFilter],
-  );
+  const primaryFiltered = useMemo(() => {
+    return filterResourcesByQuery(primary.items, kind, search, true).filter((i) =>
+      matchesStatus(i, statusFilter),
+    );
+  }, [primary.items, kind, search, statusFilter]);
+
+  const secondaryFiltered = useMemo(() => {
+    if (!secondaryKind) return [];
+    return filterResourcesByQuery(secondary.items, secondaryKind, search, true).filter((i) =>
+      matchesStatus(i, statusFilter),
+    );
+  }, [secondary.items, secondaryKind, search, statusFilter]);
 
   const refresh = () => {
     primary.refresh();
@@ -193,13 +120,16 @@ export function ResourceListPage({
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         onRefresh={refresh}
+        searchPlaceholder={t('common.filterResources')}
       />
-      <ResourceTable
+      <ResourceListTable
         kind={kind}
         items={primaryFiltered}
         loading={primary.loading}
         error={primary.error}
-        listPath={listPath}
+        showNamespace
+        linkMode="router"
+        detailHref={(item) => adminDetailHref(listPath, kind, item)}
       />
       {secondaryKind && (
         <div style={{ marginTop: '1rem' }}>
@@ -207,12 +137,14 @@ export function ResourceListPage({
             title={t(`kinds.${secondaryKind}`, { defaultValue: secondaryKind })}
             showLanguageToggle={false}
           />
-          <ResourceTable
+          <ResourceListTable
             kind={secondaryKind}
             items={secondaryFiltered}
             loading={secondary.loading}
             error={secondary.error}
-            listPath={secondaryPath}
+            showNamespace
+            linkMode="router"
+            detailHref={(item) => adminDetailHref(secondaryPath, secondaryKind, item)}
           />
         </div>
       )}
