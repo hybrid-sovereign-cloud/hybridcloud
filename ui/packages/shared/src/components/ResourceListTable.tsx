@@ -246,108 +246,108 @@ export function ResourceListTable({
               ))}
             </Tr>
           </Thead>
-          <Tbody>
-            {sorted.length === 0 ? (
+          {sorted.length === 0 ? (
+            <Tbody>
               <Tr>
                 <Td colSpan={columns.length + 1}>
                   {emptyMessage ?? t('pages.noMatch', { kind })}
                 </Td>
               </Tr>
-            ) : (
-              sorted.map((item) => {
-                const key = `${item.metadata.namespace ?? ''}/${item.metadata.name}`;
-                const isOpen = !!expanded[key];
-                const href = detailHref(item);
-                const expandRows = getExpandRows(item);
-                return (
-                  <React.Fragment key={key}>
-                    <Tr isExpanded={isOpen}>
-                      <Td
-                        expand={{
-                          rowIndex: 0,
-                          isExpanded: isOpen,
-                          onToggle: () => toggleExpand(key),
-                          expandId: `expand-${key}`,
-                        }}
-                      />
-                      {columns.map((col) => {
-                        if (col.id === 'name') {
-                          const nameNode =
-                            linkMode === 'anchor' ? (
-                              <a className="sc-resource-link" href={href}>
-                                <KindIcon kind={kind} size="sm" />
-                                {item.metadata.name}
-                              </a>
-                            ) : (
-                              <Link className="sc-resource-link" to={href}>
-                                <KindIcon kind={kind} size="sm" />
-                                {item.metadata.name}
-                              </Link>
-                            );
-                          return (
-                            <Td key={col.id} dataLabel={t(col.labelKey)}>
-                              {nameNode}
-                            </Td>
+            </Tbody>
+          ) : (
+            sorted.map((item, rowIndex) => {
+              const key = `${item.metadata.namespace ?? ''}/${item.metadata.name}`;
+              const isOpen = !!expanded[key];
+              const href = detailHref(item);
+              const expandRows = getExpandRows(item);
+              return (
+                <Tbody key={key} isExpanded={isOpen}>
+                  <Tr>
+                    <Td
+                      expand={{
+                        rowIndex,
+                        isExpanded: isOpen,
+                        onToggle: () => toggleExpand(key),
+                        expandId: `expand-${key}`,
+                      }}
+                    />
+                    {columns.map((col) => {
+                      if (col.id === 'name') {
+                        const nameNode =
+                          linkMode === 'anchor' ? (
+                            <a className="sc-resource-link" href={href}>
+                              <KindIcon kind={kind} size="sm" />
+                              {item.metadata.name}
+                            </a>
+                          ) : (
+                            <Link className="sc-resource-link" to={href}>
+                              <KindIcon kind={kind} size="sm" />
+                              {item.metadata.name}
+                            </Link>
                           );
-                        }
-                        if (col.id === 'status') {
-                          return (
-                            <Td key={col.id} dataLabel={t(col.labelKey)}>
-                              <StatusBadge
-                                status={item.status?.status}
-                                ready={item.status?.ready}
-                                message={item.status?.message}
-                                lastTransition={item.status?.lastReconciledAt}
-                              />
-                            </Td>
-                          );
-                        }
-                        const raw = col.render(item, ctx);
                         return (
                           <Td key={col.id} dataLabel={t(col.labelKey)}>
-                            {isMarker(raw) ? renderMarker(raw) : raw}
+                            {nameNode}
                           </Td>
                         );
-                      })}
-                    </Tr>
-                    <Tr isExpanded={isOpen}>
-                      <Td colSpan={columns.length + 1} noPadding>
-                        {isOpen && (
-                          <ExpandableRowContent>
-                            <div className="sc-list-expand">
-                              {expandRows.length === 0 ? (
-                                <span className="sc-muted">{t('list.noExtraDetails')}</span>
+                      }
+                      if (col.id === 'status') {
+                        return (
+                          <Td key={col.id} dataLabel={t(col.labelKey)}>
+                            <StatusBadge
+                              status={item.status?.status}
+                              ready={item.status?.ready}
+                              message={item.status?.message}
+                              lastTransition={item.status?.lastReconciledAt}
+                            />
+                          </Td>
+                        );
+                      }
+                      const raw = col.render(item, ctx);
+                      return (
+                        <Td key={col.id} dataLabel={t(col.labelKey)}>
+                          {isMarker(raw) ? renderMarker(raw) : raw}
+                        </Td>
+                      );
+                    })}
+                  </Tr>
+                  <Tr isExpanded={isOpen}>
+                    <Td colSpan={columns.length + 1} noPadding>
+                      {isOpen ? (
+                        <ExpandableRowContent>
+                          <div className="sc-list-expand">
+                            {expandRows.length === 0 ? (
+                              <span className="sc-muted">{t('list.noExtraDetails')}</span>
+                            ) : (
+                              <dl className="sc-list-expand__dl">
+                                {expandRows.map((r) => (
+                                  <div key={r.label} className="sc-list-expand__row">
+                                    <dt>{r.label}</dt>
+                                    <dd>{r.value}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            )}
+                            <div className="sc-list-expand__actions">
+                              {linkMode === 'anchor' ? (
+                                <a className="sc-resource-link" href={href}>
+                                  {t('common.view')} →
+                                </a>
                               ) : (
-                                <dl className="sc-list-expand__dl">
-                                  {expandRows.map((r) => (
-                                    <div key={r.label} className="sc-list-expand__row">
-                                      <dt>{r.label}</dt>
-                                      <dd>{r.value}</dd>
-                                    </div>
-                                  ))}
-                                </dl>
+                                <Link className="sc-resource-link" to={href}>
+                                  {t('common.view')} →
+                                </Link>
                               )}
-                              <div className="sc-list-expand__actions">
-                                {linkMode === 'anchor' ? (
-                                  <a className="sc-resource-link" href={href}>
-                                    {t('common.view')} →
-                                  </a>
-                                ) : (
-                                  <Link className="sc-resource-link" to={href}>
-                                    {t('common.view')} →
-                                  </Link>
-                                )}
-                              </div>
                             </div>
-                          </ExpandableRowContent>
-                        )}
-                      </Td>
-                    </Tr>
-                  </React.Fragment>
-                );
-              })
-            )}
-          </Tbody>
+                          </div>
+                        </ExpandableRowContent>
+                      ) : null}
+                    </Td>
+                  </Tr>
+                </Tbody>
+              );
+            })
+          )}
         </Table>
       </div>
     </>
