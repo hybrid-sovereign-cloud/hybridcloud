@@ -24,6 +24,7 @@ const LIST_PATH: Record<string, string> = {
   assignment: '/hybridsovereign/tenant/assignments',
   cloudoso: '/hybridsovereign/tenant/cloudoso',
   cloudaws: '/hybridsovereign/tenant/cloudaws',
+  platformopenshift: '/hybridsovereign/tenant/platforms',
   migration: '/hybridsovereign/tenant/migrations',
   persona: '/hybridsovereign/tenant/personas',
   rbac: '/hybridsovereign/tenant/rbac',
@@ -31,6 +32,8 @@ const LIST_PATH: Record<string, string> = {
   vaultkv: '/hybridsovereign/tenant/vaultkvs',
   aaporg: '/hybridsovereign/tenant/aaporgs',
   quayorg: '/hybridsovereign/tenant/quayorgs',
+  hybridnetwork: '/hybridsovereign/tenant/networks',
+  networkplacement: '/hybridsovereign/tenant/placements',
 };
 
 const TenantCreatePage: React.FC = () => {

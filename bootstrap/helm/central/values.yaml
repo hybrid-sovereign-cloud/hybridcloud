@@ -2474,7 +2474,7 @@ sovereignDashboard:
     clusterDomain: apps.shc-services5.lab.signal9.gg
     image:
       repository: quay.signal9.gg/hybrid-sovereign/sovereign-cloud-dashboard
-      tag: "2.0.13"
+      tag: "2.0.16"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2506,7 +2506,7 @@ tenancyDashboard:
     clusterDomain: apps.shc-services5.lab.signal9.gg
     image:
       repository: quay.signal9.gg/hybrid-sovereign/tenancy-dashboard
-      tag: "5.0.14"
+      tag: "5.0.15"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2529,14 +2529,14 @@ tenancyDashboard:
 # ─── Sovereign Admin Console Plugin (services cluster) ───────────────────────
 sovereignAdminPlugin:
   enabled: true
-  chartVersion: "0.1.22"
+  chartVersion: "0.1.23"
   syncWave: "42"
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
     image:
       repository: quay.signal9.gg/hybrid-sovereign/sovereign-admin-plugin
-      tag: "1.2.12"
+      tag: "1.2.13"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2549,14 +2549,14 @@ sovereignAdminPlugin:
 # ─── Sovereign Tenant Console Plugin (services cluster) ──────────────────────
 sovereignTenantPlugin:
   enabled: true
-  chartVersion: "0.1.20"
+  chartVersion: "0.1.21"
   syncWave: "42"
   destinationNamespace: sovereign-cloud
   values:
     namespace: sovereign-cloud
     image:
       repository: quay.signal9.gg/hybrid-sovereign/sovereign-tenant-plugin
-      tag: "1.3.10"
+      tag: "1.3.11"
       pullPolicy: Always
     imagePullSecrets:
       - name: quay-pull-secret
@@ -2641,7 +2641,7 @@ amqStreams:
 # ─── HybridSovereign Primary Operator (services) ─────────────────────────────
 hybridsovereignPrimaryOperator:
   enabled: true
-  chartVersion: "0.1.19"
+  chartVersion: "0.1.20"
   syncWave: "38"
   destinationNamespace: sovereign-cloud
   values:
@@ -2649,7 +2649,7 @@ hybridsovereignPrimaryOperator:
     pluginsNamespace: sovereign-cloud-plugins
     image:
       repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-primary-operator
-      tag: "0.1.17"
+      tag: "0.1.18"
     namespaceOperator:
       image:
         repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-namespace-operator

@@ -1,19 +1,19 @@
 # Hardening Check — UI (Dashboards + Console Plugins)
 
-**Retested**: 2026-07-15  
+**Retested**: 2026-07-22  
 **Cluster**: Services · Namespace: `sovereign-cloud`
 
 ## Deployed versions (match `bootstrap/helm/central/values.yaml`)
 
 | App | Image | ArgoCD |
 |-----|-------|--------|
-| `sovereign-cloud-dashboard` | `…/sovereign-cloud-dashboard:1.9.4` | Synced / Healthy |
-| `tenancy-dashboard` | `…/tenancy-dashboard:4.1.8` | Synced / Healthy |
-| `sovereign-admin-plugin` | `…/sovereign-admin-plugin:1.1.5` | Synced / Healthy |
-| `sovereign-tenant-plugin` | `…/sovereign-tenant-plugin:1.1.7` | Synced / Healthy |
+| `sovereign-cloud-dashboard` | `…/sovereign-cloud-dashboard:2.0.16` | Synced (pin via values) |
+| `tenancy-dashboard` | `…/tenancy-dashboard:5.0.15` | Synced (pin via values) |
+| `sovereign-admin-plugin` | `…/sovereign-admin-plugin:1.2.13` | Synced |
+| `sovereign-tenant-plugin` | `…/sovereign-tenant-plugin:1.3.11` | Synced |
 
 Source: `hybridcloud/ui/packages/{admin,tenant}-{dashboard,console-plugin}`.  
-Image build/push automation is **not yet** in the monorepo (no Dockerfile under `ui/`); deploy pins OCI tags via GitOps.
+Build/push: `cd hybridcloud/ui && make build-push` (tags in `ui/Makefile`).
 
 ## Controls
 
@@ -24,10 +24,10 @@ Image build/push automation is **not yet** in the monorepo (no Dockerfile under 
 | 3 | User token for K8s API (not pod SA for CRUD) | PASS | Design in C4 UI + dashboard docs |
 | 4 | Console plugins on services only | PASS | Deployments in `sovereign-cloud` |
 | 5 | Pull secrets for Quay | PASS | `quay-pull-secret` |
+| 6 | UI Health probes from dashboard pod | PASS | `UIHealthChecker` registry + `/api/uihealth/probe`; no reconcile loop |
 
 ## Gaps
 
 | ID | Gap | Severity |
 |----|-----|----------|
-| UI-001 | No monorepo `make` image build-push for UI | MED — rebuilds require external pipeline |
-| UI-002 | Chart sources for standalone dashboards not in `bootstrap/helm/charts/` | MED — charts still pulled from OCI only |
+| UI-001 | Chart sources for standalone dashboards not always mirrored under `bootstrap/helm/charts/` | LOW — OCI pins in central values |

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -11,7 +11,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   K8sResource,
   PageHeader,
-  StatusBadge,
   useK8sResourceList,
   useTranslation,
 } from '@hybridsovereign/shared';
@@ -23,29 +22,14 @@ type ProbeResult = {
   checkedAt?: string;
 };
 
-async function probeUrl(url: string, timeoutSeconds = 10): Promise<ProbeResult> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutSeconds * 1000);
-  const checkedAt = new Date().toISOString();
-  try {
-    const resp = await fetch(url, {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-store',
-      signal: controller.signal,
-      redirect: 'follow',
-    });
-    return { status: 'live', httpStatus: resp.status, checkedAt };
-  } catch (err) {
-    return {
-      status: 'unreachable',
-      error: err instanceof Error ? err.message : 'unreachable',
-      checkedAt,
-    };
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
+type ProbeApiRow = {
+  name: string;
+  url?: string;
+  status?: number;
+  healthy?: boolean;
+  error?: string;
+  checkedAt?: string;
+};
 
 export function UIHealthPage(): React.ReactElement {
   const { t } = useTranslation();
@@ -55,27 +39,74 @@ export function UIHealthPage(): React.ReactElement {
   });
   const [results, setResults] = useState<Record<string, ProbeResult>>({});
   const [running, setRunning] = useState(false);
+  const [probeError, setProbeError] = useState<string | null>(null);
+  const autoProbedRef = useRef(false);
 
-  const runChecks = useCallback(async () => {
-    setRunning(true);
-    const next: Record<string, ProbeResult> = {};
-    await Promise.all(
-      items.map(async (item) => {
+  const runChecks = useCallback(
+    async (targetsOverride?: K8sResource[]) => {
+      const source = targetsOverride ?? items;
+      setRunning(true);
+      setProbeError(null);
+      const targets = source.map((item) => {
         const spec = (item.spec ?? {}) as {
           url?: string;
           timeoutSeconds?: number;
+          expectedStatus?: number;
         };
-        const key = item.metadata.name;
-        if (!spec.url) {
-          next[key] = { status: 'unreachable', error: 'missing url' };
-          return;
+        return {
+          name: item.metadata.name,
+          url: spec.url ?? '',
+          timeoutSeconds: spec.timeoutSeconds ?? 10,
+          expectedStatus: spec.expectedStatus ?? 200,
+        };
+      });
+
+      try {
+        const resp = await fetch('/api/uihealth/probe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ targets }),
+        });
+        if (!resp.ok) {
+          const body = await resp.json().catch(() => ({}));
+          throw new Error(
+            typeof body?.message === 'string' ? body.message : `probe failed (${resp.status})`,
+          );
         }
-        next[key] = await probeUrl(spec.url, spec.timeoutSeconds ?? 10);
-      }),
-    );
-    setResults(next);
-    setRunning(false);
-  }, [items]);
+        const data = (await resp.json()) as { results?: ProbeApiRow[] };
+        const next: Record<string, ProbeResult> = {};
+        for (const row of data.results ?? []) {
+          next[row.name] = row.healthy
+            ? { status: 'live', httpStatus: row.status, checkedAt: row.checkedAt }
+            : {
+                status: 'unreachable',
+                httpStatus: row.status || undefined,
+                error: row.error || (row.status ? `HTTP ${row.status}` : 'unreachable'),
+                checkedAt: row.checkedAt,
+              };
+        }
+        setResults(next);
+      } catch (err) {
+        setProbeError(err instanceof Error ? err.message : 'probe failed');
+      } finally {
+        setRunning(false);
+      }
+    },
+    [items],
+  );
+
+  /** Refresh reloads CR list; probes run once the list settles (no operator reconcile). */
+  const refreshAndProbe = useCallback(() => {
+    autoProbedRef.current = false;
+    refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    if (loading || items.length === 0 || autoProbedRef.current) return;
+    autoProbedRef.current = true;
+    void runChecks(items);
+  }, [loading, items, runChecks]);
 
   const summary = useMemo(() => {
     const values = Object.values(results);
@@ -93,10 +124,19 @@ export function UIHealthPage(): React.ReactElement {
         breadcrumbs={[{ label: t('nav.sovereignAdmin') }, { label: t('nav.uiHealth') }]}
         actions={
           <>
-            <Button variant="secondary" icon={<SyncIcon />} onClick={refresh} isDisabled={loading}>
+            <Button
+              variant="secondary"
+              icon={<SyncIcon />}
+              onClick={() => void refreshAndProbe()}
+              isDisabled={loading || running}
+            >
               {t('common.refresh')}
             </Button>
-            <Button variant="primary" onClick={runChecks} isDisabled={running || items.length === 0}>
+            <Button
+              variant="primary"
+              onClick={() => void runChecks()}
+              isDisabled={running || items.length === 0}
+            >
               {running ? t('pages.uiHealthRunning') : t('pages.uiHealthRun')}
             </Button>
             <Button
@@ -116,11 +156,17 @@ export function UIHealthPage(): React.ReactElement {
         </Alert>
       )}
 
-      <Alert variant="info" isInline title={t('pages.uiHealthBrowserNote')} className="sc-mb">
-        {t('pages.uiHealthBrowserNoteBody')}
+      {probeError && (
+        <Alert variant="danger" isInline title={t('pages.uiHealthProbeFailed')} className="sc-mb">
+          {probeError}
+        </Alert>
+      )}
+
+      <Alert variant="info" isInline title={t('pages.uiHealthPodNote')} className="sc-mb">
+        {t('pages.uiHealthPodNoteBody')}
       </Alert>
 
-      {(Object.keys(results).length > 0) && (
+      {Object.keys(results).length > 0 && (
         <p className="sc-mb">
           {t('pages.uiHealthSummary', {
             live: summary.live,
@@ -139,14 +185,13 @@ export function UIHealthPage(): React.ReactElement {
                 <Th>{t('common.name')}</Th>
                 <Th>{t('fields.group')}</Th>
                 <Th>{t('fields.url')}</Th>
-                <Th>{t('common.status')}</Th>
                 <Th>{t('pages.uiHealthLive')}</Th>
               </Tr>
             </Thead>
             <Tbody>
               {items.length === 0 ? (
                 <Tr>
-                  <Td colSpan={5}>{t('pages.uiHealthEmpty')}</Td>
+                  <Td colSpan={4}>{t('pages.uiHealthEmpty')}</Td>
                 </Tr>
               ) : (
                 items.map((item) => {
@@ -174,11 +219,10 @@ export function UIHealthPage(): React.ReactElement {
                         )}
                       </Td>
                       <Td>
-                        <StatusBadge ready={item.status?.ready} status={item.status?.status} />
-                      </Td>
-                      <Td>
                         {!probe ? (
-                          <Label color="grey">{t('pages.uiHealthNotRun')}</Label>
+                          <Label color="grey">
+                            {running ? t('pages.uiHealthRunning') : t('pages.uiHealthNotRun')}
+                          </Label>
                         ) : probe.status === 'live' ? (
                           <Label color="green">
                             {t('pages.uiHealthLive')}

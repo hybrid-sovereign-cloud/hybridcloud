@@ -84,6 +84,7 @@ const NAV: NavEntry[] = [
     labelKey: 'nav.platformOpenshift',
     icon: ClusterIcon,
     kind: 'PlatformOpenshift',
+    form: 'platformopenshift',
   },
   { type: 'link', path: '/cloudoso', labelKey: 'nav.cloudOso', icon: LayerGroupIcon, kind: 'CloudOSO', form: 'cloudoso' },
   { type: 'link', path: '/cloudaws', labelKey: 'nav.cloudAws', icon: AwsIcon, kind: 'CloudAWS', form: 'cloudaws' },

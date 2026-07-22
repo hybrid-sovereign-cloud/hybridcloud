@@ -2,25 +2,24 @@
 
 **Scope**: `hybridcloud/ui/` PatternFly 5 monorepo  
 **API group**: `hybridsovereign.redhat/v1alpha1` (TypeScript types)  
-**Last updated**: 2026-07-15
+**Last updated**: 2026-07-22
 
 ---
 
 ## Purpose
 
-The UI monorepo replaces legacy `user_dashboard` and `tenancy_dashboard` React apps. It provides four deployable UI packages plus a shared library, all consuming the Kubernetes API through an OAuth token proxy (never the pod ServiceAccount token).
+The UI monorepo replaces legacy `user_dashboard` and `tenancy_dashboard` React apps. It provides four deployable UI packages plus a shared library, all consuming the Kubernetes API through an OAuth token proxy (never the pod ServiceAccount token for user CRUD).
 
 ## Live deploy pins (services / `sovereign-cloud`)
 
 | Package | Image tag | ArgoCD app |
 |---------|-----------|------------|
-| Admin dashboard | `1.9.4` | `sovereign-cloud-dashboard` |
-| Tenant dashboard | `4.1.8` | `tenancy-dashboard` |
-| Admin console plugin | `1.1.5` | `sovereign-admin-plugin` |
-| Tenant console plugin | `1.1.7` | `sovereign-tenant-plugin` |
+| Admin dashboard | `2.0.16` | `sovereign-cloud-dashboard` |
+| Tenant dashboard | `5.0.15` | `tenancy-dashboard` |
+| Admin console plugin | `1.2.13` | `sovereign-admin-plugin` |
+| Tenant console plugin | `1.3.11` | `sovereign-tenant-plugin` |
 
-Pins: `bootstrap/helm/central/values.yaml`. All four apps were **Synced / Healthy** on 2026-07-15.  
-Image build/push is not yet automated under `ui/` (no Containerfile); bump tags in values after external rebuild.
+Pins: `bootstrap/helm/central/values.yaml`. Image build/push: `cd hybridcloud/ui && make build-push`.
 
 ---
 
@@ -82,7 +81,9 @@ Provides the contract between UI and operators:
 Entity, Team, Assignment, Project, Persona,
 PlatformOpenshift, CloudOSO, CloudAWS, OpenStackMigration,
 Rbac, RbacConfig, AAPOrg, AAPConfig, QuayOrg, QuayConfig,
-Vault, VaultKV
+Vault, VaultKV,
+HybridFabric, CloudGateway, TransportLink, HybridNetwork, NetworkPlacement,
+UIHealthChecker
 ```
 
 ---
@@ -99,6 +100,9 @@ Vault, VaultKV
 - Entity onboarding (create `Entity` CR in `sovereign-cloud`)
 - Plugin config management (`RbacConfig`, `AAPConfig`, `QuayConfig`)
 - Platform-wide status and health views
+- **UI Health** (`/networking/uihealth`): `UIHealthChecker` URL registry; Refresh / Run checks probe from the dashboard pod (no CR reconcile). See [57-hybridvpc-uihealth.md](../technical/57-hybridvpc-uihealth.md).
+- Hybrid VPC admin pages (fabrics, gateways, transport links)
+- Create + update forms for admin and shared tenancy kinds via `@hybridsovereign/shared`
 
 ### Security
 
@@ -116,7 +120,8 @@ Vault, VaultKV
 
 ### Capabilities
 
-- Entity-scoped CRUD for Team, Project, Assignment, Persona, cloud CRs
+- Entity-scoped CRUD for Team, Project, Assignment, Persona, cloud CRs (including PlatformOpenshift / CloudOSO / CloudAWS create+update forms)
+- Hybrid VPC tenant kinds (`HybridNetwork`, `NetworkPlacement`) with create/update forms
 - Plugin CR management within entity namespace (Rbac, AAPOrg, QuayOrg, Vault)
 - 14 named RBAC roles enforced by K8s RoleBindings (see [operator.md](operator.md))
 

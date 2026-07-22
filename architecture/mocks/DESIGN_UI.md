@@ -706,6 +706,7 @@ Dashboard plugin build imports samples as **named templates** in the Import YAML
 | `sovereign-transport` | `/sovereign-admin/networking/transport` | `TransportLinkListPage` |
 | `sovereign-vni-pool` | `/sovereign-admin/networking/vni-pool` | `VniPoolPage` |
 | `sovereign-net-health` | `/sovereign-admin/networking/health` | `NetworkHealthPage` |
+| `sovereign-ui-health` | `/networking/uihealth` (admin dash) | `UIHealthPage` (`UIHealthChecker` registry; pod probes on Refresh) |
 
 ### 5.5 Optional: CRD-driven list via console (future)
 
@@ -1171,6 +1172,22 @@ Export CSV for capacity planning.
 | Stale reconcile | `lastReconciledAt` > 30m and not ready |
 
 **Row actions:** Force Reconcile, Open placement (deep link), Open entity overview
+
+### 11.5a Page: UI Health (`UIHealthPage`)
+
+**Route (admin dashboard):** `/networking/uihealth`  
+**Kind:** `UIHealthChecker`  
+**Doc:** [57-hybridvpc-uihealth.md](../docs/technical/57-hybridvpc-uihealth.md)
+
+`UIHealthChecker` is a **declarative URL registry**. As soon as the CR exists, `spec.url` is available — there is **no** operator reconcile loop, EDA job, or `reconciling` status for liveness.
+
+| Action | Behavior |
+|--------|----------|
+| Create | Operator marks CR `ready` / `Registered` immediately |
+| **Refresh** / **Run checks** | Admin dashboard pod HTTP-probes each registered URL (`POST /api/uihealth/probe`) |
+| Live column | Session probe result (`Live` / `Unreachable`) — not CR status |
+
+Do **not** show a Status/reconcile badge on this page. Samples: `samples/hybridvpc/uihealthcheckers.yaml`.
 
 ### 11.6 Overview extensions
 

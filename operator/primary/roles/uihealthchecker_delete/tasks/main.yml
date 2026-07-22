@@ -1,46 +1,42 @@
 ---
+# No infrastructure teardown — clear finalizer after marking deletionComplete.
 - block:
     - name: Get current timestamp
       ansible.builtin.set_fact:
         uihealthchecker_delete_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+        uihealthchecker_marked_delete: false
 
-    - name: Mark UIHealthChecker as awaiting EDA delete
+    - name: Exit cleanly when deletion already complete
+      ansible.builtin.meta: end_host
+      when: _hybridsovereign_redhat_uihealthchecker.status.deletionComplete | default(false) | bool
+
+    - name: Mark UIHealthChecker deletion complete (URL registry only)
       operator_sdk.util.k8s_status:
         api_version: hybridsovereign.redhat/v1alpha1
         kind: UIHealthChecker
         name: "{{ ansible_operator_meta.name }}"
         namespace: "{{ ansible_operator_meta.namespace }}"
         status:
-          status: reconciling
-          ready: false
-          message: Awaiting EDA delete
+          status: ready
+          ready: true
+          deletionComplete: true
+          message: No infra teardown required for UIHealthChecker
           lastReconciledAt: "{{ uihealthchecker_delete_transition_time }}"
 
-    - name: Publish operator event to AMQ Streams
-      ansible.builtin.include_role:
-        name: _common
-        tasks_from: publish_operator_event
-      vars:
-        operator_event_reason: "UIHealthCheckerDeleteRequested"
-        operator_event_action: "Delete"
-        operator_event_note: "{{ _hybridsovereign_redhat_uihealthchecker.spec | to_json }}"
-        operator_reporting_controller: uihealthchecker-operator
-        operator_event_regarding:
-          apiVersion: hybridsovereign.redhat/v1alpha1
-          kind: UIHealthChecker
-          name: "{{ ansible_operator_meta.name }}"
-          namespace: "{{ ansible_operator_meta.namespace }}"
-          uid: "{{ _hybridsovereign_redhat_uihealthchecker.metadata.uid }}"
+    - name: Remember intentional requeue
+      ansible.builtin.set_fact:
+        uihealthchecker_marked_delete: true
 
-    - name: Exit cleanly when EDA completed deletion
-      ansible.builtin.meta: end_host
-      when: _hybridsovereign_redhat_uihealthchecker.status.deletionComplete | default(false) | bool
-
-    - name: Block finalizer until EDA completes deletion
+    - name: Requeue so finalizer can clear after deletionComplete
       ansible.builtin.fail:
-        msg: Waiting for EDA to complete deletion
+        msg: Requeue after marking UIHealthChecker deletionComplete
 
   rescue:
+    - name: Re-raise intentional requeue after deletionComplete
+      ansible.builtin.fail:
+        msg: Requeue after marking UIHealthChecker deletionComplete
+      when: uihealthchecker_marked_delete | default(false) | bool
+
     - name: Mark UIHealthChecker delete as failed
       operator_sdk.util.k8s_status:
         api_version: hybridsovereign.redhat/v1alpha1
@@ -53,7 +49,9 @@
           lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
           message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('Deletion failed')) }}"
       ignore_errors: true
+      when: not (uihealthchecker_marked_delete | default(false) | bool)
 
-    - name: Re-raise to signal finalizer failure
+    - name: Re-raise when delete did not complete
       ansible.builtin.fail:
         msg: "UIHealthChecker {{ ansible_operator_meta.name }} deletion failed — see status.message for details"
+      when: not (uihealthchecker_marked_delete | default(false) | bool)

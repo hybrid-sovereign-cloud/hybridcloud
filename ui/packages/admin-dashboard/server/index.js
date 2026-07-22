@@ -1,6 +1,7 @@
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import http from "http";
 import https from "https";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -128,30 +129,59 @@ app.use("/api/k8s", requireAuth, createApiK8sProxy(OCP_API));
 
 app.get("/api/routes", requireAuth, k8s.listRoutes);
 
-function httpsProbe(urlString, timeoutMs = 5000) {
+function urlProbe(urlString, timeoutMs = 5000, expectedStatus = 200) {
   return new Promise((resolve) => {
     let parsed;
     try { parsed = new URL(urlString); } catch {
-      return resolve({ url: urlString, status: 0, healthy: false });
+      return resolve({ url: urlString, status: 0, healthy: false, error: "invalid url" });
     }
-    if (parsed.protocol !== "https:") return resolve({ url: urlString, status: 0, healthy: false });
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return resolve({ url: urlString, status: 0, healthy: false, error: "unsupported protocol" });
+    }
+    const isHttps = parsed.protocol === "https:";
     const opts = {
       hostname: parsed.hostname,
-      port: parsed.port || 443,
+      port: parsed.port || (isHttps ? 443 : 80),
       path: parsed.pathname + parsed.search,
       method: "GET",
       rejectUnauthorized: false,
       timeout: timeoutMs,
+      headers: { "User-Agent": "sovereign-uihealth-probe/1.0", Accept: "*/*" },
     };
-    const req = https.request(opts, (incoming) => {
+    const checkedAt = new Date().toISOString();
+    const transport = isHttps ? https : http;
+    const req = transport.request(opts, (incoming) => {
       const status = incoming.statusCode ?? 0;
       incoming.resume();
-      resolve({ url: urlString, status, healthy: status >= 200 && status < 400 });
+      const healthy =
+        status === expectedStatus ||
+        (expectedStatus === 200 && status >= 200 && status < 400);
+      resolve({ url: urlString, status, healthy, expectedStatus, checkedAt });
     });
-    req.on("timeout", () => { req.destroy(); resolve({ url: urlString, status: 0, healthy: false }); });
-    req.on("error", () => resolve({ url: urlString, status: 0, healthy: false }));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve({ url: urlString, status: 0, healthy: false, error: "timeout", expectedStatus, checkedAt });
+    });
+    req.on("error", (err) =>
+      resolve({
+        url: urlString,
+        status: 0,
+        healthy: false,
+        error: err?.message || "unreachable",
+        expectedStatus,
+        checkedAt,
+      }),
+    );
     req.end();
   });
+}
+
+function httpsProbe(urlString, timeoutMs = 5000) {
+  return urlProbe(urlString, timeoutMs, 200).then((r) => ({
+    url: r.url,
+    status: r.status,
+    healthy: r.healthy,
+  }));
 }
 
 const HEALTH_PATHS = ["/healthz", "/health", "/api/health"];
@@ -182,6 +212,36 @@ app.post("/api/routes/healthcheck/batch", requireAuth, express.json(), async (re
   const capped = urls.slice(0, 50);
   const results = await Promise.all(capped.map((u) => routeHealthCheck(String(u).trim())));
   res.json(results);
+});
+
+/** Probe UIHealthChecker targets from the dashboard pod (no browser CORS). */
+app.post("/api/uihealth/probe", requireAuth, express.json(), async (req, res) => {
+  const targets = req.body?.targets;
+  if (!Array.isArray(targets) || targets.length === 0) {
+    return res.status(400).json({ message: "targets array is required" });
+  }
+  const capped = targets.slice(0, 100);
+  const results = await Promise.all(
+    capped.map(async (t) => {
+      const name = typeof t?.name === "string" ? t.name : "";
+      const url = typeof t?.url === "string" ? t.url.trim() : "";
+      const timeoutSeconds = Math.min(120, Math.max(1, Number(t?.timeoutSeconds) || 10));
+      const expectedStatus = Number(t?.expectedStatus) || 200;
+      if (!name || !url) {
+        return {
+          name,
+          url,
+          status: 0,
+          healthy: false,
+          error: "missing name or url",
+          checkedAt: new Date().toISOString(),
+        };
+      }
+      const result = await urlProbe(url, timeoutSeconds * 1000, expectedStatus);
+      return { name, ...result };
+    }),
+  );
+  res.json({ results });
 });
 
 const distPath = path.resolve(__dirname, "../dist");

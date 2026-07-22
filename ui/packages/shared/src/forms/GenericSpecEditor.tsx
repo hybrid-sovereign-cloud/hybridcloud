@@ -133,6 +133,30 @@ export function GenericSpecEditor({
           );
         }
 
+        if (field.widget === 'json') {
+          const text =
+            typeof raw === 'string' ? raw : raw == null ? '' : JSON.stringify(raw, null, 2);
+          return (
+            <FormGroup key={field.path} label={label} fieldId={id}>
+              <TextArea
+                id={id}
+                value={text}
+                isDisabled={field.immutable}
+                onChange={(_e, v) => {
+                  try {
+                    setField(field, v.trim() ? JSON.parse(v) : undefined);
+                    setError(null);
+                  } catch {
+                    setError(t('form.invalidJson', { field: label }));
+                  }
+                }}
+                rows={6}
+              />
+              {hint}
+            </FormGroup>
+          );
+        }
+
         if (field.widget === 'textarea') {
           return (
             <FormGroup key={field.path} label={label} fieldId={id}>

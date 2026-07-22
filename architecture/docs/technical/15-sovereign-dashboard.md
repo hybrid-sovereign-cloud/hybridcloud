@@ -99,6 +99,10 @@ Use this page for platform operators who need visibility across all Hybrid Sover
 
 Lists **OpenShift Routes** relevant to the platform (discovery via Kubernetes API). Each route row runs **live health checks** (HTTP reachability against the route URL or configured probe target) so teams see green/red signal without opening the console.
 
+### UI Health (`/networking/uihealth`)
+
+Lists `UIHealthChecker` CRs (URL registry). **Refresh** reloads targets and runs pod-side probes; there is no operator reconcile for liveness. See [57-hybridvpc-uihealth.md](./57-hybridvpc-uihealth.md).
+
 ### Entity List (`/entities`)
 
 - Lists all `Entity` CRs from the `sovereign-cloud` namespace

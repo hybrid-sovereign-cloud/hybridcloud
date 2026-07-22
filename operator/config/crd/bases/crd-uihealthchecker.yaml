@@ -21,7 +21,10 @@ spec:
       storage: true
       schema:
         openAPIV3Schema:
-          description: Declares a URL for admin UI browser health probes.
+          description: >-
+            Declares a URL for on-demand admin dashboard pod health probes.
+            The CR is a registry only — no infrastructure reconcile; the dashboard
+            probes spec.url when Refresh or Run checks is used.
           type: object
           properties:
             apiVersion:
@@ -35,7 +38,7 @@ spec:
               properties:
                 url:
                   type: string
-                  description: Absolute HTTPS URL the admin dashboard probes from the browser.
+                  description: Absolute HTTP(S) URL the admin dashboard probes from its pod.
                 displayName:
                   type: string
                 description:

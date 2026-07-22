@@ -23,6 +23,7 @@ export type SelfServiceFormType =
   | 'assignment'
   | 'cloudoso'
   | 'cloudaws'
+  | 'platformopenshift'
   | 'migration'
   | 'persona'
   | 'rbac'
@@ -52,6 +53,7 @@ const FORM_TITLES: Record<SelfServiceFormType, string> = {
   assignment: 'Create Assignment',
   cloudoso: 'Request CloudOSO Environment',
   cloudaws: 'Request Cloud AWS Account',
+  platformopenshift: 'Create Platform Openshift',
   migration: 'Migrate to OpenStack',
   persona: 'Create Persona',
   rbac: 'Create RBAC',
@@ -74,6 +76,7 @@ const FORM_KINDS: Record<SelfServiceFormType, HybridSovereignKind> = {
   assignment: 'Assignment',
   cloudoso: 'CloudOSO',
   cloudaws: 'CloudAWS',
+  platformopenshift: 'PlatformOpenshift',
   migration: 'OpenStackMigration',
   persona: 'Persona',
   rbac: 'Rbac',
@@ -105,6 +108,7 @@ const PERSONA_TYPES = [
   'cloudOSOView',
   'cloudAWSAdmin',
   'cloudAWSView',
+  'BobsTeam',
 ];
 
 function RefSelect({
@@ -177,6 +181,30 @@ export function CreateResourceForm({
   const [gatewayRef, setGatewayRef] = useState('');
   const [healthUrl, setHealthUrl] = useState('https://');
   const [healthGroup, setHealthGroup] = useState('custom');
+  const [istioEnabled, setIstioEnabled] = useState(false);
+  const [haEnabled, setHaEnabled] = useState(true);
+  const [displayName, setDisplayName] = useState('');
+  const [projectRefs, setProjectRefs] = useState('');
+  const [assignAdmin, setAssignAdmin] = useState('');
+  const [assignDev, setAssignDev] = useState('');
+  const [assignViewer, setAssignViewer] = useState('');
+  const [assignOps, setAssignOps] = useState('');
+  const [osoProject, setOsoProject] = useState('');
+  const [vaultPath, setVaultPath] = useState('oso/accounts/shc_admin');
+  const [baseDomain, setBaseDomain] = useState('');
+  const [projectDomain, setProjectDomain] = useState('shc_domain');
+  const [externalNetwork, setExternalNetwork] = useState('ext-net');
+  const [route53VaultPath, setRoute53VaultPath] = useState('oso/accounts/route53-openstack');
+  const [landingzone, setLandingzone] = useState('default');
+  const [awsAccount, setAwsAccount] = useState('');
+  const [awsVaultPath, setAwsVaultPath] = useState('');
+  const [awsBaseDomain, setAwsBaseDomain] = useState('');
+  const [platformType, setPlatformType] = useState('openstack');
+  const [platformEnv, setPlatformEnv] = useState('');
+  const [cpCount, setCpCount] = useState('3');
+  const [workerCount, setWorkerCount] = useState('3');
+  const [rbacMulti, setRbacMulti] = useState('');
+  const [networkViewerRbac, setNetworkViewerRbac] = useState('');
 
   const type = formType;
   const title = FORM_TITLES[type] ?? 'Create Resource';
@@ -196,7 +224,8 @@ export function CreateResourceForm({
     enabled: type === 'persona' && !namespace,
   });
 
-  const teams = useK8sResourceList<K8sResource>('Team', { namespace: entityNs, enabled: type === 'assignment' });  const projects = useK8sResourceList<K8sResource>('Project', {
+  const teams = useK8sResourceList<K8sResource>('Team', { namespace: entityNs, enabled: type === 'assignment' });
+  const projects = useK8sResourceList<K8sResource>('Project', {
     namespace: entityNs,
     enabled: type === 'assignment',
   });
@@ -206,7 +235,7 @@ export function CreateResourceForm({
   });
   const cloudAwss = useK8sResourceList<K8sResource>('CloudAWS', {
     namespace: entityNs,
-    enabled: type === 'assignment',
+    enabled: type === 'assignment' || type === 'platformopenshift',
   });
   const vaults = useK8sResourceList<K8sResource>('Vault', {
     namespace: entityNs,
@@ -214,11 +243,11 @@ export function CreateResourceForm({
   });
   const cloudosos = useK8sResourceList<K8sResource>('CloudOSO', {
     namespace: entityNs,
-    enabled: type === 'migration',
+    enabled: type === 'migration' || type === 'platformopenshift',
   });
   const rbacs = useK8sResourceList<K8sResource>('Rbac', {
     namespace: entityNs,
-    enabled: (type === 'persona' || type === 'vaultkv') && !!entityNs,
+    enabled: (type === 'persona' || type === 'vaultkv' || type === 'aaporg' || type === 'quayorg' || type === 'assignment' || type === 'hybridnetwork' || type === 'platformopenshift') && !!entityNs,
   });
   const rbacConfigs = useK8sResourceList<K8sResource>('RbacConfig', {
     enabled: type === 'team' || type === 'rbac' || type === 'vault',
@@ -279,39 +308,121 @@ export function CreateResourceForm({
         };
       case 'team':
         return {
-          rbacConfig: rbacConfig || 'rhbk-services',
-          features: { argo: argoEnabled, istio: false },
-          teamAdmin: [],
+          features: { argo: argoEnabled, istio: istioEnabled },
         };
       case 'project':
-        return { description };
-      case 'assignment':
+        return {
+          description,
+          ...(displayName ? { displayName } : {}),
+        };
+      case 'assignment': {
+        const projectsList = projectRefs
+          ? projectRefs.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+          : projectRef
+            ? [projectRef]
+            : [];
+        const toolRbac: Record<string, string> = {};
+        if (assignAdmin) toolRbac.assignmentAdmin = assignAdmin;
+        if (assignDev) toolRbac.assignmentDeveloper = assignDev;
+        if (assignViewer) toolRbac.assignmentViewer = assignViewer;
+        if (assignOps) toolRbac.assignmentOps = assignOps;
         return {
           team: teamRef,
-          projects: projectRef ? [projectRef] : [],
+          projects: projectsList,
           openshift: platformRef || undefined,
-          aws: cloudAwsRef || undefined,
+          ...(Object.keys(toolRbac).length ? { toolRbac } : {}),
         };
+      }
       case 'cloudoso':
-        return { vaultPath: 'oso/accounts/shc_admin', baseDomain: process.env.LAB_DOMAIN || '' };
+        return {
+          project: osoProject,
+          vaultPath,
+          baseDomain,
+          projectDomain,
+          externalNetwork,
+          route53VaultPath,
+          landingzone,
+        };
       case 'cloudaws':
-        return { account: '', vaultPath: '', baseDomain: process.env.LAB_DOMAIN || '' };
+        return {
+          account: awsAccount,
+          vaultPath: awsVaultPath,
+          baseDomain: awsBaseDomain || baseDomain,
+          landingzone,
+        };
+      case 'platformopenshift': {
+        const rbacList = rbacMulti.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+        if (platformType === 'aws') {
+          return {
+            type: 'aws',
+            aws: {
+              environment: platformEnv || cloudAwsRef,
+              region,
+              clusterType: 'standalone',
+              controlPlaneCount: Number(cpCount) || 3,
+              workerCount: Number(workerCount) || 2,
+            },
+            ...(rbacList.length
+              ? { toolRbac: { clusterAdminRbac: rbacList }, clusterViewerRbac: rbacList }
+              : {}),
+          };
+        }
+        return {
+          type: 'openstack',
+          openstack: {
+            environment: platformEnv || cloudosoRef,
+            controlPlaneCount: Number(cpCount) || 3,
+            workerCount: Number(workerCount) || 3,
+            externalNetwork,
+          },
+          ...(rbacList.length
+            ? { toolRbac: { clusterAdminRbac: rbacList }, clusterViewerRbac: rbacList }
+            : {}),
+        };
+      }
       case 'migration':
-        return { source, vmName, cloudoso: cloudosoRef };
+        return { source, vmName, cloudoso: cloudosoRef, providerNamespace: 'openshift-mtv' };
       case 'persona':
         return { rbac: rbacRef, type: personaType };
       case 'rbac':
         return { config: rbacConfig, description };
       case 'vault':
-        return { ha: true, rbacConfig };
-      case 'vaultkv':
-        return { vault: vaultRef, vaultAdminRbac: [], vaultReaderRbac: [] };
-      case 'aaporg':
-        return { aapConfig, aapAdminRbac: [], aapJobExecutorRbac: [] };
-      case 'quayorg':
-        return { quayConfig, quayAdminRbac: [], quayCreatorRbac: [], quayMemberRbac: [] };
+        return { ha: haEnabled, rbacConfig };
+      case 'vaultkv': {
+        const list = rbacMulti.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+        return {
+          vault: vaultRef,
+          vaultAdminRbac: list,
+          vaultReaderRbac: list,
+          vaultOpsRbac: list,
+          vaultDeveloperRbac: list,
+        };
+      }
+      case 'aaporg': {
+        const list = rbacMulti.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+        return {
+          aapConfig,
+          aapAdminRbac: list,
+          aapJobExecutorRbac: list,
+          aapViewerRbac: list,
+        };
+      }
+      case 'quayorg': {
+        const list = rbacMulti.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+        return {
+          quayConfig,
+          quayAdminRbac: list,
+          quayCreatorRbac: list,
+          quayMemberRbac: list,
+        };
+      }
       case 'hybridnetwork':
-        return { description };
+        return {
+          description,
+          networkViewerRbac: networkViewerRbac
+            ? networkViewerRbac.split(/[,\n]/).map((s) => s.trim()).filter(Boolean)
+            : [],
+        };
       case 'networkplacement':
         return {
           network: networkRef,
@@ -362,6 +473,9 @@ export function CreateResourceForm({
     if (type === 'entity' && !billingID) return false;
     if (type === 'persona' && !entityNs) return false;
     if (type === 'assignment' && !teamRef) return false;
+    if (type === 'cloudoso' && (!osoProject || !vaultPath || !baseDomain || !projectDomain || !externalNetwork || !route53VaultPath)) return false;
+    if (type === 'cloudaws' && (!awsAccount || !awsVaultPath || !(awsBaseDomain || baseDomain))) return false;
+    if (type === 'platformopenshift' && !(platformEnv || cloudosoRef || cloudAwsRef)) return false;
     if (type === 'persona' && (!rbacRef || !personaType)) return false;
     if (type === 'vaultkv' && !vaultRef) return false;
     if (type === 'migration' && (!vmName || !cloudosoRef)) return false;
@@ -449,14 +563,6 @@ export function CreateResourceForm({
 
               {type === 'team' && (
                 <>
-                  <RefSelect
-                    id="rbac-config"
-                    label="RBAC Config"
-                    value={rbacConfig}
-                    onChange={setRbacConfig}
-                    options={names(rbacConfigs.items)}
-                    isRequired
-                  />
                   <FormGroup label="Enable Argo CD" fieldId="argo">
                     <Switch
                       id="argo"
@@ -464,20 +570,34 @@ export function CreateResourceForm({
                       onChange={(_e, checked) => setArgoEnabled(checked)}
                     />
                   </FormGroup>
+                  <FormGroup label="Enable Istio" fieldId="istio">
+                    <Switch
+                      id="istio"
+                      isChecked={istioEnabled}
+                      onChange={(_e, checked) => setIstioEnabled(checked)}
+                    />
+                  </FormGroup>
                 </>
+              )}
+
+              {type === 'project' && (
+                <FormGroup label="Display name" fieldId="display-name">
+                  <TextInput id="display-name" value={displayName} onChange={(_e, v) => setDisplayName(v)} />
+                </FormGroup>
               )}
 
               {type === 'assignment' && (
                 <>
                   <RefSelect id="team" label="Team" value={teamRef} onChange={setTeamRef} options={names(teams.items)} isRequired />
-                  <RefSelect
-                    id="project"
-                    label="Project"
-                    value={projectRef}
-                    onChange={setProjectRef}
-                    options={names(projects.items)}
-                    placeholder="Optional"
-                  />
+                  <FormGroup label="Projects (comma-separated)" fieldId="projects">
+                    <TextArea
+                      id="projects"
+                      value={projectRefs || projectRef}
+                      onChange={(_e, v) => { setProjectRefs(v); setProjectRef(''); }}
+                      rows={2}
+                      placeholder={names(projects.items).map((p) => p.value).join(', ') || 'project-a, project-b'}
+                    />
+                  </FormGroup>
                   <RefSelect
                     id="platform"
                     label="Platform Openshift"
@@ -486,14 +606,100 @@ export function CreateResourceForm({
                     options={names(platforms.items)}
                     placeholder="Optional"
                   />
+                  <RefSelect id="assign-admin" label="Assignment admin RBAC" value={assignAdmin} onChange={setAssignAdmin} options={names(rbacs.items)} placeholder="Optional" />
+                  <RefSelect id="assign-dev" label="Assignment developer RBAC" value={assignDev} onChange={setAssignDev} options={names(rbacs.items)} placeholder="Optional" />
+                  <RefSelect id="assign-viewer" label="Assignment viewer RBAC" value={assignViewer} onChange={setAssignViewer} options={names(rbacs.items)} placeholder="Optional" />
+                  <RefSelect id="assign-ops" label="Assignment ops RBAC" value={assignOps} onChange={setAssignOps} options={names(rbacs.items)} placeholder="Optional" />
+                </>
+              )}
+
+              {type === 'cloudoso' && (
+                <>
+                  <FormGroup label="OpenStack project" fieldId="oso-project" isRequired>
+                    <TextInput id="oso-project" value={osoProject} onChange={(_e, v) => setOsoProject(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Vault path" fieldId="oso-vault" isRequired>
+                    <TextInput id="oso-vault" value={vaultPath} onChange={(_e, v) => setVaultPath(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Base domain" fieldId="oso-base" isRequired>
+                    <TextInput id="oso-base" value={baseDomain} onChange={(_e, v) => setBaseDomain(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Project domain" fieldId="oso-pdom" isRequired>
+                    <TextInput id="oso-pdom" value={projectDomain} onChange={(_e, v) => setProjectDomain(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="External network" fieldId="oso-ext" isRequired>
+                    <TextInput id="oso-ext" value={externalNetwork} onChange={(_e, v) => setExternalNetwork(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Route53 vault path" fieldId="oso-r53" isRequired>
+                    <TextInput id="oso-r53" value={route53VaultPath} onChange={(_e, v) => setRoute53VaultPath(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Landing zone" fieldId="oso-lz">
+                    <TextInput id="oso-lz" value={landingzone} onChange={(_e, v) => setLandingzone(v)} />
+                  </FormGroup>
+                </>
+              )}
+
+              {type === 'cloudaws' && (
+                <>
+                  <FormGroup label="AWS account ID" fieldId="aws-acct" isRequired>
+                    <TextInput id="aws-acct" value={awsAccount} onChange={(_e, v) => setAwsAccount(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Vault path" fieldId="aws-vault" isRequired>
+                    <TextInput id="aws-vault" value={awsVaultPath} onChange={(_e, v) => setAwsVaultPath(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Base domain" fieldId="aws-base" isRequired>
+                    <TextInput id="aws-base" value={awsBaseDomain} onChange={(_e, v) => setAwsBaseDomain(v)} isRequired />
+                  </FormGroup>
+                  <FormGroup label="Landing zone" fieldId="aws-lz">
+                    <TextInput id="aws-lz" value={landingzone} onChange={(_e, v) => setLandingzone(v)} />
+                  </FormGroup>
+                </>
+              )}
+
+              {type === 'platformopenshift' && (
+                <>
                   <RefSelect
-                    id="cloudaws"
-                    label="Cloud AWS"
-                    value={cloudAwsRef}
-                    onChange={setCloudAwsRef}
-                    options={names(cloudAwss.items)}
-                    placeholder="Optional"
+                    id="platform-type"
+                    label="Platform type"
+                    value={platformType}
+                    onChange={(v) => { setPlatformType(v); setPlatformEnv(''); }}
+                    options={[
+                      { value: 'openstack', label: 'OpenStack' },
+                      { value: 'aws', label: 'AWS' },
+                    ]}
+                    isRequired
                   />
+                  <RefSelect
+                    id="platform-env"
+                    label={platformType === 'aws' ? 'CloudAWS environment' : 'CloudOSO environment'}
+                    value={platformEnv || (platformType === 'aws' ? cloudAwsRef : cloudosoRef)}
+                    onChange={(v) => {
+                      setPlatformEnv(v);
+                      if (platformType === 'aws') setCloudAwsRef(v);
+                      else setCloudosoRef(v);
+                    }}
+                    options={names(platformType === 'aws' ? cloudAwss.items : cloudosos.items)}
+                    isRequired
+                  />
+                  <FormGroup label="Control plane count" fieldId="cp-count">
+                    <TextInput id="cp-count" type="number" value={cpCount} onChange={(_e, v) => setCpCount(v)} />
+                  </FormGroup>
+                  <FormGroup label="Worker count" fieldId="worker-count">
+                    <TextInput id="worker-count" type="number" value={workerCount} onChange={(_e, v) => setWorkerCount(v)} />
+                  </FormGroup>
+                  {platformType === 'aws' && (
+                    <FormGroup label="Region" fieldId="plat-region">
+                      <TextInput id="plat-region" value={region} onChange={(_e, v) => setRegion(v)} />
+                    </FormGroup>
+                  )}
+                  {platformType === 'openstack' && (
+                    <FormGroup label="External network" fieldId="plat-ext">
+                      <TextInput id="plat-ext" value={externalNetwork} onChange={(_e, v) => setExternalNetwork(v)} />
+                    </FormGroup>
+                  )}
+                  <FormGroup label="Cluster admin RBAC (comma-separated)" fieldId="plat-rbac">
+                    <TextArea id="plat-rbac" value={rbacMulti} onChange={(_e, v) => setRbacMulti(v)} rows={2} placeholder={names(rbacs.items).map((r) => r.value).join(', ')} />
+                  </FormGroup>
                 </>
               )}
 
@@ -536,40 +742,60 @@ export function CreateResourceForm({
               )}
 
               {type === 'vault' && (
-                <RefSelect
-                  id="vault-rbac-config"
-                  label="RBAC Config"
-                  value={rbacConfig}
-                  onChange={setRbacConfig}
-                  options={names(rbacConfigs.items)}
-                  isRequired
-                />
+                <>
+                  <RefSelect
+                    id="vault-rbac-config"
+                    label="RBAC Config"
+                    value={rbacConfig}
+                    onChange={setRbacConfig}
+                    options={names(rbacConfigs.items)}
+                    isRequired
+                  />
+                  <FormGroup label="High availability" fieldId="vault-ha">
+                    <Switch id="vault-ha" isChecked={haEnabled} onChange={(_e, c) => setHaEnabled(c)} />
+                  </FormGroup>
+                </>
               )}
 
               {type === 'vaultkv' && (
-                <RefSelect id="vault-ref" label="Vault" value={vaultRef} onChange={setVaultRef} options={names(vaults.items)} isRequired />
+                <>
+                  <RefSelect id="vault-ref" label="Vault" value={vaultRef} onChange={setVaultRef} options={names(vaults.items)} isRequired />
+                  <FormGroup label="RBAC groups (comma-separated)" fieldId="vaultkv-rbac">
+                    <TextArea id="vaultkv-rbac" value={rbacMulti} onChange={(_e, v) => setRbacMulti(v)} rows={2} />
+                  </FormGroup>
+                </>
               )}
 
               {type === 'aaporg' && (
-                <RefSelect
-                  id="aap-config"
-                  label="AAP Config"
-                  value={aapConfig}
-                  onChange={setAapConfig}
-                  options={names(aapConfigs.items)}
-                  isRequired
-                />
+                <>
+                  <RefSelect
+                    id="aap-config"
+                    label="AAP Config"
+                    value={aapConfig}
+                    onChange={setAapConfig}
+                    options={names(aapConfigs.items)}
+                    isRequired
+                  />
+                  <FormGroup label="RBAC groups (comma-separated)" fieldId="aap-rbac">
+                    <TextArea id="aap-rbac" value={rbacMulti} onChange={(_e, v) => setRbacMulti(v)} rows={2} />
+                  </FormGroup>
+                </>
               )}
 
               {type === 'quayorg' && (
-                <RefSelect
-                  id="quay-config"
-                  label="Quay Config"
-                  value={quayConfig}
-                  onChange={setQuayConfig}
-                  options={names(quayConfigs.items)}
-                  isRequired
-                />
+                <>
+                  <RefSelect
+                    id="quay-config"
+                    label="Quay Config"
+                    value={quayConfig}
+                    onChange={setQuayConfig}
+                    options={names(quayConfigs.items)}
+                    isRequired
+                  />
+                  <FormGroup label="RBAC groups (comma-separated)" fieldId="quay-rbac">
+                    <TextArea id="quay-rbac" value={rbacMulti} onChange={(_e, v) => setRbacMulti(v)} rows={2} />
+                  </FormGroup>
+                </>
               )}
 
               {type === 'migration' && (
@@ -602,9 +828,14 @@ export function CreateResourceForm({
 
 
               {type === 'hybridnetwork' && (
-                <FormGroup label="Description" fieldId="hn-desc">
-                  <TextArea id="hn-desc" value={description} onChange={(_e, v) => setDescription(v)} rows={3} />
-                </FormGroup>
+                <>
+                  <FormGroup label="Description" fieldId="hn-desc">
+                    <TextArea id="hn-desc" value={description} onChange={(_e, v) => setDescription(v)} rows={3} />
+                  </FormGroup>
+                  <FormGroup label="Network viewer RBAC (comma-separated)" fieldId="hn-viewers">
+                    <TextArea id="hn-viewers" value={networkViewerRbac} onChange={(_e, v) => setNetworkViewerRbac(v)} rows={2} />
+                  </FormGroup>
+                </>
               )}
 
               {type === 'networkplacement' && (

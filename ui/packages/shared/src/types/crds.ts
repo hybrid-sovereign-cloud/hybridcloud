@@ -291,7 +291,7 @@ export interface NetworkPlacementSpec {
 }
 export type NetworkPlacement = K8sResource<NetworkPlacementSpec>;
 
-/** UIHealthChecker — browser probe target */
+/** UIHealthChecker — URL probe target (dashboard pod HTTP check) */
 export interface UIHealthCheckerSpec {
   url: string;
   displayName?: string;

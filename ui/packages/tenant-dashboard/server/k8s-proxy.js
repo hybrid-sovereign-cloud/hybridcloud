@@ -597,6 +597,8 @@ export function createK8sHandlers(apiServer) {
         kind: "Project",
         metadata: { name, namespace },
         spec: {
+          ...(spec?.description ? { description: spec.description } : {}),
+          ...(spec?.displayName ? { displayName: spec.displayName } : {}),
           ...(spec?.rbacConfig ? { rbacConfig: spec.rbacConfig } : {}),
           ...(Array.isArray(spec?.projectAdmin) && spec.projectAdmin.length ? { projectAdmin: spec.projectAdmin } : {}),
         },
@@ -690,6 +692,7 @@ export function createK8sHandlers(apiServer) {
           ...(spec?.team ? { team: spec.team } : {}),
           ...(Array.isArray(spec?.projects) && spec.projects.length ? { projects: spec.projects } : {}),
           ...(typeof spec?.openshift === "string" && spec.openshift.trim() ? { openshift: spec.openshift.trim() } : {}),
+          ...(spec?.toolRbac && typeof spec.toolRbac === "object" ? { toolRbac: spec.toolRbac } : {}),
         },
       };
       try {
@@ -1236,6 +1239,7 @@ export function createK8sHandlers(apiServer) {
           account: spec.account,
           vaultPath: spec.vaultPath,
           baseDomain: spec.baseDomain,
+          ...(spec?.landingzone ? { landingzone: spec.landingzone } : {}),
         },
       };
       try {
