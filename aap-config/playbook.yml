@@ -56,6 +56,15 @@
         fail_msg: AAP_ADMIN_PASSWORD must be provided via ExternalSecret-backed env var.
       no_log: true
 
+    - name: Validate Vault root token is available for sovereign-vault-admin-credential
+      ansible.builtin.assert:
+        that:
+          - lookup('env', 'VAULT_ROOT_TOKEN') | length > 0
+        fail_msg: >-
+          VAULT_ROOT_TOKEN must be provided via ExternalSecret (vault-init.root_token)
+          so EDA jobs retain Vault access.
+      no_log: true
+
   tasks:
     - name: Configure AAP Controller organizations
       ansible.builtin.include_role:

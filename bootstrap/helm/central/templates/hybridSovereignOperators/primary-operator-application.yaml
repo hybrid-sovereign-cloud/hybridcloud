@@ -24,6 +24,8 @@ spec:
   destination:
     server: {{ .Values.servicesCluster.server | quote }}
     namespace: {{ .Values.hybridsovereignPrimaryOperator.destinationNamespace }}
+  ignoreDifferences:
+    {{- include "sovereign-central.esoIgnoreDifferences" . | nindent 4 }}
   syncPolicy:
     automated:
       prune: true
@@ -31,4 +33,5 @@ spec:
     syncOptions:
       - CreateNamespace=false
       - ServerSideApply=true
+      - RespectIgnoreDifferences=true
 {{- end }}

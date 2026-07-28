@@ -51,7 +51,8 @@
           ready: true
           message: "URL registered; liveness is checked on demand by the admin dashboard pod"
           lastReconciledAt: "{{ uihealthchecker_status_transition_time }}"
-          observedGeneration: "{{ uihealthchecker_generation }}"
+          # Unquoted so Ansible emits an integer (quoted "{{ gen }}" becomes a string → 422).
+          observedGeneration: {{ uihealthchecker_generation | int }}
           url: "{{ uihealthchecker_spec.url | default('') }}"
           group: "{{ uihealthchecker_spec.group | default('custom') }}"
           conditions:

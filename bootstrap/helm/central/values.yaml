@@ -1834,9 +1834,16 @@ sovereignJobs:
             - secretKey: sasl_mechanism
               remoteKey: amq-consumer
               property: sasl_mechanism
+        vaultRootTokenConfigAsCode:
+          enabled: true
+          targetSecretName: aap-config-as-code-vault-root
+          data:
+            - secretKey: root_token
+              remoteKey: vault-init
+              property: root_token
       env:
         - name: RUN_ID
-          value: "2026-07-15-aap-config-v10"
+          value: "2026-07-28-aap-config-v11"
         - name: AAP_CONFIG_PATH
           value: "/runner/project/aap-config"
         - name: AAP_CONTROLLER_HOST
@@ -1915,6 +1922,11 @@ sovereignJobs:
             secretKeyRef:
               name: aap-config-as-code-amq-consumer
               key: password
+        - name: VAULT_ROOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: aap-config-as-code-vault-root
+              key: root_token
     keycloakTestUsers:
       enabled: true
       playbook: keycloak-test-users.yml
@@ -2645,7 +2657,7 @@ amqStreams:
 # ─── HybridSovereign Primary Operator (services) ─────────────────────────────
 hybridsovereignPrimaryOperator:
   enabled: true
-  chartVersion: "0.1.20"
+  chartVersion: "0.1.21"
   syncWave: "38"
   destinationNamespace: sovereign-cloud
   values:
@@ -2653,7 +2665,7 @@ hybridsovereignPrimaryOperator:
     pluginsNamespace: sovereign-cloud-plugins
     image:
       repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-primary-operator
-      tag: "0.1.18"
+      tag: "0.1.19"
     namespaceOperator:
       image:
         repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-namespace-operator

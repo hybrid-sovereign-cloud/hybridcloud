@@ -26,6 +26,18 @@ spec:
     server: https://kubernetes.default.svc
     namespace: {{ .Values.cnv.destinationNamespace }}
 
+  ignoreDifferences:
+    {{- include "sovereign-central.esoIgnoreDifferences" . | nindent 4 }}
+    # HCO mutates HyperConverged after install; ignore operator-owned fields.
+    - group: hco.kubevirt.io
+      kind: HyperConverged
+      jqPathExpressions:
+        - .spec
+        - .status
+      jsonPointers:
+        - /metadata/annotations
+        - /metadata/labels
+
   syncPolicy:
     automated:
       prune: true
@@ -34,6 +46,7 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
     retry:
       limit: 10
       backoff:

@@ -32,6 +32,12 @@ spec:
       kind: ForkliftController
       jsonPointers:
         - /spec/controller_replicas
+        # Live CRD/operator may set feature flags not present in packaged schema (diff Unknown).
+        - /spec/feature_ui
+        - /status
+      jqPathExpressions:
+        - .spec
+        - .status
 
   syncPolicy:
     automated:
