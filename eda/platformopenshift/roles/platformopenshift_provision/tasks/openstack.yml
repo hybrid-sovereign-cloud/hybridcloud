@@ -43,7 +43,7 @@
     cb_api_vip: "{{ cloudoso_cr.resources[0].status.apiVIP | default('') }}"
     cb_ingress_vip: "{{ cloudoso_cr.resources[0].status.ingressVIP | default('') }}"
     cb_external_network: "{{ oso_external_network }}"
-    use_designate_dns: "{{ cloudoso_cr.resources[0].spec.baseDomain | default('') == '{{ lookup('env', 'BASE_DOMAIN') }}' }}"
+    use_designate_dns: "{{ cloudoso_cr.resources[0].spec.baseDomain | default('') == (lookup('env', 'BASE_DOMAIN') | default('signal9.gg', true)) }}"
     designate_zone_id: "{{ cloudoso_cr.resources[0].spec.designateZoneId | default('895a1406-9ad2-4372-80f9-4e23fe1fd9ef') }}"
     designate_project_id: "{{ cloudoso_cr.resources[0].status.projectId | default(cloudoso_cr.resources[0].spec.designateProjectId | default('')) }}"
     designate_project_name: "{{ cloudoso_cr.resources[0].status.projectName | default('') }}"
