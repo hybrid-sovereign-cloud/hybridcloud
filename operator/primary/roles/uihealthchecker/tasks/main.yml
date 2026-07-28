@@ -32,7 +32,6 @@
       ansible.builtin.meta: end_host
       when: >-
         (not (reconcile_now | bool))
-        and (uihealthchecker_observed_generation >= uihealthchecker_generation)
         and (uihealthchecker_status == 'ready')
         and (uihealthchecker_ready | bool)
 
@@ -51,8 +50,7 @@
           ready: true
           message: "URL registered; liveness is checked on demand by the admin dashboard pod"
           lastReconciledAt: "{{ uihealthchecker_status_transition_time }}"
-          # Unquoted so Ansible emits an integer (quoted "{{ gen }}" becomes a string → 422).
-          observedGeneration: {{ uihealthchecker_generation | int }}
+          # Do not set observedGeneration here — Ansible/k8s_status stringifies ints → API 422.
           url: "{{ uihealthchecker_spec.url | default('') }}"
           group: "{{ uihealthchecker_spec.group | default('custom') }}"
           conditions:
