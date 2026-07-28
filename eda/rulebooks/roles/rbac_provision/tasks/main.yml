@@ -54,6 +54,12 @@
             rbac_cr_lookup.resources[0].metadata.annotations['hybridsovereign.redhat/creator']
             | default(rbac_cr_lookup.resources[0].metadata.managedFields[0].manager | default('unknown'))
           }}
+        # Prefer event note; fall back to live CR.spec when note is empty/partial
+        rbac_spec: >-
+          {{
+            (rbac_spec if (rbac_spec is mapping and (rbac_spec.config | default('') | length) > 0)
+             else (rbac_cr_lookup.resources[0].spec | default({})))
+          }}
 
     - name: Read referenced RbacConfig
       kubernetes.core.k8s_info:
