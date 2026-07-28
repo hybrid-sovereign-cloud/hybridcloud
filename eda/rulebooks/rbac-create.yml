@@ -15,7 +15,7 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle RBAC Create
-      condition: event.body.payload.reason in ["RBACCreateRequested", "RBACReconcileRequested"] and event.body.payload.regarding.kind == "RBAC"
+      condition: event.body.payload.reason in ["RbacCreateRequested", "RbacReconcileRequested", "RBACCreateRequested", "RBACReconcileRequested"] and event.body.payload.regarding.kind in ["Rbac", "RBAC"]
       action:
         run_job_template:
           name: rbac-provision

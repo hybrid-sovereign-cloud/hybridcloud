@@ -15,7 +15,7 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle RBAC Delete
-      condition: event.body.payload.reason in ["RBACDeleteRequested"] and event.body.payload.regarding.kind == "RBAC"
+      condition: event.body.payload.reason in ["RbacDeleteRequested", "RBACDeleteRequested"] and event.body.payload.regarding.kind in ["Rbac", "RBAC"]
       action:
         run_job_template:
           name: rbac-teardown

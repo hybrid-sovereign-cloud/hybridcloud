@@ -82,6 +82,14 @@
 
 
   rescue:
+    - name: Truncate failure message (avoid poisoning CR with multi-MB Jinja dumps)
+      ansible.builtin.set_fact:
+        cloudoso_failure_message: >-
+          {{
+            (ansible_failed_result.msg | default(ansible_failed_task.name | default('Reconciliation failed')) | string)
+            | truncate(500, True, '…')
+          }}
+
     - name: Mark CloudOSO as failed
       operator_sdk.util.k8s_status:
         api_version: hybridsovereign.redhat/v1alpha1
@@ -92,13 +100,13 @@
           status: failed
           ready: false
           lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
-          message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('Reconciliation failed')) }}"
+          message: "{{ cloudoso_failure_message }}"
           conditions:
             - type: Ready
               status: "False"
               lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
               reason: OperatorFailed
-              message: "{{ ansible_failed_result.msg | default(ansible_failed_task.name | default('Reconciliation failed')) }}"
+              message: "{{ cloudoso_failure_message }}"
       ignore_errors: true
 
     - name: Re-raise to signal operator failure
