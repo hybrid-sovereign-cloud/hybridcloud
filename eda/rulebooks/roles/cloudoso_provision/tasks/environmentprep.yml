@@ -82,7 +82,7 @@
 - name: Derive domain names
   ansible.builtin.set_fact:
     ep_cluster_domain: >-
-      {{ (cloudoso_cr_name ~ '.{{ lookup('env', 'BASE_DOMAIN') }}')
+      {{ (cloudoso_cr_name ~ '.' ~ (lookup('env', 'BASE_DOMAIN') | default('signal9.gg', true)))
          if (use_designate_dns | default(false) | bool)
          else (ep_slug ~ '.' ~ ep_base_domain) }}
 
@@ -359,7 +359,7 @@
       clouds:
         openstack:
           auth:
-            auth_url: "{{ app_cred_data.auth_url | default('https://identity.atuin.{{ lookup('env', 'BASE_DOMAIN') }}') }}"
+            auth_url: "{{ app_cred_data.auth_url | default('https://identity.atuin.' ~ (lookup('env', 'BASE_DOMAIN') | default('signal9.gg', true))) }}"
             application_credential_id: "{{ app_cred_data.id }}"
             application_credential_secret: "{{ app_cred_data.secret }}"
           region_name: "{{ ep_region_name }}"
