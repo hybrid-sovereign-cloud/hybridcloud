@@ -23,9 +23,13 @@
   register: amq_publish_result
   changed_when: true
   failed_when: false
-  no_log: true
+  # credentials are env-only; keep result visible for triage
+  no_log: false
 
 - name: Log AMQ publish failure
   ansible.builtin.debug:
-    msg: "AMQ publish failed (non-fatal): {{ amq_publish_result.stderr | default(amq_publish_result.msg | default('unknown')) }}"
+    msg: >-
+      AMQ publish failed (non-fatal): rc={{ amq_publish_result.rc | default('?') }}
+      stderr={{ amq_publish_result.stderr | default('') | truncate(500, True, '…') }}
+      stdout={{ amq_publish_result.stdout | default('') | truncate(200, True, '…') }}
   when: amq_publish_result.rc | default(0) != 0

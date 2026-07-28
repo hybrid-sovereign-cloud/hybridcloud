@@ -4,6 +4,9 @@ import json
 import os
 import ssl
 import sys
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from kafka import KafkaProducer
 

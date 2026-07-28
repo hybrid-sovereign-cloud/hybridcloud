@@ -2669,7 +2669,7 @@ hybridsovereignPrimaryOperator:
     namespaceOperator:
       image:
         repository: quay.signal9.gg/hybrid-sovereign/hybridsovereign-namespace-operator
-        tag: "0.1.7"
+        tag: "0.1.8"
     amqKafka:
       enabled: true
       vaultPath: amq-producer
