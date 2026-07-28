@@ -10,9 +10,9 @@ The Sovereign Cloud Dashboard is a React/Node.js web application that provides a
 |---|---|
 | Cluster | **Services** (deployed by central ArgoCD) |
 | Namespace | `sovereign-cloud` (on services cluster) |
-| Chart | `user_dashboard/helm/charts/dashboard` |
+| Chart | Admin dashboard under `ui/packages/admin-dashboard` (see make targets) |
 | OCI location | `oci://quay.example.com/hybrid-sovereign/sovereign-cloud-dashboard` |
-| Make target | `make upload-chart` (from `user_dashboard/`) |
+| Make target | UI build/push from `hybridcloud/` (not legacy `user_dashboard/`) |
 | ArgoCD App | `sovereign-cloud-dashboard` |
 
 ## Technology Stack
@@ -119,26 +119,4 @@ Lists `UIHealthChecker` CRs (URL registry). **Refresh** reloads targets and runs
 
 ## Directory Structure
 
-```
-user_dashboard/
-├── hardeningchecks/     # Security hardening checks
-├── helm/
-│   └── charts/
-│       ├── app/         # ArgoCD Application chart
-│       └── dashboard/   # Dashboard Helm chart
-├── make/                # Makefile modules
-│   ├── build-dashboard.mk
-│   ├── deploy-application.mk
-│   └── upload-chart.mk
-├── ui/
-│   ├── src/             # React frontend
-│   │   ├── components/  # Layout, sidebar
-│   │   ├── pages/       # EntityList, EntityCreate
-│   │   ├── services/    # API client (axios)
-│   │   └── theme/       # Material UI theme (PatternFly palette)
-│   ├── server/          # Express backend + K8s API proxy
-│   ├── Dockerfile
-│   └── package.json
-├── Makefile
-└── AGENTS.md
-```
+Canonical package: `ui/packages/admin-dashboard/` (monorepo). Legacy standalone `user_dashboard/` is removed. Helm/OCI packaging lives under `bootstrap/helm/`; see `ui/packages/admin-dashboard/README.md` for the React app layout.

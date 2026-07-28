@@ -193,13 +193,18 @@ controller_execution_environments:
     image: "{{ _quay_registry }}/de-plugin-quay:{{ _de_plugin_quay_tag }}"
     pull: missing
     credential: quay-robot-credential
+  - name: de-hybridvpc
+    organization: sovereign
+    image: "{{ _quay_registry }}/de-hybridvpc:{{ _de_hybridvpc_tag | default('0.1.0') }}"
+    pull: missing
+    credential: quay-robot-credential
 
 controller_projects:
   - name: sovereign-eda-project
     organization: sovereign
     scm_type: git
-    scm_url: "{{ lookup('env', 'EDA_REPO_URL') }}"
-    credential: sovereign-github-credential
+    scm_url: "{{ lookup('env', 'EDA_REPO_URL') | default('http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git', true) }}"
+    credential: "{{ lookup('env', 'EDA_SCM_CREDENTIAL') | default('sovereign-gitea-eda-credential', true) }}"
     scm_clean: true
     scm_delete_on_update: false
     scm_update_on_launch: true
@@ -521,6 +526,114 @@ controller_templates:
     playbook: rulebooks/openstack-migration-provision-playbook.yml
     inventory: sovereign-localhost
     execution_environment: de-openstack-migration
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: hybridfabric-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/hybridfabric-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: hybridfabric-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/hybridfabric-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: cloudgateway-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/cloudgateway-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: cloudgateway-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/cloudgateway-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: transportlink-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/transportlink-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: transportlink-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/transportlink-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: hybridnetwork-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/hybridnetwork-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: hybridnetwork-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/hybridnetwork-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: networkplacement-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/networkplacement-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: networkplacement-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/networkplacement-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: uihealthchecker-provision
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/uihealthchecker-provision-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
+    ask_variables_on_launch: true
+    credentials:
+      - sovereign-vault-admin-credential
+  - name: uihealthchecker-teardown
+    organization: sovereign
+    project: sovereign-eda-project
+    playbook: rulebooks/uihealthchecker-teardown-playbook.yml
+    inventory: sovereign-localhost
+    execution_environment: de-hybridvpc
     ask_variables_on_launch: true
     credentials:
       - sovereign-vault-admin-credential

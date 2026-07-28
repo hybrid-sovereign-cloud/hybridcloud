@@ -97,7 +97,7 @@ Plugin SDX is a **Go-based** controller (not EDA-driven) deployed in `sovereign-
 - **Status:** `Iaac.status` reports `ready`, `totalCRsSynced`, `syncedKinds`, `syncErrors`
 - **Credentials:** Gitea admin token via Vault → ExternalSecret
 
-See [Plugin SDX technical reference](../technical/25-plugin-iaac.md).
+See [legacy Plugin SDX reference (archived)](../archive/technical/25-plugin-iaac.md). Live path: `iaac/` Python StatefulSet (`iaacGitSync`).
 
 ## EDA / AAP Architecture
 
@@ -133,8 +133,8 @@ Two React/Node.js dashboards deploy to `sovereign-cloud` on the services cluster
 
 | Dashboard | Repo | Primary users | Key pages |
 |-----------|------|---------------|-----------|
-| **Sovereign Dashboard** | `user_dashboard/` | Platform admins | Overview (CR health), Services (route probes), Entity list/create |
-| **Tenancy Dashboard** | `tenancy_dashboard/` | Tenant admins | Teams, Assignments, Projects, PlatformOpenshift, CloudOSO, Persona, plugin CRs |
+| **Admin dashboard** | `ui/packages/admin-dashboard` | Platform admins | Overview (CR health), Services (route probes), Entity list/create |
+| **Tenant dashboard** | `ui/packages/tenant-dashboard` | Tenant admins | Teams, Assignments, Projects, PlatformOpenshift, CloudOSO, Persona, plugin CRs |
 
 Shared patterns: Material UI, force-reconcile annotation, EDA job link chips, entity namespace sidebar (`hybridsovereign.redhat/entity` label). See [Sovereign Dashboard](../technical/15-sovereign-dashboard.md) and [Tenancy Dashboard](../technical/20-tenancy-dashboard.md).
 

@@ -3,7 +3,7 @@
   hosts: all
   sources:
     - ansible.eda.kafka:
-        host: {{ KAFKA_BOOTSTRAP_HOST }}
+        host: "hybridsovereign-kafka-kafka-bootstrap-amq-streams.apps.shc-cental5.lab.signal9.gg"
         port: "443"
         topic: hybridsovereign-events
         group_id: eda-cloudaws-delete
@@ -15,7 +15,7 @@
         verify_mode: CERT_NONE
   rules:
     - name: Handle CloudAWS Delete
-      condition: event.body.payload.reason in ["CloudAWSDeleteRequestedDeleteRequested"] and event.body.payload.regarding.kind == "CloudAWSDeleteRequested"
+      condition: event.body.payload.reason in ["CloudAWSDeleteRequested"] and event.body.payload.regarding.kind == "CloudAWS"
       action:
         run_job_template:
           name: cloudaws-teardown

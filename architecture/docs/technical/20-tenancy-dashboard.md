@@ -10,7 +10,7 @@ The Tenancy Dashboard is a web UI on the services cluster. It drives tenancy and
 |---|---|
 | Cluster | **Services** (deployed by central ArgoCD) |
 | Namespace | `sovereign-cloud` |
-| Chart | `tenancy_dashboard/helm/charts/dashboard` |
+| Chart | Tenant dashboard chart under `ui/packages/tenant-dashboard` (see make targets) |
 | OCI location | `oci://quay.example.com/hybrid-sovereign/tenancy-dashboard` |
 | Current chart version | 0.9.8 |
 | Current image tag | 3.3.0 |

@@ -100,6 +100,8 @@ Use this checklist before merging bootstrap changes, operator releases, or migra
 
 ## 7. Kafka TLS Path
 
+> **Note (2026-07-28):** Event forwarder is retired (`eventForwarder.enabled: false`). Apply Kafka TLS / SASL checks to operator producers and EDA consumers instead of the forwarder Deployment.
+
 | # | Check | Evidence | Status |
 |---|-------|----------|--------|
 | 7.1 | AMQ Streams Kafka cluster deployed with TLS listener enabled | `bootstrap/helm/charts/amq-streams/` Kafka CR | ☐ |

@@ -181,5 +181,5 @@ flowchart TD
 | Entity operator | [../technical/17-entity-operator.md](../technical/17-entity-operator.md) |
 | Assignment operator | [../technical/12-assignment-operator.md](../technical/12-assignment-operator.md) |
 | Persona operator | [../technical/45-persona-operator.md](../technical/45-persona-operator.md) |
-| Plugin SDX | [../technical/25-plugin-iaac.md](../technical/25-plugin-iaac.md) |
+| Plugin SDX | [../archive/technical/25-plugin-iaac.md](../archive/technical/25-plugin-iaac.md) |
 | Leadership deck | [09-leadership-demo-deck.md](09-leadership-demo-deck.md) |

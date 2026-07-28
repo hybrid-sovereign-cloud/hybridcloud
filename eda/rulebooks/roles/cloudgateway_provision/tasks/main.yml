@@ -1,0 +1,83 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        cloudgateway_cr_name: "{{ event_payload.regarding.name }}"
+        cloudgateway_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        cloudgateway_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Stub debug for CloudGateway
+      ansible.builtin.debug:
+        msg: "Stub provision CloudGateway/{{ cloudgateway_cr_name }} in {{ cloudgateway_cr_namespace }}"
+
+    - name: Read CR generation
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: CloudGateway
+        name: "{{ cloudgateway_cr_name }}"
+        namespace: "{{ cloudgateway_cr_namespace }}"
+      register: cloudgateway_cr_lookup
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        cloudgateway_generation: "{{ cloudgateway_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Get timestamp
+      ansible.builtin.set_fact:
+        cloudgateway_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark CloudGateway ready (stub)
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: cloudgateways
+        cr_name: "{{ cloudgateway_cr_name }}"
+        cr_namespace: "{{ cloudgateway_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          message: "Stub provisioned by EDA hybridvpc (no infra changes)"
+          lastReconciledAt: "{{ cloudgateway_status_transition_time }}"
+          observedGeneration: "{{ cloudgateway_generation }}"
+          landingZoneReady: true
+          transportReady: true
+          peerCount: 0
+          gatewayAddress: "127.0.0.1"
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ cloudgateway_status_transition_time }}"
+              reason: EDASucceeded
+              message: Stub provision complete
+
+  rescue:
+    - name: Mark CloudGateway failed
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: cloudgateways
+        cr_name: "{{ cloudgateway_cr_name }}"
+        cr_namespace: "{{ cloudgateway_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          message: "{{ ansible_failed_result.msg | default('EDA stub provision failed') }}"
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default('EDA stub provision failed') }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise
+      ansible.builtin.fail:
+        msg: "CloudGateway {{ cloudgateway_cr_name | default('unknown') }} stub provision failed"

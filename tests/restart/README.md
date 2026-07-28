@@ -38,7 +38,7 @@ For each test:
 | **Verify** | Team CR still `ready=True`; logs show clean startup |
 | **Expected** | Single replica recovers; watches re-established |
 
-### TC-RS-003: Event Forwarder Restart
+### TC-RS-003: Event Forwarder Restart (SKIP — retired / enabled: false)
 
 | Field | Value |
 |-------|-------|

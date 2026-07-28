@@ -88,12 +88,12 @@ These Ansible/Helm operator directories at the repository root are frozen. CRDs,
 
 ## Archive Handling
 
-Frozen directories remain in the repository root for historical reference and branch archaeology. They may be deleted from the default branch in a future cleanup once all open PRs and CI pipelines have migrated.
+Frozen root directories were **removed from the default working tree** after monorepo consolidation (2026-07). History remains in git tags / archaeology; do not recreate them for new work.
 
 **Do not**:
 
-- Run `make upload-chart` from frozen operator directories
-- Commit secrets or credentials to frozen repos (policy applies globally)
+- Run `make upload-chart` from resurrected frozen operator directories
+- Commit secrets or credentials anywhere (policy applies globally)
 - Delete `sovereign-*` namespaces during archive validation
 
 **Do**:

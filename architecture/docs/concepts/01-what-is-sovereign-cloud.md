@@ -28,7 +28,7 @@ The central cluster makes decisions. The services cluster runs workloads.
 
 ## What Makes It "Sovereign"?
 
-- **Self-contained** — no external dependencies needed after setup
+- **Self-contained** — no external dependencies needed after setup (once images/charts/catalogs are mirrored)
 - **Self-healing** — fixes drift automatically
-- **Air-gap ready** — designed for disconnected environments
+- **Disconnected-capable** — designed for air-gap; requires private OCI + Gitea + mirrored OLM catalogs (see `docs/disconnected-deploy.md`)
 - **Auditable** — all changes tracked in Git history

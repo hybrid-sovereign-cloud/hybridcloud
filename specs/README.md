@@ -29,7 +29,7 @@ Detailed specifications for platform features in the `hybridcloud/` monorepo.
 | 012 | [Plugin RBAC](./012-plugin-rbac/spec.md) | RbacConfig, Rbac | KEEP | |
 | 013 | [Plugin Vault](./013-plugin-vault/spec.md) | Vault, VaultKV | KEEP | |
 | 014 | [IAAC Git Sync](./014-iaac-git-sync/spec.md) | iaacGitSync STS | UPDATE | Live path is Python StatefulSet; Go `pluginIaac` disabled |
-| 015 | [Event Forwarder](./015-event-forwarder/spec.md) | (retired) | UPDATE | **Disabled** — operators publish to Kafka directly; keep for history |
+| 015 | ~~Event Forwarder~~ | — | ARCHIVE | Retired → [archive/015](./archive/015-event-forwarder/spec.md) |
 | 016 | [AMQ Streams](./016-amq-streams/spec.md) | Kafka | KEEP | |
 | 017 | ~~VM Migration (VMware)~~ | — | ARCHIVE | Duplicate of 009/032 → [archive/017](./archive/017-vm-migration-vmware/spec.md) |
 | 018 | [Admin Dashboard UI](./018-admin-dashboard-ui/spec.md) | Deployment | KEEP | `ui/packages/admin-dashboard` |
@@ -50,7 +50,7 @@ Detailed specifications for platform features in the `hybridcloud/` monorepo.
 | 033 | [Unified Operator](./033-unified-operator/spec.md) | All CRDs | KEEP | |
 | 034 | [Bootstrap Deployment](./034-bootstrap-deployment/spec.md) | App-of-apps | KEEP | |
 
-**Summary**: 28 KEEP · 5 UPDATE · 1 ARCHIVE.
+**Summary**: 28 KEEP · 3 UPDATE · 2 ARCHIVE.
 
 ## Conventions
 

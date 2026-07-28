@@ -3,7 +3,7 @@
   hosts: all
   sources:
     - ansible.eda.kafka:
-        host: {{ KAFKA_BOOTSTRAP_HOST }}
+        host: "hybridsovereign-kafka-kafka-bootstrap-amq-streams.apps.shc-cental5.lab.signal9.gg"
         port: "443"
         topic: hybridsovereign-events
         group_id: eda-openstack-migration-create
@@ -14,11 +14,11 @@
         check_hostname: false
         verify_mode: CERT_NONE
   rules:
-    - name: Handle OpenStackMigration Request
+    - name: Handle OpenStackMigration Create
       condition: event.body.payload.reason in ["OpenStackMigrationCreateRequested", "OpenStackMigrationReconcileRequested"] and event.body.payload.regarding.kind == "OpenStackMigration"
       action:
         run_job_template:
-          name: openstack-migration-dummy
+          name: openstack-migration-provision
           organization: sovereign
           job_args:
             extra_vars:

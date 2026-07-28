@@ -262,5 +262,5 @@ curl -sk https://localhost:8443/metrics | grep controller_runtime_reconcile
 - [21-plugin-vault.md](../technical/21-plugin-vault.md) — Plugin Vault reference
 - [22-plugin-aap.md](../technical/22-plugin-aap.md) — Plugin AAP reference
 - [23-plugin-quay.md](../technical/23-plugin-quay.md) — Plugin Quay reference
-- [25-plugin-iaac.md](../technical/25-plugin-iaac.md) — Plugin SDX reference
+- [25-plugin-iaac.md](../archive/technical/25-plugin-iaac.md) — Plugin SDX reference
 - [03-day2-operators.md](03-day2-operators.md) — General operator operations

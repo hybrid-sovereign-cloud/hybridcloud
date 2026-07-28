@@ -166,11 +166,12 @@
 
 ## Mega-Phase D — Event System
 
-**Specs**: 015 (Event Forwarder), 016 (AMQ Streams)
+**Specs**: 016 (AMQ Streams). Spec 015 Event Forwarder is **retired** (`eventForwarder.enabled: false`).
 
 | Step | Verification | Gate |
 |------|--------------|------|
-| event-forwarder | Deployment Running | Logs show Kafka connected |
+| amq-streams / Kafka | Running | Operators publish directly to Kafka |
+| event-forwarder | Absent / disabled | Do **not** require Deployment Running |
 | TC-F007 | Entity event on topic | PASS |
 | EDA activations | Running | rulebooks consume Kafka |
 

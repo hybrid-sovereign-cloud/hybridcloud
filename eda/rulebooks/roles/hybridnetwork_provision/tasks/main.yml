@@ -1,0 +1,95 @@
+---
+- block:
+    - name: Parse event payload
+      ansible.builtin.set_fact:
+        hybridnetwork_cr_name: "{{ event_payload.regarding.name }}"
+        hybridnetwork_cr_namespace: "{{ event_payload.regarding.namespace }}"
+        hybridnetwork_spec: "{{ event_payload.note | from_json }}"
+
+    - name: Resolve services cluster API connection from Vault
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/resolve_services_cluster_connection.yml"
+
+    - name: Stub debug for HybridNetwork
+      ansible.builtin.debug:
+        msg: "Stub provision HybridNetwork/{{ hybridnetwork_cr_name }} in {{ hybridnetwork_cr_namespace }}"
+
+    - name: Read CR generation
+      kubernetes.core.k8s_info:
+        host: "{{ services_api_host }}"
+        api_key: "{{ services_bearer_token }}"
+        validate_certs: false
+        api_version: hybridsovereign.redhat/v1alpha1
+        kind: HybridNetwork
+        name: "{{ hybridnetwork_cr_name }}"
+        namespace: "{{ hybridnetwork_cr_namespace }}"
+      register: hybridnetwork_cr_lookup
+
+    - name: Set generation fact
+      ansible.builtin.set_fact:
+        hybridnetwork_generation: "{{ hybridnetwork_cr_lookup.resources[0].metadata.generation | default(0) | int }}"
+
+    - name: Stub allocate numbering
+      ansible.builtin.set_fact:
+        hn_entity: "{{ hybridnetwork_cr_namespace | regex_replace('^entity-', '') | regex_replace('^sovereign-', '') }}"
+        hn_network_id: "net-{{ hybridnetwork_cr_name }}"
+        hn_vni: "{{ 50000 + (hybridnetwork_cr_name | length % 400) }}"
+
+    - name: Get timestamp
+      ansible.builtin.set_fact:
+        hybridnetwork_status_transition_time: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+
+    - name: Mark HybridNetwork ready (stub)
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: hybridnetworks
+        cr_name: "{{ hybridnetwork_cr_name }}"
+        cr_namespace: "{{ hybridnetwork_cr_namespace }}"
+        cr_status_body:
+          status: ready
+          ready: true
+          message: "Stub provisioned by EDA hybridvpc (no infra changes)"
+          lastReconciledAt: "{{ hybridnetwork_status_transition_time }}"
+          observedGeneration: "{{ hybridnetwork_generation }}"
+          entity: "{{ hn_entity | default('') }}"
+          networkId: "{{ hn_network_id }}"
+          vni: "{{ hn_vni }}"
+          vrfName: "{{ hybridnetwork_cr_name }}"
+          canonicalRt: "65000:{{ hn_vni }}"
+          fabric: lab-fabric
+          placementCount: 0
+          placementsReady: 0
+          allocated: true
+          fabricVniReady: true
+          conditions:
+            - type: Ready
+              status: "True"
+              lastTransitionTime: "{{ hybridnetwork_status_transition_time }}"
+              reason: EDASucceeded
+              message: Stub provision complete
+
+  rescue:
+    - name: Mark HybridNetwork failed
+      ansible.builtin.include_tasks: "{{ role_path }}/../../../common/tasks/patch_cr_status.yml"
+      vars:
+        cr_api_version: hybridsovereign.redhat/v1alpha1
+        cr_plural: hybridnetworks
+        cr_name: "{{ hybridnetwork_cr_name }}"
+        cr_namespace: "{{ hybridnetwork_cr_namespace }}"
+        cr_status_body:
+          status: failed
+          ready: false
+          message: "{{ ansible_failed_result.msg | default('EDA stub provision failed') }}"
+          lastReconciledAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+          conditions:
+            - type: Ready
+              status: "False"
+              lastTransitionTime: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%S.000000Z') }}"
+              reason: EDAFailed
+              message: "{{ ansible_failed_result.msg | default('EDA stub provision failed') }}"
+      ignore_errors: true
+      when: services_api_host is defined and services_bearer_token is defined
+
+    - name: Re-raise
+      ansible.builtin.fail:
+        msg: "HybridNetwork {{ hybridnetwork_cr_name | default('unknown') }} stub provision failed"

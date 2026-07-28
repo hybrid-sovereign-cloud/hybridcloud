@@ -9,8 +9,8 @@ run-eda-config-local: check-env-central ## Run eda-config.yml locally against ce
 	@export EDA_CONTROLLER_URL="https://sovereign-aap-aap.apps.central.${LAB_DOMAIN}" && \
 	export AAP_CONTROLLER_URL="$$EDA_CONTROLLER_URL" && \
 	export AAP_RESOURCE_TOKEN=$$(oc get secret eda-admin-credentials -n sovereign-cloud-jobs -o jsonpath='{.data.token}' | base64 -d) && \
-	export RULEBOOK_REPO_URL="https://github.com/hybrid-sovereign-cloud/eda.git" && \
-	export GITHUB_TOKEN=$$(oc get secret eda-github-token -n sovereign-cloud-jobs -o jsonpath='{.data.token}' | base64 -d) && \
+	export RULEBOOK_REPO_URL="$${RULEBOOK_REPO_URL:-http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git}" && \
+	export GITHUB_TOKEN=$$(oc get secret eda-github-token -n sovereign-cloud-jobs -o jsonpath='{.data.token}' 2>/dev/null | base64 -d || true) && \
 	export OCI_REGISTRY=$$(oc get secret eda-oci-credentials -n sovereign-cloud-jobs -o jsonpath='{.data.registry}' | base64 -d) && \
 	export OCI_ROBOT_USERNAME=$$(oc get secret eda-oci-credentials -n sovereign-cloud-jobs -o jsonpath='{.data.username}' | base64 -d) && \
 	export OCI_ROBOT_PASSWORD=$$(oc get secret eda-oci-credentials -n sovereign-cloud-jobs -o jsonpath='{.data.password}' | base64 -d) && \

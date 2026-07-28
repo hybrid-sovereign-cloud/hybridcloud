@@ -24,7 +24,7 @@ alwaysApply: true
 
 ## Non-negotiable constraints
 
-- **Repo boundary**: modify only `bootstrap/` and `architecture/`. Never write to `/` (workspace root).
+- **Repo boundary**: modify files under the `hybridcloud/` monorepo. Prefer `bootstrap/`, `architecture/`, `operator/`, `eda/`, `ui/` as appropriate. Do not recreate deleted parent-workspace operator trees.
 - **Validate**: run `helm lint` before marking chart work done.
 - **Make for oc**: all OpenShift CLI interactions must go through `make` targets.
 - **GitOps**: after `make init-central-argo`, all installs must be ArgoCD ApplicationSet driven.

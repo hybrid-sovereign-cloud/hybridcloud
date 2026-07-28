@@ -1,0 +1,7 @@
+---
+- name: HybridNetwork Provision Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - hybridnetwork_provision

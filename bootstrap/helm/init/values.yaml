@@ -1,7 +1,8 @@
 # ─── GitOps repository ────────────────────────────────────────────────────────
 gitops:
-  # Full HTTPS URL of the bootstrap repository
-  repoURL: "https://github.com/hybrid-sovereign-cloud/hybridcloud"
+  # Full HTTPS URL of the hybridcloud repository (Gitea for disconnected; GitHub only if mirrored externally)
+  # Override via: make init-central-argo --set / env. Never rely on public GitHub in air-gap.
+  repoURL: ""
   # Branch ArgoCD will track for all app-of-apps charts
   targetRevision: HEAD
   # Personal / service-account token with read access to the repo
@@ -90,8 +91,9 @@ applicationSet:
 
 # ─── OCI registry pull secret (injected into openshift-gitops) ───────────────
 oci:
-  registry: "quay.io"
-  namespace: "sovereign"
+  # Must be set to the internal/private registry for disconnected deploy (not quay.io).
+  registry: ""
+  namespace: "hybrid-sovereign"
   robotUsername: ""
   robotPassword: ""
 

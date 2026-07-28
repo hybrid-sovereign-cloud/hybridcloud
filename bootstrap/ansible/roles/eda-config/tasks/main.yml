@@ -74,6 +74,22 @@
           - { name: "quayconfig-delete", file: "quayconfig-delete.yml" }
           - { name: "quayorg-create", file: "quayorg-create.yml" }
           - { name: "quayorg-delete", file: "quayorg-delete.yml" }
+      # hybridvpc operators share de-hybridvpc (see DE_MAP / decision-environment name override below)
+      - name: hybridvpc
+        de_image: "{{ de_registry }}/de-hybridvpc:{{ de_tags['hybridvpc'] | default('0.1.0') }}"
+        rulebooks:
+          - { name: "hybridfabric-create", file: "hybridfabric-create.yml" }
+          - { name: "hybridfabric-delete", file: "hybridfabric-delete.yml" }
+          - { name: "cloudgateway-create", file: "cloudgateway-create.yml" }
+          - { name: "cloudgateway-delete", file: "cloudgateway-delete.yml" }
+          - { name: "transportlink-create", file: "transportlink-create.yml" }
+          - { name: "transportlink-delete", file: "transportlink-delete.yml" }
+          - { name: "hybridnetwork-create", file: "hybridnetwork-create.yml" }
+          - { name: "hybridnetwork-delete", file: "hybridnetwork-delete.yml" }
+          - { name: "networkplacement-create", file: "networkplacement-create.yml" }
+          - { name: "networkplacement-delete", file: "networkplacement-delete.yml" }
+          - { name: "uihealthchecker-create", file: "uihealthchecker-create.yml" }
+          - { name: "uihealthchecker-delete", file: "uihealthchecker-delete.yml" }
 
 - name: Normalize Quay registry host for credential inputs
   ansible.builtin.set_fact:
@@ -198,13 +214,23 @@
     - existing_project.json.results[0].import_state in ['failed', 'pending']
   no_log: false
 
-- name: Create EDA Project for sovereign rulebooks (authenticated URL for private repo)
+- name: Resolve rulebook SCM URL (GitHub token embed only when URL is github.com)
+  ansible.builtin.set_fact:
+    eda_rulebook_project_url: >-
+      {%- set raw = lookup('env', 'RULEBOOK_REPO_URL') | default('http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git', true) -%}
+      {%- if (github_token | default('') | length > 0) and ('github.com' in raw) -%}
+      {{ raw | regex_replace('^https://', 'https://' + github_token + '@') }}
+      {%- else -%}
+      {{ raw }}
+      {%- endif -%}
+
+- name: Create EDA Project for sovereign rulebooks (Gitea in-cluster by default; GitHub optional)
   ansible.eda.project:
     controller_host: "{{ eda_controller_url }}"
     controller_token: "{{ eda_gateway_token }}"
     validate_certs: false
     name: "sovereign-eda-rulebooks"
-    url: "{{ lookup('env', 'RULEBOOK_REPO_URL') | regex_replace('^https://', 'https://' + github_token + '@') }}"
+    url: "{{ eda_rulebook_project_url }}"
     organization_name: "{{ eda_organization }}"
     state: present
   no_log: true
@@ -334,11 +360,10 @@
     decision_environment_name: "de-{{ item.0.name }}"
     organization_name: "{{ eda_organization }}"
     restart_policy: "on-failure"
-    event_streams:
-      - event_stream: "{{ event_stream_name }}"
-        source_index: 0
+    # Rulebooks use ansible.eda.kafka (not Event Streams). Attach AAP + Kafka SASL creds.
     eda_credentials:
       - sovereign-aap-controller-credential
+      - sovereign-kafka-consumer-credential
     state: present
   loop: "{{ eda_operators | subelements('rulebooks') }}"
   loop_control:

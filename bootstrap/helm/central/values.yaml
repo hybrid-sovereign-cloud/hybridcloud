@@ -1000,6 +1000,8 @@ vaultCentralNamespace:
   chartVersion: "0.1.9"
   syncWave: "27"
   argocdChartsRepo: false
+  # Used only when argocdChartsRepo is true. Prefer Gitea / internal mirror for disconnected.
+  argocdChartsRepoURL: ""
   values:
     namespace: vault-central
     secretStore:
@@ -1393,7 +1395,7 @@ sovereignJobs:
         - name: SECRETS_NAMESPACE
           value: "sovereign-cloud-jobs"
     giteaCreateRepo:
-      enabled: true  # Required: plugin_iaac needs tenancy_repo to exist on central Gitea
+      enabled: true  # Required: iaacGitSync needs tenancy_repo to exist on central Gitea
       playbook: gitea-create-repo.yml
       activeDeadlineSeconds: 300
       syncWave: "36"
@@ -1662,8 +1664,10 @@ sovereignJobs:
             secretKeyRef:
               name: aap-controller-github-token
               key: token
+        # Disconnected default: in-cluster Gitea (mirror monorepo eda/ → eda-lab).
+        # Override only for connected lab mirrors; never require public GitHub at runtime.
         - name: EDA_REPO_URL
-          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+          value: "http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git"
         - name: OCP_CENTRAL_SERVER
           value: "https://api.shc-cental5.lab.signal9.gg:6443"
         - name: OCP_CENTRAL_SA_TOKEN
@@ -1732,7 +1736,7 @@ sovereignJobs:
               name: eda-admin-credentials
               key: token
         - name: RULEBOOK_REPO_URL
-          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+          value: "http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git"
         - name: GITHUB_TOKEN
           valueFrom:
             secretKeyRef:
@@ -1879,9 +1883,9 @@ sovereignJobs:
               name: aap-config-as-code-github-token
               key: token
         - name: EDA_REPO_URL
-          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+          value: "http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git"
         - name: RULEBOOK_REPO_URL
-          value: "https://github.com/hybrid-sovereign-cloud/eda.git"
+          value: "http://gitea-http.gitea.svc:3000/hybrid-sovereign/eda-lab.git"
         - name: OCP_CENTRAL_SERVER
           value: "https://api.shc-cental5.lab.signal9.gg:6443"
         - name: OCP_CENTRAL_SA_TOKEN

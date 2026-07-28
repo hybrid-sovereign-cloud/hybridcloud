@@ -9,7 +9,8 @@ SOVEREIGN_INIT_BOOTSTRAP_APPSET := $(SOVEREIGN_INIT_BOOTSTRAP_SECRETS) --set boo
 # Always derive the bootstrap repo URL from the git remote — never use GITHUB_URL which
 # may point to an unrelated repository.  GITHUB_URL remains available for other purposes
 # (e.g. Gitea seeding) but must NOT be used as the ArgoCD source for this repository.
-BOOTSTRAP_REPO_URL := $(shell git -C "$(CURDIR)" remote get-url origin 2>/dev/null | sed 's|git@github.com:|https://github.com/|')
+# Prefer HTTPS remotes for ArgoCD. Rewrite SSH git@host:path → https://host/path (GitHub or Gitea).
+BOOTSTRAP_REPO_URL := $(shell git -C "$(CURDIR)" remote get-url origin 2>/dev/null | sed -E 's|^git@([^:]+):|https://\1/|')
 
 SOVEREIGN_INIT_HELM_SECRETS_SETS := \
   --set gitops.repoURL="$(BOOTSTRAP_REPO_URL)" \

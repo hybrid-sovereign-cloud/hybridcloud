@@ -105,7 +105,7 @@ oc get kafka hybridsovereign-kafka -n amq-streams --context=central-admin -o jso
 
 **Expected**: `True`
 
-### TC-CONN-011: Kafka Client from Event Forwarder
+### TC-CONN-011: Kafka Client (operators → AMQ; event-forwarder retired)
 
 ```bash
 oc logs -l app.kubernetes.io/name=event-forwarder -n sovereign-cloud-jobs --context=central-admin --tail=50

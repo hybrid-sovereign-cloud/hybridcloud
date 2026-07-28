@@ -36,4 +36,8 @@ make init-central-argo   # from bootstrap/
 
 - No secrets in git
 - All deployments via ArgoCD after bootstrap
-- Frozen source repos under parent `sovereign/` workspace are read-only reference
+- Parent `sovereign/` workspace is a thin meta-repo; frozen legacy operator trees were removed after monorepo migration (see `architecture/docs/archive/technical/DEPRECATED_REPOS.md`)
+
+## Disconnected / air-gap
+
+Runtime GitOps and SCM must use **in-cluster Gitea + private OCI registry**. Public GitHub / quay.io / registry.redhat.io are build-time sources only (mirror first). See [`docs/disconnected-deploy.md`](docs/disconnected-deploy.md).

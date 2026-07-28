@@ -1,9 +1,9 @@
 ---
-- name: Rbac Create Rulebook
+- name: RBAC Create Rulebook
   hosts: all
   sources:
     - ansible.eda.kafka:
-        host: {{ KAFKA_BOOTSTRAP_HOST }}
+        host: "hybridsovereign-kafka-kafka-bootstrap-amq-streams.apps.shc-cental5.lab.signal9.gg"
         port: "443"
         topic: hybridsovereign-events
         group_id: eda-rbac-create
@@ -14,8 +14,8 @@
         check_hostname: false
         verify_mode: CERT_NONE
   rules:
-    - name: Handle Rbac Create
-      condition: event.body.payload.reason in ["RbacCreateRequested", "RbacReconcileRequested"] and event.body.payload.regarding.kind == "Rbac"
+    - name: Handle RBAC Create
+      condition: event.body.payload.reason in ["RBACCreateRequested", "RBACReconcileRequested"] and event.body.payload.regarding.kind == "RBAC"
       action:
         run_job_template:
           name: rbac-provision

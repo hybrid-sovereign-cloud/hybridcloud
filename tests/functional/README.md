@@ -75,7 +75,7 @@ Apply sanitized samples from `samples/` — never use production credentials.
 | Field | Value |
 |-------|-------|
 | **Objective** | Entity creation emits event on `hybridsovereign-events` topic |
-| **Prerequisite** | Mega-Phase D; event-forwarder + AMQ Streams healthy |
+| **Prerequisite** | Mega-Phase D; AMQ Streams healthy (event-forwarder disabled) |
 | **Steps** | 1. Consume from Kafka topic (or check EDA activation logs) 2. Apply new test Entity CR 3. Confirm event payload contains `kind=Entity`, `name=<entity>` |
 | **Expected** | Event within 60s; EDA rulebook `entity-create` activation fires |
 
@@ -109,7 +109,7 @@ Apply sanitized samples from `samples/` — never use production credentials.
 ## Pass Criteria
 
 - All TC-F001 through TC-F010 PASS (TC-F007–F009 require Kafka infrastructure)
-- No credentials in operator or event-forwarder logs
+- No credentials in operator logs (event-forwarder retired)
 - All tests use `samples/` sanitized CRs only
 
 ## Related Artifacts

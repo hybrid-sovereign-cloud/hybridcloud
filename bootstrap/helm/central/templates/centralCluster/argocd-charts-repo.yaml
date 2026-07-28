@@ -25,7 +25,8 @@ spec:
         labels:
           argocd.argoproj.io/secret-type: repository
       data:
-        url: "https://github.com/hybrid-sovereign-cloud/charts.git"
+        # Prefer in-cluster Gitea or OCI for disconnected; override via values when enabled.
+        url: {{ .Values.vaultCentralNamespace.argocdChartsRepoURL | default (printf "%s/gitea_admin/charts.git" .Values.giteaUrl) | quote }}
         type: "git"
         username: "{{ `{{ .username }}` }}"
         password: "{{ `{{ .token }}` }}"
