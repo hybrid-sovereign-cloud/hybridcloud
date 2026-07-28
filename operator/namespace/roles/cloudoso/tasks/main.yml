@@ -1,12 +1,14 @@
 ---
 - block:
+    # Pull only leaf fields — never dump metadata/status dicts into Jinja.
+    # Poisoned status.message values containing "{{" make Ansible re-template the
+    # whole CR and fail before events can be published.
     - name: Set CloudOSO CR facts
       ansible.builtin.set_fact:
-        cloudoso_metadata: "{{ _hybridsovereign_redhat_cloudoso.metadata }}"
         cloudoso_spec: "{{ _hybridsovereign_redhat_cloudoso.spec | default({}) }}"
         cloudoso_generation: "{{ _hybridsovereign_redhat_cloudoso.metadata.generation | default(0) | int }}"
         cloudoso_observed_generation: "{{ _hybridsovereign_redhat_cloudoso.status.observedGeneration | default(0) | int }}"
-        cloudoso_status: "{{ _hybridsovereign_redhat_cloudoso.status.status | default('') }}"
+        cloudoso_status: "{{ _hybridsovereign_redhat_cloudoso.status.status | default('') | string }}"
         cloudoso_ready: "{{ _hybridsovereign_redhat_cloudoso.status.ready | default(false) | bool }}"
         reconcile_now: >-
           {{
